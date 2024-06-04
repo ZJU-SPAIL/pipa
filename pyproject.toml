@@ -1,15 +1,51 @@
 [project]
 name = "pypipa"
-version = "0.0.4"
-dependencies = ["pandas", "pyyaml", "fire", "questionary", "rich"]
+version = "0.0.5"
 authors = [{ name = "Benard Jiang", email = "bernardjiang5@outlook.com" }]
 description = "Platform Integrated Performance Analytics, PIPA"
 readme = "README.md"
 requires-python = ">=3.6"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: POSIX :: Linux",
+license = "MIT"
+keywords = [
+    "pipa",
+    "performance",
+    "analytics",
+    "platform",
+    "integrated",
+    "observability",
 ]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "pandas>=2.2.2",
+    "PyYAML>=6.0.1",
+    "fire>=0.6.0",
+    "questionary>=2.0.1",
+    "rich>=13.7.1",
+]
+
+[project.urls]
+Documentation = "https://github.com/ZJU-SPAIL/pipa#readme"
+Issues = "https://github.com/ZJU-SPAIL/pipa/issues"
+Source = "https://github.com/ZJU-SPAIL/pipa"
+
+[project.scripts]
+pipa = "pipa.main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -17,6 +53,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pipa"]
-
-[project.scripts]
-pipa = "pipa.main:main"
