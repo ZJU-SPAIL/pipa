@@ -1,0 +1,25 @@
+stages:
+  - lint
+  - test
+
+lint:
+  image: python:3.11
+  stage: lint
+  script:
+    - pip install flake8
+    - flake8 .
+
+test:
+  image: python:3.11
+  stage: test
+  script:
+    - pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+    - pip install build
+    - python -m build
+    - pip install dist/*.whl
+    - pip install pytest
+    - pytest
+  artifacts:
+    paths:
+      - dist/*.whl
+    
