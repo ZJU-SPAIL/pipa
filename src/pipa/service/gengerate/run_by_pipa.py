@@ -4,6 +4,19 @@ from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
 
 
 def quest():
+    """
+    This function prompts the user with a series of questions to gather information for running a workload.
+
+    Returns:
+        A tuple containing the following information:
+        - workspace: The workspace path
+        - freq_record: Frequency record
+        - events_record: Events record
+        - freq_stat: Frequency statistics
+        - events_stat: Events statistics
+        - annotete: Whether to use perf-annotate (True or False)
+        - command: The command of the workload
+    """
     workspace, freq_record, events_record, freq_stat, events_stat = quest_basic()
 
     annotete = questionary.select(
@@ -63,9 +76,20 @@ def generate(
     workspace, freq_record, events_record, freq_stat, events_stat, annotete, command
 ):
     """
-    Generates a shell script for collecting performance data based on user inputs.
-    """
+    Generate a shell script for collecting performance data which start workload by perf.
 
+    Args:
+        workspace (str): The path to the workspace directory.
+        freq_record (str): The frequency for recording events.
+        events_record (str): The events to be recorded.
+        freq_stat (str): The frequency for collecting statistics.
+        events_stat (str): The events to be collected for statistics.
+        annotete (bool): Whether to annotate the performance data.
+        command (str): The command to be executed.
+
+    Returns:
+        None
+    """
     with open(workspace + "/pipa-run.sh", "w") as f:
         write_title(f)
 
