@@ -16,7 +16,8 @@ def ask_number(question: str, default: int) -> int:
     Returns:
         int: The number inputted by the user or the default value.
     """
-    result = questionary.text(question, default).ask().strip()
+    result = questionary.text(question, str(default)).ask().strip()
+
     if result == "":
         return default
     elif result.isdigit():
@@ -31,7 +32,7 @@ CORES_ALL = get_cpu_cores()
 
 def quest_basic():
     workspace = questionary.text(
-        "Where do you want to store your data? (Default: ./)\n"
+        "Where do you want to store your data? (Default: ./)\n", "./"
     ).ask()
 
     if workspace == "":
@@ -48,7 +49,7 @@ def quest_basic():
 
     freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
     events_stat = questionary.text(
-        "What's the event of perf-stat?\n (cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
+        "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
         "cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads",
     ).ask()
 
