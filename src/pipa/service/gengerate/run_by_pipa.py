@@ -17,12 +17,9 @@ def quest():
         - annotete: Whether to use perf-annotate (True or False)
         - command: The command of the workload
     """
-    workspace, freq_record, events_record, freq_stat, events_stat = quest_basic()
-
-    annotete = questionary.select(
-        "Whether to use perf-annotate?\n", choices=["Yes", "No"]
-    ).ask()
-    annotete = True if annotete == "Yes" else False
+    workspace, freq_record, events_record, freq_stat, events_stat, annotete = (
+        quest_basic()
+    )
 
     taskset = questionary.select(
         "Whether to use taskset?\n", choices=["Yes", "No"]

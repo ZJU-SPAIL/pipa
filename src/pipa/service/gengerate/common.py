@@ -45,12 +45,19 @@ def quest_basic():
         "What's the event of perf-record? (Default: {cycles,instructions}:S)\n",
         "{cycles,instructions}:S",
     ).ask()
+
     freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
     events_stat = questionary.text(
         "What's the event of perf-stat?\n (cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
         "cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads",
     ).ask()
-    return workspace, freq_record, events_record, freq_stat, events_stat
+
+    annotete = questionary.select(
+        "Whether to use perf-annotate?\n", choices=["Yes", "No"]
+    ).ask()
+    annotete = True if annotete == "Yes" else False
+
+    return workspace, freq_record, events_record, freq_stat, events_stat, annotete
 
 
 def write_title(file: TextIOWrapper):
