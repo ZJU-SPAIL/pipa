@@ -35,7 +35,7 @@ To generate a script that collect performance data, you only need to use:
 ```sh
 pipa generate
 ```
-Then you can complete the interaction through the CLI to provide the necessary parameters.
+Then you can complete the interaction through the CLI to provide the necessary parameters. You can choose to start the workload with perf, or you can choose to observe the system directly.
 
 Or you can use python interface:
 

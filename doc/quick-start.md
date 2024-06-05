@@ -27,3 +27,21 @@ To use the pipa package, follow these steps:
     The collected data will be returned as three separate dataframes: `sar_df_list`, `perf_stat_df`, and `perf_script_df`.
 
 Feel free to explore the pipa package further to leverage its additional features and functionalities.
+
+
+### generate the shell script which collect performance data
+
+Use the following command which launch an interactive CLI program.
+
+```sh
+pipa gengerate
+```
+
+Now you can choose to start the workload with perf, or to observe the system directly.
+
+```
+? Please select the way of workload you want to run. (Use arrow keys)
+ » Build a script that collects performance data and start the workload by perf.
+   Build a script that collects global performance data.
+```
+
