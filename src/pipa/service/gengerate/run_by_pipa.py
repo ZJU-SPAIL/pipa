@@ -4,7 +4,7 @@ from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
 
 
 def quest():
-    workspace, freq_record, freq_stat = quest_basic()
+    workspace, freq_record, events_record, freq_stat, events_stat = quest_basic()
 
     annotete = questionary.select(
         "Whether to use perf-annotate?\n", choices=["Yes", "No"]
@@ -48,10 +48,20 @@ def quest():
 
     if taskset == "Yes":
         command = f"/usr/bin/taskset -c {core_list} {command}"
-    return workspace, freq_record, freq_stat, annotete, command
+    return (
+        workspace,
+        freq_record,
+        events_record,
+        freq_stat,
+        events_stat,
+        annotete,
+        command,
+    )
 
 
-def generate(workspace, freq_record, freq_stat, annotete, command):
+def generate(
+    workspace, freq_record, events_record, freq_stat, events_stat, annotete, command
+):
     """
     Generates a shell script for collecting performance data based on user inputs.
     """
@@ -63,7 +73,7 @@ def generate(workspace, freq_record, freq_stat, annotete, command):
         f.write("mkdir -p $WORKSPACE\n\n")
 
         f.write(
-            "perf record -e '{cycles,instructions}:S' -a -F"
+            f"perf record -e '{events_record}' -a -F"
             + f" {freq_record} -o $WORKSPACE/perf.data {command}\n"
         )
         f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")
@@ -72,7 +82,7 @@ def generate(workspace, freq_record, freq_stat, annotete, command):
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
         f.write(
-            f"perf stat -e cycles,instructions -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
+            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
         )
         f.write("kill -9 $sar_pid\n")
         f.write("sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")

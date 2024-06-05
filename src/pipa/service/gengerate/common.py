@@ -41,10 +41,16 @@ def quest_basic():
         os.makedirs(workspace)
 
     freq_record = ask_number("What's the frequency of perf-record? (Default: 99)\n", 99)
-
+    events_record = questionary.text(
+        "What's the event of perf-record? (Default: {cycles,instructions}:S)\n",
+        "{cycles,instructions}:S",
+    ).ask()
     freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
-
-    return workspace, freq_record, freq_stat
+    events_stat = questionary.text(
+        "What's the event of perf-stat?\n (cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
+        "cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads",
+    ).ask()
+    return workspace, freq_record, events_record, freq_stat, events_stat
 
 
 def write_title(file: TextIOWrapper):
