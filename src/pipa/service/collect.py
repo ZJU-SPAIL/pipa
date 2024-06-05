@@ -2,7 +2,9 @@ import os
 from pipa.common.cmd import run_command
 from pipa.common.config import DUMP_DIR
 from pipa.common.utils import get_timestamp
+from pipa.service.init import create_directories
 
+create_directories()
 
 def collect_perf_record(
     workload_cmd="perf bench futex hash",
