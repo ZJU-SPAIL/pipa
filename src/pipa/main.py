@@ -1,5 +1,5 @@
 import fire
-from pipa.service.gengerate.run_by_pipa import main as generate_sh
+from pipa.service.gengerate.all import quest_summary as generate_sh
 
 
 class PipaCLI:
