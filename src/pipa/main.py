@@ -1,5 +1,5 @@
 import fire
-from pipa.service.generate_shell_script import generate as generate_sh
+from pipa.service.gengerate.run_by_pipa import main as generate_sh
 
 
 class PipaCLI:

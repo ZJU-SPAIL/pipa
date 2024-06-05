@@ -1,37 +1,10 @@
 import questionary
 import os
-from pipa.export_config.cpu_config import get_cpu_cores
 from rich import print
+from pipa.service.gengerate.common import ask_number, CORES_ALL
 
 
-def ask_number(question: str, default: int) -> int:
-    """
-    Asks the user to input a number based on the given question and default value.
-
-    Args:
-        question (str): The question to ask the user.
-        default (int): The default value to return if the user doesn't input anything.
-
-    Returns:
-        int: The number inputted by the user or the default value.
-    """
-    result = questionary.text(question).ask().strip()
-    if result == "":
-        return default
-    elif result.isdigit():
-        return int(result)
-    else:
-        print("Please input a number.")
-        exit(1)
-
-
-cores_available = get_cpu_cores()
-
-
-def generate():
-    """
-    Generates a shell script for collecting performance data based on user inputs.
-    """
+def quest():
     workspace = questionary.text(
         "Where do you want to store your data? (Default: ./)\n"
     ).ask()
@@ -75,7 +48,7 @@ def generate():
                 print("Please input a valid range, non-digit char detected.")
                 exit(1)
             l, r = int(l), int(r)
-            if l < cores_available[0] or r > cores_available[-1] or l >= r:
+            if l < CORES_ALL[0] or r > CORES_ALL[-1] or l >= r:
                 print("Please input a valid range.")
                 exit(1)
             core_list = ",".join([str(i) for i in list(range(l, r + 1))])
@@ -88,6 +61,13 @@ def generate():
 
     if taskset == "Yes":
         command = f"/usr/bin/taskset -c {core_list} {command}"
+    return workspace, freq_record, freq_stat, annotete, command
+
+
+def generate(workspace, freq_record, freq_stat, annotete, command):
+    """
+    Generates a shell script for collecting performance data based on user inputs.
+    """
 
     with open(workspace + "/pipa-run.sh", "w") as f:
         f.write("#!/bin/bash\n")
@@ -124,7 +104,7 @@ fi\n\n"""
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
         f.write(
-            f"perf stat -e cycles,instructions -C {cores_available[0]}-{cores_available[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
+            f"perf stat -e cycles,instructions -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
         )
         f.write("kill -9 $sar_pid\n")
         f.write("sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
@@ -138,5 +118,9 @@ fi\n\n"""
         print("Please check the script in " + workspace + "/pipa-run.sh")
 
 
+def main():
+    generate(**quest())
+
+
 if __name__ == "__main__":
-    generate()
+    main()
