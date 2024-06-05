@@ -21,32 +21,32 @@ def quest():
         quest_basic()
     )
 
-    taskset = questionary.select(
+    use_taskset = questionary.select(
         "Whether to use taskset?\n", choices=["Yes", "No"]
     ).ask()
 
-    if taskset == "Yes":
-        cores = questionary.text(
+    if use_taskset == "Yes":
+        cores_input = questionary.text(
             "Which cores do you want to use? (Default: 120-140)\n", "120-140"
         ).ask()
 
-        if cores.isdigit():
-            core_list = cores.strip()
-        elif cores.split("-").__len__() != 2:
+        if cores_input.isdigit():
+            core_list = cores_input.strip()
+        elif cores_input.split("-").__len__() != 2:
             print("Please input a valid range, split by '-'.")
             exit(1)
         else:
-            l, r = cores.split("-")
+            left, right = cores_input.split("-")
 
-            l, r = l.strip(), r.strip()
-            if not l.isdigit() or not r.isdigit():
+            left, right = left.strip(), right.strip()
+            if not left.isdigit() or not right.isdigit():
                 print("Please input a valid range, non-digit char detected.")
                 exit(1)
-            l, r = int(l), int(r)
-            if l < CORES_ALL[0] or r > CORES_ALL[-1] or l >= r:
+            left, right = int(left), int(right)
+            if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
                 print("Please input a valid range.")
                 exit(1)
-            core_list = ",".join([str(i) for i in list(range(l, r + 1))])
+            core_list = ",".join([str(i) for i in list(range(left, right + 1))])
 
     command = questionary.text("What's the command of workload?\n").ask()
 
@@ -54,7 +54,7 @@ def quest():
         print("Please input a command to run workload.")
         exit(1)
 
-    if taskset == "Yes":
+    if use_taskset == "Yes":
         command = f"/usr/bin/taskset -c {core_list} {command}"
     return (
         workspace,
