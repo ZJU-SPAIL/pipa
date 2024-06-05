@@ -2,6 +2,7 @@ import pandas as pd
 import re
 from pipa.common.logger import logger
 import multiprocessing
+from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
 
 
 def parse_one_line(line):
@@ -26,11 +27,27 @@ def parse_one_line(line):
             - caller (str): The caller value.
     """
     try:
-        pattern = r"(\S+|\:-\d+)\s+(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):\s+(\S+)\s+(.*?)\s+\((\S+)\)"
+        try:
+            pattern = r"(\S+|\:-\d+)\s+(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):\s+(\S+)\s+(.*?)\s+\((\S+)\)"
 
-        command, pid, cpu, time, value, event, addr, symbol, caller = re.match(
-            pattern, line.strip()
-        ).groups()
+            command, pid, cpu, time, value, event, addr, symbol, caller = re.match(
+                pattern, line.strip()
+            ).groups()
+        except:
+            pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):\s+(\S+)\s+(.*?)\s+\((\S+)\)"
+            (
+                pid,
+                cpu,
+                time,
+                value,
+                event,
+                addr,
+                symbol,
+                caller,
+            ) = re.match(pattern, line[15:].strip()).groups()
+
+            command = line[:15].strip()
+
     except Exception as e:
         logger.warning("parse failed for line: " + line + "\n with error: " + str(e))
         return None
@@ -48,7 +65,7 @@ def parse_one_line(line):
     ]
 
 
-def parse_perf_script_file(parsed_script_path, processes_num=10):
+def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
     """
     Parses a perf script file and returns the data as a pandas DataFrame.
 
