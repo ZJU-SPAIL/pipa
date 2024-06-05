@@ -1,23 +1,10 @@
 import questionary
-import os
 from rich import print
-from pipa.service.gengerate.common import ask_number, CORES_ALL, write_title
+from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
 
 
 def quest():
-    workspace = questionary.text(
-        "Where do you want to store your data? (Default: ./)\n"
-    ).ask()
-
-    if workspace == "":
-        workspace = "./"
-
-    if not os.path.exists(workspace):
-        os.makedirs(workspace)
-
-    freq_record = ask_number("What's the frequency of perf-record? (Default: 99)\n", 99)
-
-    freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
+    workspace, freq_record, freq_stat = quest_basic()
 
     annotete = questionary.select(
         "Whether to use perf-annotate?\n", choices=["Yes", "No"]

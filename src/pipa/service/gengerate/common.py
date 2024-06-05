@@ -2,6 +2,7 @@ import questionary
 from pipa.export_config.cpu_config import get_cpu_cores
 from rich import print
 from io import TextIOWrapper
+import os
 
 
 def ask_number(question: str, default: int) -> int:
@@ -26,6 +27,24 @@ def ask_number(question: str, default: int) -> int:
 
 
 CORES_ALL = get_cpu_cores()
+
+
+def quest_basic():
+    workspace = questionary.text(
+        "Where do you want to store your data? (Default: ./)\n"
+    ).ask()
+
+    if workspace == "":
+        workspace = "./"
+
+    if not os.path.exists(workspace):
+        os.makedirs(workspace)
+
+    freq_record = ask_number("What's the frequency of perf-record? (Default: 99)\n", 99)
+
+    freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
+
+    return workspace, freq_record, freq_stat
 
 
 def write_title(file: TextIOWrapper):
