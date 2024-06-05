@@ -1,6 +1,10 @@
 **/*.ipynb
 **/__pycache__
 **/*.pytest_cache
+
+.vscode
+.idea
+
 data
 log
 dist
