@@ -27,10 +27,8 @@ def quest():
 
     if taskset == "Yes":
         cores = questionary.text(
-            "Which cores do you want to use? (Default: 120-140)\n"
+            "Which cores do you want to use? (Default: 120-140)\n", "120-140"
         ).ask()
-        if cores == "":
-            cores = "120-140"
 
         if cores.isdigit():
             core_list = cores.strip()

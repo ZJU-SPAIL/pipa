@@ -16,7 +16,7 @@ def ask_number(question: str, default: int) -> int:
     Returns:
         int: The number inputted by the user or the default value.
     """
-    result = questionary.text(question).ask().strip()
+    result = questionary.text(question, default).ask().strip()
     if result == "":
         return default
     elif result.isdigit():
