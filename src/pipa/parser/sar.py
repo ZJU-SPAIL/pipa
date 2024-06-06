@@ -3,6 +3,76 @@ import re
 from pipa.common.cmd import run_command
 
 
+class SarData:
+    def __init__(self, sar_string: str):
+        self.sar_data = parse_sar_string(sar_string)
+
+    @classmethod
+    def init_with_sar_txt(cls, sar_txt_path: str):
+        """
+        Initializes the SarData object using a SAR text file.
+
+        Args:
+            sar_txt_path (str): Path to the SAR text file.
+
+        Returns:
+            SarData: Initialized SarData object.
+        """
+        with open(sar_txt_path, "r") as f:
+            sar_content = f.readlines()
+        return cls(sar_content)
+
+    @classmethod
+    def init_with_sar_bin(cls, sar_bin_path: str):
+        """
+        Initializes the SarData object using a SAR binary file.
+
+        Args:
+            sar_bin_path (str): Path to the SAR binary file.
+
+        Returns:
+            SarData: Initialized SarData object.
+        """
+        sar_content = parse_sar_bin_to_txt(sar_bin_path)
+        return cls(sar_content)
+
+    def get_CPU_utilization(self):
+        """
+        Returns the CPU utilization data.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the CPU utilization data.
+        """
+        return self.sar_data[0]
+
+    def get_CPU_frequency(self):
+        """
+        Returns the CPU frequency data.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the CPU frequency data.
+        """
+        return self.sar_data[31]
+
+    def get_memory_usage(self):
+        """
+        Returns the memory usage data.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the memory usage data.
+        """
+        return self.sar_data[6]
+
+    def get_disk_usage(self):
+        """
+        Returns the disk usage data.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the disk usage data.
+        """
+        return self.sar_data[11]
+
+
 def parse_sar_bin_to_txt(sar_bin_path: str):
     """
     Parses the SAR binary file into a list of lines.
@@ -116,17 +186,13 @@ def parse_sar_string(sar_string: str):
         List[pd.DataFrame]: A list of dataframes containing the parsed SAR data.
     """
     sar_data = split_sar_block(sar_string)[1:]
-    return [sar_to_df(d) for d in sar_data]
-
-
-def filter_CPU_Utilization(sar_txt_path: str):
-    with open(sar_txt_path, "r") as f:
-        sar_content = f.readlines()
-    sar_data = [
-        i
-        for i in split_sar_block(sar_content)[1:]
-        if i[0].endswith(
-            "CPU      %usr     %nice      %sys   %iowait    %steal      %irq     %soft    %guest    %gnice     %idle"
-        )
-    ]
-    return [sar_to_df(d) for d in sar_data]
+    a = [sar_to_df(d) for d in sar_data]
+    l = 0
+    res = []
+    while l < len(a):  # merge dataframes with the same columns, use two pointers
+        r = l + 1
+        while r < len(a) and a[r].columns.equals(a[l].columns):
+            r += 1
+        res.append(pd.concat(a[l:r], axis=0))
+        l = r
+    return res
