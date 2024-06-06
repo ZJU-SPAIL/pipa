@@ -47,7 +47,9 @@ def quest_basic():
         "{cycles,instructions}:S",
     ).ask()
 
-    freq_stat = ask_number("What's the frequency of perf-stat? (Default: 99)\n", 99)
+    freq_stat = ask_number(
+        "What's count deltas of perf-stat? (Default: 1000 milliseconds)\n", 1000
+    )
     events_stat = questionary.text(
         "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
         "cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads",
