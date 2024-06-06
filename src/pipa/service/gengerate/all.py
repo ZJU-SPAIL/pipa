@@ -17,8 +17,5 @@ def quest_summary():
         == "Build a script that collects performance data and start the workload by perf."
     ):
         run_by_pipa()
-    elif (
-        how_to_run
-        == "Build a script that collects performance data and start the workload by user."
-    ):
+    elif how_to_run == "Build a script that collects global performance data.":
         run_by_user()
