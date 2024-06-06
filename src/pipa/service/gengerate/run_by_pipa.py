@@ -118,7 +118,7 @@ def generate(
 
 
 def main():
-    generate(**quest())
+    generate(*quest())
 
 
 if __name__ == "__main__":
