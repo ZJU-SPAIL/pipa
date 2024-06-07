@@ -14,3 +14,15 @@
   * **Testing**: Write and execute test cases to ensure all parts of the tool work correctly.
   * **Continuous Integration/Continuous Deployment (CI/CD)**: Set up CI/CD workflows to automate the testing and deployment process.
   * **Performance Optimization**: Optimize the performance of the tool to ensure it maintains good performance when handling large amounts of data.
+
+
+## TODO
+
+### Version 0.0.6
+
+* [ ] Implement basic data processing capabilities
+* [ ] Implement basic data visualization
+
+### Version 0.0.7
+
+* [ ] Provides combinations of different performance data collection tools.
