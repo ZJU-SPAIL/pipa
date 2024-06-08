@@ -36,36 +36,76 @@ class SarData:
         sar_content = parse_sar_bin_to_txt(sar_bin_path)
         return cls(sar_content)
 
-    def get_CPU_utilization(self):
+    def filter_dataframe(self, df, data_type: str = "detail"):
         """
-        Returns the CPU utilization data.
+        Filters the given dataframe based on the specified data type.
+
+        Parameters:
+        - df: pandas.DataFrame
+            The dataframe to be filtered.
+        - data_type: str, optional
+            The type of data to filter. Valid values are "detail", "raw", and "average".
+            Defaults to "detail".
 
         Returns:
-            pd.DataFrame: Dataframe containing the CPU utilization data.
-        """
-        return self.sar_data[0]
+        - pandas.DataFrame
+            The filtered dataframe.
 
-    def get_CPU_frequency(self):
+        Raises:
+        - ValueError: If an invalid data type is provided.
+        """
+        match data_type:
+            case "detail":
+                return df[df["timestamp"] != "Average:"]
+            case "raw":
+                return df
+            case "average":
+                return df[df["timestamp"] == "Average:"]
+            case _:
+                raise ValueError("Invalid type")
+
+    def get_CPU_utilization(self, data_type: str = "detail"):
+        """
+        Retrieves the CPU utilization data from the SAR data.
+
+        Args:
+            data_type (str, optional): The type of CPU utilization data to retrieve. Defaults to "detail".
+
+        Returns:
+            DataFrame: The filtered DataFrame containing the CPU utilization data.
+        """
+        return self.filter_dataframe(self.sar_data[0], data_type)
+
+    def get_CPU_frequency(self, data_type: str = "detail"):
         """
         Returns the CPU frequency data.
+
+        Args:
+            data_type (str, optional): The type of CPU freqency data to retrieve. Defaults to "detail".
 
         Returns:
             pd.DataFrame: Dataframe containing the CPU frequency data.
         """
-        return self.sar_data[31]
+        return self.filter_dataframe(self.sar_data[31], data_type)
 
-    def get_memory_usage(self):
+    def get_memory_usage(self, data_type: str = "detail"):
         """
         Returns the memory usage data.
+
+        Args:
+            data_type (str, optional): The type of memory usage data to retrieve. Defaults to "detail".
 
         Returns:
             pd.DataFrame: Dataframe containing the memory usage data.
         """
-        return self.sar_data[6]
+        return self.filter_dataframe(self.sar_data[6], data_type)
 
     def get_disk_usage(self):
         """
         Returns the disk usage data.
+
+        Args:
+            data_type (str, optional): The type of disk usage data to retrieve. Defaults to "detail".
 
         Returns:
             pd.DataFrame: Dataframe containing the disk usage data.
