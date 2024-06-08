@@ -155,7 +155,8 @@ def trans_time_to_24h(time: str) -> str:
 def merge_one_line(sar_line: str) -> list:
     sar_line = sar_line.split()
     sar_line[0] = trans_time_to_24h(sar_line[0] + " " + sar_line[1])
-    sar_line.pop(1)
+    if sar_line[1] in ["AM", "PM"]:
+        sar_line.pop(1)
     return sar_line
 
 
@@ -167,21 +168,20 @@ def add_post_fix(sar_line: list, len_columns: int):
     return sar_line[:len_columns]
 
 
+def process_subtable(sar_columns: list, sar_blocks: list):
+    return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
+
+
 def sar_to_df(sar_blocks: list):
-    if sar_blocks[0] == "":
-        sar_blocks.pop(0)
+    while sar_blocks[0] == "":
+        sar_blocks = sar_blocks[1:]
 
     time_pattern = r"\d{2}:\d{2}:\d{2}"
-    if re.match(time_pattern, sar_blocks[0].split()[0]):
-        sar_columns = ["timestamp"] + sar_blocks[0].split()[2:]
-        sar_data = [
-            add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks[1:]
-        ]
-    else:
-        sar_columns = sar_blocks[0].split()
-        sar_data = [add_post_fix(x.split(), len(sar_columns)) for x in sar_blocks[1:]]
+    sar_columns = sar_blocks[0].split()
+    if re.match(time_pattern, sar_columns[0]):
+        sar_columns = ["timestamp"] + sar_columns[1:]
     return pd.DataFrame(
-        sar_data,
+        process_subtable(sar_columns, sar_blocks[1:]),
         columns=sar_columns,
     )
 
