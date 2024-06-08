@@ -76,16 +76,16 @@ class SarData:
         """
         util = self.filter_dataframe(self.sar_data[0], data_type).astype(
             {
-                r"%usr": "float32",
-                r"%nice": "float32",
-                r"%sys": "float32",
-                r"%iowait": "float32",
-                r"%irq": "float32",
-                r"%soft": "float32",
-                r"%steal": "float32",
-                r"%guest": "float32",
-                r"%gnice": "float32",
-                r"%idle": "float32",
+                r"%usr": "float64",
+                r"%nice": "float64",
+                r"%sys": "float64",
+                r"%iowait": "float64",
+                r"%irq": "float64",
+                r"%soft": "float64",
+                r"%steal": "float64",
+                r"%guest": "float64",
+                r"%gnice": "float64",
+                r"%idle": "float64",
             }
         )
         util[r"%used"] = 100 - util[r"%idle"]
@@ -102,7 +102,7 @@ class SarData:
             pd.DataFrame: Dataframe containing the CPU frequency data.
         """
         return self.filter_dataframe(self.sar_data[31], data_type).astype(
-            {"MHz": "float32"}
+            {"MHz": "float64"}
         )
 
     def get_CPU_util_freq(self, data_type: str = "detail"):
