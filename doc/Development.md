@@ -31,3 +31,5 @@
 
 * [ ] Provides combinations of different performance data collection tools
 * [ ] Implement script generation by parsing configuration files
+* [ ] Implement tiny table
+* [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
