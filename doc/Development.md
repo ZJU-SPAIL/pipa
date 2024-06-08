@@ -20,9 +20,14 @@
 
 ### Version 0.0.6
 
+* [x] Implement data parsing of sar data
+* [x] Implement the script generation for global performance data collection
+* [x] Fix script generation initiated by pipa, optimizing default parameters
+* [ ] Implement parallel processing of sar data
 * [ ] Implement basic data processing capabilities
 * [ ] Implement basic data visualization
 
 ### Version 0.0.7
 
-* [ ] Provides combinations of different performance data collection tools.
+* [ ] Provides combinations of different performance data collection tools
+* [ ] Implement script generation by parsing configuration files
