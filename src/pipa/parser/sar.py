@@ -88,6 +88,21 @@ class SarData:
         """
         return self.filter_dataframe(self.sar_data[31], data_type)
 
+    def get_CPU_util_freq(self, data_type: str = "detail"):
+        """
+        Returns the CPU utilization and frequency data.
+
+        Args:
+            data_type (str, optional): The type of CPU utilization and frequency data to retrieve. Defaults to "detail".
+
+        Returns:
+            pd.DataFrame: Dataframe containing the CPU utilization and frequency data.
+        """
+        util, freq = self.get_CPU_utilization(data_type), self.get_CPU_frequency(
+            data_type
+        )
+        return pd.merge(util, freq, on=["timestamp", "CPU"])
+
     def get_memory_usage(self, data_type: str = "detail"):
         """
         Returns the memory usage data.
