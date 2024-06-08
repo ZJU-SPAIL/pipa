@@ -168,8 +168,25 @@ def add_post_fix(sar_line: list, len_columns: int):
     return sar_line[:len_columns]
 
 
-def process_subtable(sar_columns: list, sar_blocks: list):
-    return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
+from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
+import multiprocessing
+
+
+def process_subtable(
+    sar_columns: list, sar_blocks: list, processes_num=NB_PHYSICAL_CORES // 2
+):
+    if len(sar_blocks) <= 1e6 or processes_num <= 1:
+        # if the number of lines is less than 1e6, use single process
+        return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
+    pool = multiprocessing.Pool(processes=processes_num)
+    merged_lines = pool.map(merge_one_line, sar_blocks)
+    res = pool.starmap(
+        add_post_fix,
+        zip(merged_lines, [len(sar_columns) for _ in range(len(merged_lines))]),
+    )
+    pool.close()
+    pool.join()
+    return res
 
 
 def sar_to_df(sar_blocks: list):

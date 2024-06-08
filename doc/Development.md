@@ -23,7 +23,7 @@
 * [x] Implement data parsing of sar data
 * [x] Implement the script generation for global performance data collection
 * [x] Fix script generation initiated by pipa, optimizing default parameters
-* [ ] Implement parallel processing of sar data
+* [x] Implement parallel parsing of sar data
 * [ ] Implement basic data processing capabilities
 * [ ] Implement basic data visualization
 
