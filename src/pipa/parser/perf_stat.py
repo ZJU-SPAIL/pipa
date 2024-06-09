@@ -1,5 +1,7 @@
 import pandas as pd
 from pandarallel import pandarallel
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 class PerfStatData:
@@ -23,6 +25,10 @@ class PerfStatData:
             .assign(CPI=lambda x: x["value_cycles"] / x["value_instructions"])
             .drop(columns=["metric_type_cycles", "metric_type_instructions"])
         )
+
+    def get_CPI_time(self, threads: list):
+        df = self.get_CPI()
+        return df[df["cpu_id"].isin([int(t) for t in threads])]
 
     def get_CPI_overall(self, data_type="thread"):
         """
@@ -58,6 +64,21 @@ class PerfStatData:
                 return total_cycles / total_instructions
             case _:
                 raise ValueError("Invalid data type")
+
+    def plot_CPI_time_by_thread(self, threads: list):
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+        if len(threads) > 1:
+            p = sns.lineplot(
+                data=self.get_CPI_time(threads), x="timestamp", hue="cpu_id", y="CPI"
+            )
+        else:
+            p = sns.lineplot(data=self.get_CPI_time(threads), x="timestamp", y="CPI")
+        p.set_title("CPI over Time, Thread " + ",".join(threads))
+        p.set_xlabel("Time(s)")
+        p.set_ylabel("CPI")
+        plt.savefig(
+            "./data/figure/CPI_over_Time_by_Thread" + ",".join(threads) + ".png"
+        )
 
 
 def parse_perf_stat_file(stat_output_path: str):
