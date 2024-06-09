@@ -113,6 +113,8 @@ class SarData:
             df = df[df["CPU"].isin([int(t) for t in threads])]
             sns.lineplot(data=df, x="timestamp", y=r"%used")
 
+    # TODO add barplot to plot
+
     def get_CPU_frequency(self, data_type: str = "detail"):
         """
         Returns the CPU frequency data.
@@ -126,6 +128,26 @@ class SarData:
         return self.filter_dataframe(self.sar_data[31], data_type).astype(
             {"MHz": "float64"}
         )
+
+    def plot_CPU_freq_time(self, threads: list = None):
+        """
+        Plots the CPU frequency over time.
+
+        Args:
+            threads (list, optional): List of CPU threads to plot. If None, plots the frequency for all threads.
+                                      Defaults to None.
+        """
+        df = self.get_CPU_frequency()
+
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+
+        if threads is None:
+            sns.lineplot(data=df.query("CPU=='all'"), x="timestamp", y="MHz")
+        elif len(threads) > 1:
+            sns.lineplot(data=df, x="timestamp", y="MHz", hue="CPU")
+        else:
+            df = df[df["CPU"].isin([int(t) for t in threads])]
+            sns.lineplot(data=df, x="timestamp", y="MHz")
 
     def get_CPU_util_freq(self, data_type: str = "detail"):
         """
