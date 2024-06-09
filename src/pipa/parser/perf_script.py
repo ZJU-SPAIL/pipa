@@ -82,7 +82,9 @@ def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
         content = [l.strip() for l in file.readlines()]
 
     # Ensure that the content is not None
-    assert content is not None
+    if content is None:
+        logger.info("content is None")
+        return None
 
     # Define the separator used to split the header and table sections
     SEPARATOR = "# ========"
