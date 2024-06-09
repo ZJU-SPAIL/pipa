@@ -26,7 +26,19 @@ class PerfStatData:
             .drop(columns=["metric_type_cycles", "metric_type_instructions"])
         )
 
-    def get_CPI_time(self, threads: list):
+    def get_CPI_time(self, threads: list = None):
+        """
+        Returns the CPI (Cycles Per Instruction) over time for the specified threads.
+
+        Args:
+            threads (list, optional): A list of thread IDs. If None, returns the average CPI over time for all threads.
+
+        Returns:
+            pandas.DataFrame: A DataFrame containing the timestamp and CPI values over time.
+
+        """
+        if threads is None:
+            return self.get_CPI()[["timestamp", "CPI"]].groupby("timestamp").mean()
         df = self.get_CPI()
         return df[df["cpu_id"].isin([int(t) for t in threads])]
 
@@ -66,6 +78,15 @@ class PerfStatData:
                 raise ValueError("Invalid data type")
 
     def plot_CPI_time_by_thread(self, threads: list):
+        """
+        Plots CPI over time for the specified threads.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            None
+        """
         sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
         if len(threads) > 1:
             p = sns.lineplot(
@@ -79,6 +100,23 @@ class PerfStatData:
         plt.savefig(
             "./data/figure/CPI_over_Time_by_Thread" + ",".join(threads) + ".png"
         )
+
+    def plot_CPI_time_system(self):
+        """
+        Plots CPI (Cycles Per Instruction) over time for the system.
+
+        This method generates a line plot showing the CPI values over time for the system.
+        It uses the data returned by the `get_CPI_time` method and saves the plot as an image.
+
+        Returns:
+            None
+        """
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+        p = sns.lineplot(data=self.get_CPI_time(), x="timestamp", y="CPI")
+        p.set_title("CPI over Time, System")
+        p.set_xlabel("Time(s)")
+        p.set_ylabel("CPI")
+        plt.savefig("./data/figure/CPI_over_Time_System.png")
 
 
 def parse_perf_stat_file(stat_output_path: str):
@@ -131,5 +169,5 @@ def parse_perf_stat_file(stat_output_path: str):
             "opt_unit_metric": str,
         }
     )
-    df["cpu_id"] = df["cpu_id"].str.replace("CPU", "").astype(int)
+    df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
     return df
