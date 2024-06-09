@@ -1,6 +1,6 @@
 [project]
 name = "pypipa"
-version = "0.0.5"
+version = "0.0.6"
 authors = [{ name = "Benard Jiang", email = "bernardjiang5@outlook.com" }]
 description = "Platform Integrated Performance Analytics, PIPA"
 readme = "README.md"

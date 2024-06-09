@@ -24,9 +24,9 @@
 * [x] Implement the script generation for global performance data collection
 * [x] Fix script generation initiated by pipa, optimizing default parameters
 * [x] Implement parallel parsing of sar data / perf-stat
-* [ ] Implement data parsing of perf-report data
+* [x] Implement data parsing of perf-report data
 * [x] Implement basic data processing capabilities
-* [x] Implement basic data visualization: Export CPI/CPU Util/CPU Freq overtime figures
+* [x] Implement basic data visualization: Export CPI/CPU Util/CPU Freq over time figures
 
 ### Version 0.0.7
 
