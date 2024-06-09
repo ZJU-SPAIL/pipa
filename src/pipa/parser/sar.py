@@ -188,6 +188,14 @@ class SarData:
         """
         return self.sar_data[11]
 
+    def plot_disk_usage(self):
+        """
+        Plots the disk tps over time.
+        """
+        df = self.get_disk_usage()
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+        sns.lineplot(data=df, x="timestamp", y="tps", hue="DEV")
+
 
 def parse_sar_bin_to_txt(sar_bin_path: str):
     """
