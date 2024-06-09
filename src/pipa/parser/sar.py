@@ -1,4 +1,6 @@
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import re
 from pipa.common.cmd import run_command
 
@@ -90,6 +92,26 @@ class SarData:
         )
         util[r"%used"] = 100 - util[r"%idle"]
         return util
+
+    def plot_CPU_util_time(self, threads: list = None):
+        """
+        Plots the CPU utilization over time.
+
+        Args:
+            threads (list, optional): List of CPU threads to plot. If None, plots the utilization for all threads.
+                                      Defaults to None.
+        """
+        df = self.get_CPU_utilization()
+
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+
+        if threads is None:
+            sns.lineplot(data=df.query("CPU=='all'"), x="timestamp", y=r"%used")
+        elif len(threads) > 1:
+            sns.lineplot(data=df, x="timestamp", y=r"%used", hue="CPU")
+        else:
+            df = df[df["CPU"].isin([int(t) for t in threads])]
+            sns.lineplot(data=df, x="timestamp", y=r"%used")
 
     def get_CPU_frequency(self, data_type: str = "detail"):
         """
