@@ -97,9 +97,6 @@ class PerfStatData:
         p.set_title("CPI over Time, Thread " + ",".join(threads))
         p.set_xlabel("Time(s)")
         p.set_ylabel("CPI")
-        plt.savefig(
-            "./data/figure/CPI_over_Time_by_Thread" + ",".join(threads) + ".png"
-        )
 
     def plot_CPI_time_system(self):
         """
@@ -116,7 +113,6 @@ class PerfStatData:
         p.set_title("CPI over Time, System")
         p.set_xlabel("Time(s)")
         p.set_ylabel("CPI")
-        plt.savefig("./data/figure/CPI_over_Time_System.png")
 
 
 def parse_perf_stat_file(stat_output_path: str):
