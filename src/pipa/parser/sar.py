@@ -141,12 +141,18 @@ class SarData:
 
         sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
 
+        df = df[df["CPU"].isin([int(t) for t in threads])] if threads else df
+
         if threads is None:
             sns.lineplot(data=df.query("CPU=='all'"), x="timestamp", y="MHz")
         elif len(threads) > 1:
-            sns.lineplot(data=df, x="timestamp", y="MHz", hue="CPU")
+            sns.lineplot(
+                data=df,
+                x="timestamp",
+                y="MHz",
+                hue="CPU",
+            )
         else:
-            df = df[df["CPU"].isin([int(t) for t in threads])]
             sns.lineplot(data=df, x="timestamp", y="MHz")
 
     def get_CPU_util_freq(self, data_type: str = "detail"):
