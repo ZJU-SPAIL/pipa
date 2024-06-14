@@ -102,15 +102,16 @@ class SarData:
                                       Defaults to None.
         """
         df = self.get_CPU_utilization()
+        df = (
+            df[df["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else df.query("CPU=='all'")
+        )
+        df = trans_time_to_seconds(df)
 
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-
-        if threads is None:
-            sns.lineplot(data=df.query("CPU=='all'"), x="timestamp", y=r"%used")
-        elif len(threads) > 1:
+        if threads and len(threads) > 1:
             sns.lineplot(data=df, x="timestamp", y=r"%used", hue="CPU")
         else:
-            df = df[df["CPU"].isin([int(t) for t in threads])]
             sns.lineplot(data=df, x="timestamp", y=r"%used")
 
     # TODO add barplot to plot
@@ -141,11 +142,14 @@ class SarData:
 
         sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
 
-        df = df[df["CPU"].isin([int(t) for t in threads])] if threads else df
+        df = (
+            df[df["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else df.query("CPU=='all'")
+        )
+        df = trans_time_to_seconds(df)
 
-        if threads is None:
-            sns.lineplot(data=df.query("CPU=='all'"), x="timestamp", y="MHz")
-        elif len(threads) > 1:
+        if threads and len(threads) > 1:
             sns.lineplot(
                 data=df,
                 x="timestamp",
@@ -182,7 +186,7 @@ class SarData:
         """
         return self.filter_dataframe(self.sar_data[6], data_type)
 
-    def get_disk_usage(self):
+    def get_disk_usage(self, data_type: str = "detail"):
         """
         Returns the disk usage data.
 
@@ -192,15 +196,29 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the disk usage data.
         """
-        return self.sar_data[11]
+        return self.filter_dataframe(self.sar_data[11], data_type).astype(
+            {
+                "tps": "float64",
+                r"rkB/s": "float64",
+                r"wkB/s": "float64",
+                r"dkB/s": "float64",
+                "areq-sz": "float64",
+                "aqu-sz": "float64",
+                "await": "float64",
+                r"%util": "float64",
+            }
+        )
 
-    def plot_disk_usage(self):
+    def plot_disk_usage(self, dev: str = None):
         """
         Plots the disk tps over time.
         """
         df = self.get_disk_usage()
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-        sns.lineplot(data=df, x="timestamp", y="tps", hue="DEV")
+        df = trans_time_to_seconds(df).query(f"DEV=='{dev}'") if dev else df
+        if dev:
+            sns.lineplot(data=df, x="timestamp", y="tps")
+        else:
+            sns.lineplot(data=df, x="timestamp", y="tps", hue="DEV")
 
 
 def parse_sar_bin_to_txt(sar_bin_path: str):
@@ -231,6 +249,15 @@ def split_sar_block(sar_lines: list):
     return [
         list(filter(None, p.split("\n"))) for p in "\n".join(sar_lines).split("\n\n")
     ]
+
+
+def trans_time_to_seconds(df):
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S")
+    # TODO fix  FutureWarning: Setting an item of incompatible dtype is deprecated and will raise in a future error of pandas. Value '<TimedeltaArray>
+    # Length: 301, dtype: timedelta64[ns]' has dtype incompatible with datetime64[ns], please explicitly cast to a compatible dtype first.
+    df.loc[:, "timestamp"] -= df.loc[:, "timestamp"].iloc[0]
+    df["timestamp"] = df["timestamp"].dt.total_seconds()
+    return df
 
 
 def trans_time_to_24h(time: str) -> str:
