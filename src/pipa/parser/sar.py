@@ -184,7 +184,34 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the memory usage data.
         """
-        return self.filter_dataframe(self.sar_data[6], data_type)
+        return self.filter_dataframe(self.sar_data[6], data_type).astype(
+            {
+                "kbmemfree": int,
+                "kbavail": int,
+                "kbmemused": int,
+                r"%memused": float,
+                "kbbuffers": int,
+                "kbcached": int,
+                "kbcommit": int,
+                r"%commit": float,
+                "kbactive": int,
+                "kbinact": int,
+                "kbdirty": int,
+                "kbanonpg": int,
+                "kbslab": int,
+                "kbkstack": int,
+                "kbpgtbl": int,
+                "kbvmused": int,
+            }
+        )
+
+    def plot_memory_usage(self):
+        """
+        Plots the memory usage over time.
+        """
+        df = self.get_memory_usage()
+        df = trans_time_to_seconds(df)
+        sns.lineplot(data=df, x="timestamp", y=r"%memused")
 
     def get_disk_usage(self, data_type: str = "detail"):
         """
