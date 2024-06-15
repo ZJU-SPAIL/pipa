@@ -280,9 +280,7 @@ def split_sar_block(sar_lines: list):
 
 def trans_time_to_seconds(df):
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S")
-    # TODO fix  FutureWarning: Setting an item of incompatible dtype is deprecated and will raise in a future error of pandas. Value '<TimedeltaArray>
-    # Length: 301, dtype: timedelta64[ns]' has dtype incompatible with datetime64[ns], please explicitly cast to a compatible dtype first.
-    df.loc[:, "timestamp"] -= df.loc[:, "timestamp"].iloc[0]
+    df["timestamp"] -= df.loc[:, "timestamp"].iloc[0]
     df["timestamp"] = df["timestamp"].dt.total_seconds()
     return df
 
