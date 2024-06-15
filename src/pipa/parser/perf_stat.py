@@ -1,7 +1,6 @@
 import pandas as pd
 from pandarallel import pandarallel
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 class PerfStatData:
@@ -94,9 +93,10 @@ class PerfStatData:
             )
         else:
             p = sns.lineplot(data=self.get_CPI_time(threads), x="timestamp", y="CPI")
-        p.set_title("CPI over Time, Thread " + ",".join(threads))
+        p.set_title("CPI over Time, Thread " + ",".join([str(t) for t in threads]))
         p.set_xlabel("Time(s)")
         p.set_ylabel("CPI")
+        return p
 
     def plot_CPI_time_system(self):
         """
@@ -113,6 +113,7 @@ class PerfStatData:
         p.set_title("CPI over Time, System")
         p.set_xlabel("Time(s)")
         p.set_ylabel("CPI")
+        return p
 
 
 def parse_perf_stat_file(stat_output_path: str):
