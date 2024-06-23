@@ -56,7 +56,7 @@ def quest_basic():
     ).ask()
 
     annotete = questionary.select(
-        "Whether to use perf-annotate?\n", choices=["Yes", "No"]
+        "Whether to use perf-annotate?\n", choices=["Yes", "No"], default="No"
     ).ask()
     annotete = True if annotete == "Yes" else False
 
