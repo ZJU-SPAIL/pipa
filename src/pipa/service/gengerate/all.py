@@ -8,8 +8,9 @@ def quest_summary():
     how_to_run = questionary.select(
         "Please select the way of workload you want to run.",
         choices=[
-            "Build a script that collects performance data and start the workload by perf.",
             "Build a script that collects global performance data.",
+            "Build a script that collects performance data and start the workload by perf.",
+            "Generate a configuration template of PIPA-configuration."
         ],
     ).ask()
     if (
