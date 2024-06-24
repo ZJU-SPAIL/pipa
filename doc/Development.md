@@ -30,7 +30,12 @@
 
 ### Version 0.0.7
 
-* [ ] Provides combinations of different performance data collection tools
 * [ ] Implement script generation by parsing configuration files
+* [ ] Improve perf events used in perf-stat
 * [ ] Implement tiny table
 * [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
+* [ ] Set version in the code
+
+### Version 0.0.8
+
+* [ ] Provides combinations of different performance data collection tools
