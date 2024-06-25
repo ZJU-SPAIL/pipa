@@ -41,7 +41,9 @@ def quest_basic():
     if not os.path.exists(workspace):
         os.makedirs(workspace)
 
-    freq_record = ask_number("What's the frequency of perf-record? (Default: 999)\n", 999)
+    freq_record = ask_number(
+        "What's the frequency of perf-record? (Default: 999)\n", 999
+    )
     events_record = questionary.text(
         "What's the event of perf-record? (Default: {cycles,instructions}:S)\n",
         "{cycles,instructions}:S",
@@ -52,7 +54,7 @@ def quest_basic():
     )
     events_stat = questionary.text(
         "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
-        "cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads",
+        "cycles,instructions",
     ).ask()
 
     annotete = questionary.select(
