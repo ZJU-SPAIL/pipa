@@ -12,10 +12,12 @@ def quest():
         "Whether to set the duration of the perf-record run?\n",
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
+
     record_time, stat_time = None, None
+
     if set_record == "Yes":
         record_time = questionary.text(
-            "How long do you want to run perf-record? (Default: 10s)\n", "10"
+            "How long do you want to run perf-record? (Default: 120s)\n", "120"
         ).ask()
 
     set_stat = questionary.select(
@@ -24,8 +26,9 @@ def quest():
     ).ask()
     if set_stat == "Yes":
         stat_time = questionary.text(
-            "How long do you want to run perf-stat? (Default: 10s)\n", "10"
+            "How long do you want to run perf-stat? (Default: 120s)\n", "120"
         ).ask()
+
     return (
         workspace,
         freq_record,
