@@ -94,7 +94,9 @@ def generate(
         f.write("echo 'Performance data parsed successfully.'\n")
 
         print("Shell script generated successfully.")
-        print("Please check the script in " + workspace + "/pipa-collect.sh")
+        print(
+            f"Please check the script in {workspace}/pipa-collect.sh and {workspace}/pipa-parse.sh"
+        )
 
 
 def main():
