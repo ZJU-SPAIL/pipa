@@ -87,4 +87,7 @@ echo "Memory information exported to $DST/meminfo.txt"
 cp /proc/cpuinfo "$DST/cpuinfo.txt"
 echo "CPU information exported to $DST/cpuinfo.txt"
 
+perf list > "$DST/perf-list.txt"
+echo "Perf list exported to $DST/perf-list.txt"
+
 echo "Configuration exported to $DST"
