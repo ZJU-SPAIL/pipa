@@ -91,6 +91,8 @@ def generate(
                 "perf annotate -i $WORKSPACE/perf.data > $WORKSPACE/perf.annotate\n\n"
             )
 
+        f.write("echo 'Performance data parsed successfully.'\n")
+
         print("Shell script generated successfully.")
         print("Please check the script in " + workspace + "/pipa-collect.sh")
 
