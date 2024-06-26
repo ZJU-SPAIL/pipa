@@ -91,7 +91,7 @@ def generate(
         f.write("WORKSPACE=" + workspace + "\n")
         f.write("mkdir -p $WORKSPACE\n\n")
 
-        f.write("ps -aux -ef --forest > $WORKSPACE/ps.txt\n")
+        f.write("ps -aux -ef --forest --sort=-%cpu > $WORKSPACE/ps.txt\n")
 
         f.write(
             f"perf record -e '{events_record}' -a -F"
