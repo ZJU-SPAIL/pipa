@@ -1,5 +1,4 @@
 shell_script = """
-DST="${1:-./data/config}"
 if [[ $(id -u) -eq 0 ]]; then
     # User is root, run dmidecode directly
     dmidecode >/$DST/dmidecode.txt
@@ -64,5 +63,5 @@ echo "Configuration exported to $DST"
 from io import TextIOWrapper
 
 
-def write_export_config_script(file: TextIOWrapper):
-    file.write(shell_script)
+def write_export_config_script(file: TextIOWrapper, destination: str):
+    return file.write(f'DST="{destination}"\n') and file.write(shell_script)
