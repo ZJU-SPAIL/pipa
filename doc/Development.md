@@ -30,12 +30,16 @@
 
 ### Version 0.0.7
 
+* [x] Use ps to get process information in PIPA-SHU
+* [x] Improve `run-by-user` and set it to default option
+* [x] Fix bugs in perf-stat parsing
+* [ ] Export OS & HW configuration after parsing
 * [ ] Implement script generation by parsing configuration files
 * [ ] Improve perf events used in perf-stat
-* [ ] Implement tiny table
 * [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
 * [ ] Set version in the code
 
 ### Version 0.0.8
 
+* [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
