@@ -296,7 +296,6 @@ def trans_time_to_24h(time: str) -> str:
 
 def merge_one_line(sar_line: str) -> list:
     sar_line = sar_line.split()
-    sar_line[0] = trans_time_to_24h(sar_line[0] + " " + sar_line[1])
     if sar_line[1] in ["AM", "PM"]:
         sar_line.pop(1)
     return sar_line
