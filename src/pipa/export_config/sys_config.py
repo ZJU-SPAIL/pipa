@@ -6,11 +6,15 @@ def get_dmidecode():
 
 
 def get_lspci():
-    return run_command_and_write_to_file("lspci", "lspci.txt")
+    return run_command_and_write_to_file("lspci", "pci_devices.txt")
 
 
 def get_lsusb():
-    return run_command_and_write_to_file("lsusb", "lsusb.txt")
+    return run_command_and_write_to_file("lsusb", "usb_devices.txt")
+
+
+def get_lsblk():
+    return run_command_and_write_to_file("lsblk", "block_devices.txt")
 
 
 def get_disk_usage():
