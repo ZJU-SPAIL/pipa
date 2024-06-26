@@ -84,7 +84,7 @@ def generate(
         f.write("WORKSPACE=" + workspace + "\n")
         f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")
         f.write("perf report -i $WORKSPACE/perf.data > $WORKSPACE/perf.report\n\n")
-        f.write("sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
+        f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
         if annotete:
             f.write(
