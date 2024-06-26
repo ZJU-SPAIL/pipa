@@ -1,5 +1,6 @@
 import pandas as pd
-from pandarallel import pandarallel, NB_PHYSICAL_CORES
+from pandarallel import pandarallel
+import psutil
 import seaborn as sns
 
 
@@ -138,7 +139,7 @@ def parse_perf_stat_file(stat_output_path: str):
     •   optional metric value
     •   optional unit of metric
     """
-    pandarallel.initialize(min(12, NB_PHYSICAL_CORES))
+    pandarallel.initialize(min(12, psutil.cpu_count()))
     df = pd.read_csv(
         stat_output_path,
         skiprows=1,
