@@ -66,8 +66,6 @@ def generate(
             if record_time
             else "\n"
         )
-        f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")
-        f.write("perf report -i $WORKSPACE/perf.data > $WORKSPACE/perf.report\n\n")
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
@@ -78,14 +76,20 @@ def generate(
             else "\n"
         )
         f.write("kill -9 $sar_pid\n")
+
+        f.write("echo 'Performance data collected successfully.'\n")
+
+    with open(workspace + "/pipa-parse.sh", "w") as f:
+        write_title(f)
+        f.write("WORKSPACE=" + workspace + "\n")
+        f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")
+        f.write("perf report -i $WORKSPACE/perf.data > $WORKSPACE/perf.report\n\n")
         f.write("sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
         if annotete:
             f.write(
                 "perf annotate -i $WORKSPACE/perf.data > $WORKSPACE/perf.annotate\n\n"
             )
-
-        f.write("echo 'Performance data collected successfully.'\n")
 
         print("Shell script generated successfully.")
         print("Please check the script in " + workspace + "/pipa-collect.sh")
