@@ -93,7 +93,7 @@ def generate(
                 "perf annotate -i $WORKSPACE/perf.data > $WORKSPACE/perf.annotate\n\n"
             )
 
-        write_export_config_script(f, os.path.join(workspace, "data", "config"))
+        write_export_config_script(f, os.path.join(workspace, "config"))
 
         f.write("echo 'Performance data parsed successfully.'\n")
 

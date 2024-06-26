@@ -1,6 +1,8 @@
 import questionary
 from rich import print
 from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
+from pipa.service.gengerate.export_config import write_export_config_script
+import os
 
 
 def quest():
@@ -112,6 +114,8 @@ def generate(
             f.write(
                 "perf annotate -i $WORKSPACE/perf.data > $WORKSPACE/perf.annotate\n\n"
             )
+
+        write_export_config_script(f, os.path.join(workspace, "config"))
 
         f.write("echo 'Performance data collected successfully.'\n")
 
