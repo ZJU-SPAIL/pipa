@@ -119,12 +119,8 @@ def generate(
         print("Shell script generated successfully.")
         print("Please check the script in " + workspace + "/pipa-run.sh")
         print(
-            "Note you need to make sure the workload is running when you call pipa-collect.sh",
-            "and the workload is finished when you call pipa-parsed.sh.",
-            "Otherwise, the performance data may be incomplete or incorrect."
-            "You should ensure that the total workload is longer than ten minutes."
-            "Please check the configuration file for more details.",
-            sep="\n",
+            "Note that you may need to modify the script to meet your requirements.",
+            "pipa-run.sh is more suitable for reproducible workloads such as benchmark.",
         )
 
 
