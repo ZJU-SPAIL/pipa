@@ -35,12 +35,12 @@
 * [x] Fix bugs in perf-stat parsing
 * [x] Export OS & HW configuration after parsing
 * [x] Improve perf events used in perf-stat
-* [ ] Implement script generation by parsing configuration files
-* [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
-* [ ] Set version in the code
+* [x] Implement script generation by parsing configuration files
+* [x] Set version in the code
 
 ### Version 0.0.8
 
+* [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
 * [ ] Support data collection by `emon`
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
