@@ -1,6 +1,6 @@
 [project]
 name = "pypipa"
-version = "0.0.6"
+dynamic = ["version"]
 authors = [{ name = "Benard Jiang", email = "bernardjiang5@outlook.com" }]
 description = "Platform Integrated Performance Analytics, PIPA"
 readme = "README.md"
@@ -54,6 +54,9 @@ pipa = "pipa.main:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/pipa/__about__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pipa"]
