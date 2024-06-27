@@ -2,6 +2,7 @@ from pipa.common.cmd import run_command
 from pipa.export_config.utils import write_string_to_file, copy_file
 import psutil
 
+
 def get_lscpu_info():
     result = (
         run_command("lscpu", log=True)
@@ -27,6 +28,7 @@ def get_cpu_cores():
         if not l.startswith("#")
     ]
     return [int(x) for x in cpu_list]
+
 
 NB_PHYSICAL_CORES = psutil.cpu_count(logical=False)
 

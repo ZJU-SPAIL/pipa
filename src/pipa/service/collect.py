@@ -6,6 +6,7 @@ from pipa.service.init import create_directories
 
 create_directories()
 
+
 def collect_perf_record(
     workload_cmd="perf bench futex hash",
     frequency=97,
@@ -34,9 +35,7 @@ def collect_perf_record(
     report_path = os.path.join(DUMP_DIR, f"perf_{now}.report")
     run_command(f"perf report --header > {report_path}")
     # Generate output of the perf script
-    script_path = os.path.join(
-        DUMP_DIR, f"perf_{now}.script"
-    )
+    script_path = os.path.join(DUMP_DIR, f"perf_{now}.script")
     run_command(f"perf script --header > {script_path}")
     os.rename("perf.data", f"{DUMP_DIR}/perf_{now}.data")
     return report_path, script_path

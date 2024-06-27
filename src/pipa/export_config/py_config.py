@@ -25,5 +25,6 @@ def get_platform_info():
     yaml.dump(info, open(f"{CONFIG_DIR}/python_platform_info.yaml", "w"))
     return info
 
+
 if __name__ == "__main__":
     get_platform_info()
