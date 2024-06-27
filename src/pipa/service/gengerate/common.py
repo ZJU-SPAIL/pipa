@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 import os
+import yaml
 
 
 def ask_number(question: str, default: int) -> int:
@@ -88,3 +89,50 @@ echo "perf command not found. Please install perf."
 exit 1
 fi\n\n"""
     )
+
+
+def load_yaml_config(file_path: str = "config-pipa-shu.yaml") -> dict:
+    """
+    Parses a YAML file and returns the contents as a dictionary.
+
+    Args:
+        file_path (str): The path to the YAML file.
+
+    Returns:
+        dict: The contents of the YAML file as a dictionary.
+    """
+    with open(file_path, "r") as file:
+        data = yaml.safe_load(file)
+    return data
+
+
+def parse_basic(data: dict):
+    workspace = data["workspace"]
+    freq_record = data["freq_record"]
+    events_record = data["events_record"]
+    freq_stat = data["count_delta_stat"]
+    events_stat = data["events_stat"]
+    annotete = data["annotete"]
+    run_by_perf = data["run_by_perf"]
+    return (
+        workspace,
+        freq_record,
+        events_record,
+        freq_stat,
+        events_stat,
+        annotete,
+        run_by_perf,
+    )
+
+
+def parse_run_by_pipa(data: dict):
+    use_taskset = data["use_taskset"]
+    core_range = data["core_range"]
+    command = data["command"]
+    return use_taskset, core_range, command
+
+
+def parse_run_by_user(data: dict):
+    duration_record = data["duration_record"]
+    duration_stat = data["duration_stat"]
+    return duration_record, duration_stat
