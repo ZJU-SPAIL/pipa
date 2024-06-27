@@ -101,6 +101,13 @@ def generate(
         print(
             f"Please check the script in {workspace}/pipa-collect.sh and {workspace}/pipa-parse.sh"
         )
+        print(
+            "Note you need to make sure the workload is running when you call pipa-collect.sh",
+            "and the workload is finished when you call pipa-parsed.sh.",
+            "Otherwise, the performance data may be incomplete or incorrect."
+            "You should ensure that the total workload is longer than ten minutes."
+            "Please check the configuration file for more details.",
+        )
 
 
 def main():
