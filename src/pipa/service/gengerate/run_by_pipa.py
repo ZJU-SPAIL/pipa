@@ -1,7 +1,7 @@
 import questionary
 from rich import print
 from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
-from pipa.service.gengerate.export_config import write_export_config_script
+from pipa.service.gengerate.export_sys_config import write_export_config_script
 import os
 
 
@@ -35,19 +35,16 @@ def quest():
         if cores_input.isdigit():
             core_list = cores_input.strip()
         elif cores_input.split("-").__len__() != 2:
-            print("Please input a valid range, split by '-'.")
-            exit(1)
+            raise ("Please input cores as a valid range, split by '-'.")
         else:
             left, right = cores_input.split("-")
 
             left, right = left.strip(), right.strip()
             if not left.isdigit() or not right.isdigit():
-                print("Please input a valid range, non-digit char detected.")
-                exit(1)
+                raise ("Please input cores as a valid range, non-digit char detected.")
             left, right = int(left), int(right)
             if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
-                print("Please input a valid range.")
-                exit(1)
+                raise ("Please input cores as a valid range.")
             core_list = ",".join([str(i) for i in list(range(left, right + 1))])
 
     command = questionary.text("What's the command of workload?\n").ask()
@@ -121,6 +118,14 @@ def generate(
 
         print("Shell script generated successfully.")
         print("Please check the script in " + workspace + "/pipa-run.sh")
+        print(
+            "Note you need to make sure the workload is running when you call pipa-collect.sh",
+            "and the workload is finished when you call pipa-parsed.sh.",
+            "Otherwise, the performance data may be incomplete or incorrect."
+            "You should ensure that the total workload is longer than ten minutes."
+            "Please check the configuration file for more details.",
+            sep="\n",
+        )
 
 
 def main():

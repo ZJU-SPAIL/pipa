@@ -1,7 +1,7 @@
 import questionary
 from rich import print
 from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
-from pipa.service.gengerate.export_config import write_export_config_script
+from pipa.service.gengerate.export_sys_config import write_export_config_script
 import os
 
 
