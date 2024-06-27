@@ -33,7 +33,7 @@ def parse_one_line(line):
             command, pid, cpu, time, value, event, addr, symbol, caller = re.match(
                 pattern, line.strip()
             ).groups()
-        except:
+        except Exception as e:
             pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):\s+(\S+)\s+(.*?)\s+\((\S+)\)"
             (
                 pid,
