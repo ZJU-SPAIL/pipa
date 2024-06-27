@@ -1,8 +1,9 @@
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 import re
 from pipa.common.cmd import run_command
+from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
+import multiprocessing
 
 
 class SarData:
@@ -307,10 +308,6 @@ def add_post_fix(sar_line: list, len_columns: int):
     if len(sar_line) > len_columns:
         sar_line[len_columns - 1] += " ".join(sar_line[len_columns:])
     return sar_line[:len_columns]
-
-
-from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
-import multiprocessing
 
 
 def process_subtable(

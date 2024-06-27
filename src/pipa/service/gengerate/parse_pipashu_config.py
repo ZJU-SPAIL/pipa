@@ -8,6 +8,8 @@ from pipa.service.gengerate.run_by_pipa import generate as generate_pipa
 from pipa.service.gengerate.run_by_user import generate as generate_user
 from pipa.export_config.cpu_config import get_cpu_cores
 
+import questionary
+
 
 def build_command(use_taskset: bool, core_range, command):
     if use_taskset:
@@ -29,9 +31,6 @@ def build_command(use_taskset: bool, core_range, command):
 
         command = f"/usr/bin/taskset -c {core_list} {command}"
     return command
-
-
-import questionary
 
 
 def quest():

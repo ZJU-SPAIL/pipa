@@ -1,3 +1,5 @@
+from io import TextIOWrapper
+
 shell_script = """
 if [[ $(id -u) -eq 0 ]]; then
     # User is root, run dmidecode directly
@@ -64,8 +66,6 @@ echo "Configuration exported to $DST"
 
 
 """
-
-from io import TextIOWrapper
 
 
 def write_export_config_script(file: TextIOWrapper, destination: str):

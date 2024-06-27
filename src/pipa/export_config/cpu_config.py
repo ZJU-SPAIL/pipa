@@ -4,10 +4,8 @@ import psutil
 
 
 def get_lscpu_info():
-    result = (
-        run_command("lscpu", log=True)
-        + "\n\n\n"
-        + run_command("lscpu -a --extended", log=True)
+    result = "{}\n\n\n{}".format(
+        run_command("lscpu", log=True), run_command("lscpu -a --extended", log=True)
     )
     return write_string_to_file(result, "cpu_info.txt")
 

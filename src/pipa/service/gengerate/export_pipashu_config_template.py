@@ -1,3 +1,6 @@
+import questionary
+import os
+
 config_template = """
 workspace: ./data # The workspace to store the performance data and collecting script. Will be created if not exists.
 freq_record: 999 # The frequency of perf-record.
@@ -35,9 +38,6 @@ export_config: True # Whether to export the config files.
 def write_config(config_file="config-pipa-shu.yaml"):
     with open(config_file, "w") as f:
         f.write(config_template)
-
-
-import questionary, os
 
 
 def generate_template():
