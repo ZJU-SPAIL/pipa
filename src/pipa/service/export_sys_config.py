@@ -1,6 +1,7 @@
 from io import TextIOWrapper
 from pipa.common.cmd import run_command
 from pipa.common.config import CONFIG_DIR
+import os
 
 shell_script = """
 if [[ $(id -u) -eq 0 ]]; then
@@ -74,8 +75,9 @@ def write_export_config_script(file: TextIOWrapper, destination: str):
     return file.write(f'DST="{destination}"\n') and file.write(shell_script)
 
 
-def run_export_config_script(destination: str):
-    with open(CONFIG_DIR + "/export_config.sh", "w") as f:
+def run_export_config_script():
+    destination = os.path.join(CONFIG_DIR, "/config")
+    with open(destination, "w") as f:
         write_export_config_script(f, destination)
     run_command("bash", CONFIG_DIR + "/export_config.sh")
     return destination
