@@ -106,6 +106,15 @@ def load_yaml_config(file_path: str = "config-pipa-shu.yaml") -> dict:
     return data
 
 
+def opener(path, flags):
+    descriptor = os.open(
+        path=path,
+        flags=flags,
+        mode=0o755
+    )
+    return descriptor
+
+
 def parse_basic(data: dict):
     workspace = data["workspace"]
     freq_record = data["freq_record"]

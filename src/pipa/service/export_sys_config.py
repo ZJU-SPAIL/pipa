@@ -72,7 +72,7 @@ echo "Configuration exported to $DST"
 
 
 def write_export_config_script(file: TextIOWrapper, destination: str):
-    return file.write(f'DST="{destination}"\n') and file.write(shell_script)
+    return file.write(f'DST="{destination}"\nmkdir -p {destination}') and file.write(shell_script)
 
 
 def run_export_config_script():

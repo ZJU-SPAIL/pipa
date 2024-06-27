@@ -1,6 +1,6 @@
 import questionary
 from rich import print
-from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
+from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title, opener
 from pipa.service.export_sys_config import write_export_config_script
 import os
 
@@ -53,7 +53,7 @@ def generate(
     record_time,
     stat_time,
 ):
-    with open(workspace + "/pipa-collect.sh", "w") as f:
+    with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
         write_title(f)
 
         f.write("WORKSPACE=" + workspace + "\n")
@@ -81,7 +81,7 @@ def generate(
 
         f.write("echo 'Performance data collected successfully.'\n")
 
-    with open(workspace + "/pipa-parse.sh", "w") as f:
+    with open(workspace + "/pipa-parse.sh", "w", opener=opener) as f:
         write_title(f)
         f.write("WORKSPACE=" + workspace + "\n")
         f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")

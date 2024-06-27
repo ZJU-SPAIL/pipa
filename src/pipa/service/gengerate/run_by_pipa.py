@@ -1,6 +1,6 @@
 import questionary
 from rich import print
-from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title
+from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title, opener
 from pipa.service.export_sys_config import write_export_config_script
 import os
 
@@ -29,7 +29,7 @@ def quest():
 
     if use_taskset == "Yes":
         cores_input = questionary.text(
-            "Which cores do you want to use? (Default: 120-140)\n", "120-140"
+            f"Which cores do you want to use? (Default: {CORES_ALL[0]}-{CORES_ALL[-1]})\n", f"{CORES_ALL[0]}-{CORES_ALL[-1]}"
         ).ask()
 
         if cores_input.isdigit():
@@ -84,7 +84,7 @@ def generate(
     Returns:
         None
     """
-    with open(workspace + "/pipa-run.sh", "w") as f:
+    with open(workspace + "/pipa-run.sh", "w", opener=opener) as f:
         write_title(f)
 
         f.write("WORKSPACE=" + workspace + "\n")
