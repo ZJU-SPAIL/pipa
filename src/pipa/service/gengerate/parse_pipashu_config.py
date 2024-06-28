@@ -52,7 +52,7 @@ def build(path: str):
         run_by_perf,
     ) = parse_basic(data)
 
-    events_record = ",".join(events_record)
+    events_stat = ",".join(events_stat)
 
     if run_by_perf:
         use_taskset, core_range, command = parse_run_by_pipa(data)
