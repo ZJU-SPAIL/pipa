@@ -64,18 +64,14 @@ def generate(
         f.write(
             f"perf record -e '{events_record}' -a -F"
             + f" {freq_record} -o $WORKSPACE/perf.data"
-            + f" -- sleep {record_time}\n"
-            if record_time
-            else "\n"
+            + (f" -- sleep {record_time}\n" if record_time else "\n")
         )
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
         f.write(
             f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv"
-            + f" sleep {stat_time}\n"
-            if stat_time
-            else "\n"
+            + (f" sleep {stat_time}\n" if stat_time else "\n")
         )
         f.write("kill -9 $sar_pid\n")
 
