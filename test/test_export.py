@@ -16,7 +16,7 @@ def process_data():
 def test_export_dataframe_to_csv():
     # Create a temporary output file path for testing
     temp_output_filepath = "data/out/test_output.csv"
-    os.mkdir("data/out")
+    os.makedirs("data/out", exist_ok=True)
 
     # Decorate the sample function with the export_dataframe_to_csv decorator
     @export_dataframe_to_csv(filepath=temp_output_filepath)
@@ -41,6 +41,7 @@ def test_export_dataframe_to_csv():
     # Clean up the temporary output file
     os.remove(temp_output_filepath)
     os.rmdir("data/out")
+
 
 # Run the tests
 if __name__ == "__main__":
