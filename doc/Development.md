@@ -42,5 +42,7 @@
 
 * [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
 * [ ] Support data collection by `emon`
+* [ ] Integrate key metrics into Grafana.
+* [ ] Integrate export perf.data to SQLite3
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
