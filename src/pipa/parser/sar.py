@@ -91,7 +91,7 @@ class SarData:
                 r"%idle": "float64",
             }
         )
-        util[r"%used"] = 100 - util[r"%idle"]
+        util[r"%util"] = 100 - util[r"%idle"]
         return util
 
     def plot_CPU_util_time(self, threads: list = None):
@@ -111,9 +111,9 @@ class SarData:
         df = trans_time_to_seconds(df)
 
         if threads and len(threads) > 1:
-            sns.lineplot(data=df, x="timestamp", y=r"%used", hue="CPU")
+            sns.lineplot(data=df, x="timestamp", y=r"%util", hue="CPU")
         else:
-            sns.lineplot(data=df, x="timestamp", y=r"%used")
+            sns.lineplot(data=df, x="timestamp", y=r"%util")
 
     # TODO add barplot to plot
 
