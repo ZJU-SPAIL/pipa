@@ -237,16 +237,16 @@ class SarData:
             }
         )
 
-    def plot_disk_usage(self, dev: str = None):
+    def plot_disk_usage(self, dev: str = None, metrics="tps"):
         """
         Plots the disk tps over time.
         """
         df = self.get_disk_usage()
         df = trans_time_to_seconds(df).query(f"DEV=='{dev}'") if dev else df
         if dev:
-            sns.lineplot(data=df, x="timestamp", y="tps")
+            sns.lineplot(data=df, x="timestamp", y=metrics)
         else:
-            sns.lineplot(data=df, x="timestamp", y="tps", hue="DEV")
+            sns.lineplot(data=df, x="timestamp", y=metrics, hue="DEV")
 
 
 def parse_sar_bin_to_txt(sar_bin_path: str):
