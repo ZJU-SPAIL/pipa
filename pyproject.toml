@@ -59,4 +59,4 @@ build-backend = "hatchling.build"
 path = "src/pipa/__about__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pipa"]
+packages = ["src/pipa", "pyproject.toml", "README.md", "LICENSE"]
