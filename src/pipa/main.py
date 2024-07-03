@@ -14,6 +14,7 @@ class PipaCLI:
 
     def help(self):
         print("PIPA (Platform Integrated Performance Analytics)")
+        print("Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL")
         print("Usage:")
         print("  pipa generate")
         print("  pipa version")
