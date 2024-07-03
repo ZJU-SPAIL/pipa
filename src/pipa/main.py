@@ -17,6 +17,7 @@ class PipaCLI:
         print("Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL")
         print("Usage:")
         print("  pipa generate")
+        print("  pipa export")
         print("  pipa version")
         print("  pipa help")
         print("Options:")
