@@ -1,6 +1,7 @@
 import fire
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.__about__ import __version__
+from rich import print
 
 
 class PipaCLI:
@@ -8,10 +9,11 @@ class PipaCLI:
         generate_sh()
 
     def version(self):
-        print(f"PIPA (Platform Integrated Performance Analytics) v{__version__}")
-        print("Developed by: SPAIL, ZJU")
+        print(f"PIPA (Platform Integrated Performance Analytics) version {__version__}")
+        print("Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL")
         print("All rights reserved.")
         print("Licensed under the MIT License")
+        print("https://github.com/ZJU-SPAIL/pipa")
 
 
 def main():
