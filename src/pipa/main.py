@@ -7,12 +7,15 @@ from rich import print
 
 class PipaCLI:
     def generate(self):
+        # Generate the performance collection scripts
         generate_sh()
 
     def export(self):
+        # Export system configuration
         run_export_config_script("/tmp/pipa-export-sysconfig.sh")
 
     def help(self):
+        # Show this help message and exit
         print("PIPA (Platform Integrated Performance Analytics)")
         print("Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL")
         print("Usage:")
@@ -27,6 +30,7 @@ class PipaCLI:
         print("  help      Show this help message and exit")
 
     def version(self):
+        # Show the version of PIPA
         print(f"PIPA (Platform Integrated Performance Analytics) version {__version__}")
         print("Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL")
         print("All rights reserved.")
