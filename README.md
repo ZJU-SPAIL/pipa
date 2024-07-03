@@ -2,7 +2,9 @@
 
 PIPA (Platform Integrated Performance Analytics) is a platform that aggregates a complete toolchain of performance data collection, processing, and analysis.
 
-<img src="asset/logo.png" width="200" height="200">
+<div align="center">
+    <img src="asset/logo.png" width="400" height="400">
+</div>
 
 PIPA (枇杷, loquat) is a local fruit of Zhejiang, China.
 PIPA consists of three parts: loquat tree, flower and fruit, which represent the collecting & processing, analysis and conclusion of performance data respectively.
