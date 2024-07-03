@@ -53,20 +53,37 @@ def quest_basic():
         "{cycles,instructions}:S",
     ).ask()
 
-    freq_stat = ask_number(
-        "What's count deltas of perf-stat? (Default: 1000 milliseconds)\n", 1000
-    )
-    events_stat = questionary.text(
-        "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
-        "cycles,instructions",
-    ).ask()
-
     annotete = questionary.select(
         "Whether to use perf-annotate?\n", choices=["Yes", "No"], default="No"
     ).ask()
     annotete = True if annotete == "Yes" else False
 
-    return workspace, freq_record, events_record, freq_stat, events_stat, annotete
+    stat = questionary.select(
+        "Do you want to use perf-stat or emon?\n",
+        choices=["perf-stat", "emon"],
+        default="perf-stat",
+    ).ask()
+
+    if stat == "perf-stat":
+        freq_stat = ask_number(
+            "What's count deltas of perf-stat? (Default: 1000 milliseconds)\n", 1000
+        )
+        events_stat = questionary.text(
+            "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
+            "cycles,instructions",
+        ).ask()
+        return workspace, freq_record, events_record, freq_stat, events_stat, annotete
+    elif stat == "emon":
+        emon = questionary.text(
+            "Where is the emon?\n", "/opt/intel/oneapi/vtune/2024.0/bin64/emon"
+        ).ask()
+        mpp = questionary.text(
+            "Where is the mpp?\n",
+            "/mnt/hdd/share/emon/system_health_monitor",
+        ).ask()
+        return workspace, freq_record, events_record, emon, mpp, annotete
+
+    raise ValueError("Invalid choice.")
 
 
 def write_title(file: TextIOWrapper):
@@ -107,11 +124,7 @@ def load_yaml_config(file_path: str = "config-pipa-shu.yaml") -> dict:
 
 
 def opener(path, flags):
-    descriptor = os.open(
-        path=path,
-        flags=flags,
-        mode=0o755
-    )
+    descriptor = os.open(path=path, flags=flags, mode=0o755)
     return descriptor
 
 
