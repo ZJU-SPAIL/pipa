@@ -69,8 +69,8 @@ def quest_basic():
             "What's count deltas of perf-stat? (Default: 1000 milliseconds)\n", 1000
         )
         events_stat = questionary.text(
-            "What's the event of perf-stat?\n (Default: cycles,instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,branch-load-misses,branch-loads)\n",
-            "cycles,instructions",
+            "What's the event of perf-stat?\n",
+            "cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses",
         ).ask()
         return workspace, freq_record, events_record, freq_stat, events_stat, annotete
     elif stat == "emon":
