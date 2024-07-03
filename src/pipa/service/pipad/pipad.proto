@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package pipa;
+
+service PIPAD {
+  rpc Deploy(DeployRequest) returns (DeployResp) {}
+
+  rpc DeployStreamReply(DeployRequest) returns (stream DeployResp) {}
+
+  rpc DeployBidiStream(stream DeployRequest) returns (stream DeployResp) {}
+}
+
+message DeployRequest {
+  string workload = 1;
+  uint64 transction = 2;
+  double latency = 3;
+  double total_time = 4;
+  double trans_per_second = 5;
+  double cycles_per_second = 6;
+  double instructions_per_second = 7;
+  double cpu_frequency_mhz = 8;
+  double cycles_per_instruction = 9;
+  double path_length = 10;
+  double cpu_util = 11;
+  double cpu_usr = 12;
+  double cpu_sys = 13;
+  double cpu_soft = 14;
+  double cpu_nice = 15;
+  string platform = 16;
+  string cpu = 17;
+  string workload_config = 18;
+  string comment = 19;
+}
+
+message DeployResp { string message = 1; }
