@@ -41,8 +41,8 @@
 ### Version 0.0.8
 
 * [x] Extend the metrics in plot_disk_usage
-* [ ] Output the folder location where the data is saved to /tmp/pipa-version-user.log
-* [ ] Unified interface specification for robustness
+* [x] Implement pipa-version command
+* [x] Unified interface specification for robustness
 * [ ] Support data collection by `emon`
 * [ ] Integrate key metrics into Grafana. Implement Client/Server with `grpc`.
 * [ ] Integrate export perf.data to SQLite3
