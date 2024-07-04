@@ -97,11 +97,21 @@ def generate(config):
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
-        f.write(
-            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
-        )
+
+        if config["use_emon"]:
+            f.write(f"emon -i {config["mpp"]}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental -w {command} &\n")
+        else:
+            f.write(
+                f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
+            )
+
         f.write("kill -9 $sar_pid\n")
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
+
+        if config["use_emon"]:
+            f.write(
+                f"python {config["mpp"]}/mpp/mpp.py -i ./emon_result.txt -m {config["mpp"]}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+            )
 
         if annotete:
             f.write(
