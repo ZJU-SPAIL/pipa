@@ -5,14 +5,22 @@ config_template = """
 workspace: ./data # The workspace to store the performance data and collecting script. Will be created if not exists.
 freq_record: 999 # The frequency of perf-record.
 events_record: "{cycles,instructions}:S" # The events to be used in perf-record.
+annotete: False # Whether to annotate the performance data.
+
+use_emon: False # Whether to use emon.
+
 count_delta_stat: 1000 # The count delta of perf-stat.
+# No need to set if use_emon is True.
 events_stat: # The events to be used in perf-stat.
         - cycles
         - instructions
         - branch-misses
         - L1-dcache-load-misses
         - L1-icache-load-misses
-annotete: False # Whether to annotate the performance data.
+# No need to set if use_emon is True.
+
+MPP_HOME: /mnt/hdd/share/emon/system_health_monitor # The path to the mpp.
+# No need to set if use_emon is False. 
 
 run_by_perf: False # Whether to run the workload by perf.
 
@@ -30,7 +38,7 @@ core_range: 0-7 # The range of cores to be used.
 command: perf bench futex hash # The command to run workload.
 # No need to set if run_by_perf is False.
 
-export_config: True # Whether to export the config files.
+export_config: True # Whether to export the configuration after parsing.
 
 """
 

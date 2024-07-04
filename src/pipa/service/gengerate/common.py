@@ -72,16 +72,28 @@ def quest_basic():
             "What's the event of perf-stat?\n",
             "cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses",
         ).ask()
-        return workspace, freq_record, events_record, freq_stat, events_stat, annotete
+        return {
+            "workspace": workspace,
+            "freq_record": freq_record,
+            "events_record": events_record,
+            "use_emon": False,
+            "count_delta_stat": freq_stat,
+            "events_stat": events_stat,
+            "annotete": annotete,
+        }
     elif stat == "emon":
-        emon = questionary.text(
-            "Where is the emon?\n", "/opt/intel/oneapi/vtune/2024.0/bin64/emon"
-        ).ask()
         mpp = questionary.text(
             "Where is the mpp?\n",
             "/mnt/hdd/share/emon/system_health_monitor",
         ).ask()
-        return workspace, freq_record, events_record, emon, mpp, annotete
+        return {
+            "workspace": workspace,
+            "freq_record": freq_record,
+            "events_record": events_record,
+            "use_emon": True,
+            "mpp": mpp,
+            "annotete": annotete,
+        }
 
     raise ValueError("Invalid choice.")
 

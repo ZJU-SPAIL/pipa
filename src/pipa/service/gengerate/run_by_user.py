@@ -6,9 +6,7 @@ import os
 
 
 def quest():
-    workspace, freq_record, events_record, freq_stat, events_stat, annotete = (
-        quest_basic()
-    )
+    config = quest_basic()
 
     set_record = questionary.select(
         "Whether to set the duration of the perf-record run?\n",
@@ -31,28 +29,22 @@ def quest():
             "How long do you want to run perf-stat? (Default: 120s)\n", "120"
         ).ask()
 
-    return (
-        workspace,
-        freq_record,
-        events_record,
-        freq_stat,
-        events_stat,
-        annotete,
-        record_time,
-        stat_time,
-    )
+    config["record_time"] = record_time
+    config["stat_time"] = stat_time
+
+    return config
 
 
-def generate(
-    workspace,
-    freq_record,
-    events_record,
-    freq_stat,
-    events_stat,
-    annotete,
-    record_time,
-    stat_time,
-):
+def generate(config: dict):
+    workspace = config["workspace"]
+    freq_record = config["freq_record"]
+    events_record = config["events_record"]
+    annotete = config["annotete"]
+    record_time = config["record_time"]
+    stat_time = config["stat_time"]
+    events_stat = config["events_stat"]
+    count_delta_stat = config["count_delta_stat"]
+
     with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -70,7 +62,7 @@ def generate(
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
         f.write(
-            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv"
+            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv"
             + (f" sleep {stat_time}\n" if stat_time else "\n")
         )
         f.write("kill -9 $sar_pid\n")
@@ -107,7 +99,7 @@ def generate(
 
 
 def main():
-    generate(*quest())
+    generate(quest())
 
 
 if __name__ == "__main__":

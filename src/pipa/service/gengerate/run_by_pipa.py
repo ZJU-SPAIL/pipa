@@ -19,9 +19,7 @@ def quest():
         - annotete: Whether to use perf-annotate (True or False)
         - command: The command of the workload
     """
-    workspace, freq_record, events_record, freq_stat, events_stat, annotete = (
-        quest_basic()
-    )
+    config = quest_basic()
 
     use_taskset = questionary.select(
         "Whether to use taskset?\n", choices=["Yes", "No"]
@@ -29,7 +27,8 @@ def quest():
 
     if use_taskset == "Yes":
         cores_input = questionary.text(
-            f"Which cores do you want to use? (Default: {CORES_ALL[0]}-{CORES_ALL[-1]})\n", f"{CORES_ALL[0]}-{CORES_ALL[-1]}"
+            f"Which cores do you want to use? (Default: {CORES_ALL[0]}-{CORES_ALL[-1]})\n",
+            f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
         ).ask()
 
         if cores_input.isdigit():
@@ -54,21 +53,11 @@ def quest():
         exit(1)
 
     if use_taskset == "Yes":
-        command = f"/usr/bin/taskset -c {core_list} {command}"
-    return (
-        workspace,
-        freq_record,
-        events_record,
-        freq_stat,
-        events_stat,
-        annotete,
-        command,
-    )
+        config["command"] = f"/usr/bin/taskset -c {core_list} {command}"
+    return config
 
 
-def generate(
-    workspace, freq_record, events_record, freq_stat, events_stat, annotete, command
-):
+def generate(config):
     """
     Generate a shell script for collecting performance data which start workload by perf.
 
@@ -84,6 +73,14 @@ def generate(
     Returns:
         None
     """
+    workspace = config["workspace"]
+    freq_record = config["freq_record"]
+    events_record = config["events_record"]
+    count_delta_stat = config["count_delta_stat"]
+    events_stat = config["events_stat"]
+    annotete = config["annotete"]
+    command = config["command"]
+
     with open(workspace + "/pipa-run.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -101,7 +98,7 @@ def generate(
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
         f.write(
-            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
+            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
         )
         f.write("kill -9 $sar_pid\n")
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
@@ -124,7 +121,7 @@ def generate(
 
 
 def main():
-    generate(*quest())
+    generate(quest())
 
 
 if __name__ == "__main__":

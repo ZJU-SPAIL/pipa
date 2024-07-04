@@ -1,9 +1,4 @@
-from pipa.service.gengerate.common import (
-    load_yaml_config,
-    parse_run_by_pipa,
-    parse_run_by_user,
-    parse_basic,
-)
+from pipa.service.gengerate.common import load_yaml_config
 from pipa.service.gengerate.run_by_pipa import generate as generate_pipa
 from pipa.service.gengerate.run_by_user import generate as generate_user
 from pipa.export_config.cpu_config import get_cpu_cores
@@ -41,42 +36,13 @@ def quest():
 
 
 def build(path: str):
-    data = load_yaml_config(path)
-    (
-        workspace,
-        freq_record,
-        events_record,
-        freq_stat,
-        events_stat,
-        annotete,
-        run_by_perf,
-    ) = parse_basic(data)
-
-    events_stat = ",".join(events_stat)
-
-    if run_by_perf:
-        use_taskset, core_range, command = parse_run_by_pipa(data)
-        generate_pipa(
-            workspace,
-            freq_record,
-            events_record,
-            freq_stat,
-            events_stat,
-            annotete,
-            build_command(use_taskset, core_range, command),
-        )
+    config = load_yaml_config(path)
+    config["events_stat"] = ",".join(config["events_stat"])
+    build_command(config["use_taskset"], config["core_range"], config["command"])
+    if config["run_by_perf"]:
+        generate_pipa(config)
     else:
-        duration_record, duration_stat = parse_run_by_user(data)
-        generate_user(
-            workspace,
-            freq_record,
-            events_record,
-            freq_stat,
-            events_stat,
-            annotete,
-            duration_record,
-            duration_stat,
-        )
+        generate_user(config)
 
 
 def main():
