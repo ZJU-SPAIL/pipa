@@ -104,7 +104,7 @@ try:
     f = open(dbname)
     f.close()
     db_exists = True
-except:
+except Exception as e:
     pass
 
 if db_exists:
