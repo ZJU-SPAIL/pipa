@@ -20,7 +20,7 @@ events_stat: # The events to be used in perf-stat.
 # No need to set if use_emon is True.
 
 MPP_HOME: /mnt/hdd/share/emon/system_health_monitor # The path to the mpp.
-# No need to set if use_emon is False. 
+# No need to set if use_emon is False.
 
 run_by_perf: False # Whether to run the workload by perf.
 
