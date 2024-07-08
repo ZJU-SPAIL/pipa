@@ -80,7 +80,7 @@ def generate(config):
     events_stat = config["events_stat"]
     annotete = config["annotete"]
     command = config["command"]
-    mpp = config["mpp"]
+    mpp = config["MPP_HOME"]
     with open(workspace + "/pipa-run.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -112,7 +112,7 @@ def generate(config):
 
         if config["use_emon"]:
             f.write(
-                f"python {mpp}/mpp/mpp.py -i ./emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+                f"python {mpp}/mpp/mpp.py -i $WORKSPACE/emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
 
         if annotete:
