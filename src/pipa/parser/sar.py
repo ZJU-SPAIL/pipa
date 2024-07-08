@@ -100,7 +100,7 @@ class SarData:
         Retrieves the average CPU utilization data for the specified threads.
 
         Args:
-            threads (list): List of CPU threads to retrieve the utilization data for. 
+            threads (list): List of CPU threads to retrieve the utilization data for.
                             If None, retrieves the utilization data for all threads. Defaults to None.
 
         Returns:
