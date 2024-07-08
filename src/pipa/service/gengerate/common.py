@@ -1,5 +1,5 @@
 import questionary
-from pipa.export_config.cpu_config import get_cpu_cores
+from pipa.common.hardware.cpu import get_cpu_cores
 from rich import print
 from io import TextIOWrapper
 from datetime import datetime
