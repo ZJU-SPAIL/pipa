@@ -80,8 +80,11 @@ def write_export_config_script(file: TextIOWrapper, destination: str):
     )
 
 
-def run_export_config_script(destination=os.path.join(CONFIG_DIR, "/config")):
-    with open(destination, "w") as f:
+def run_export_config_script(
+    destination=os.path.join(CONFIG_DIR, "config"),
+    shell_script_path="/tmp/pipa-export.sh",
+):
+    with open(shell_script_path, "w") as f:
         write_export_config_script(f, destination)
-    run_command("bash", destination)
+    run_command("bash /tmp/pipa-export.sh")
     return destination
