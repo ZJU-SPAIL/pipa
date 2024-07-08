@@ -12,7 +12,7 @@ class PipaCLI:
 
     def export(self):
         # Export system configuration
-        run_export_config_script("/tmp/pipa-export-sysconfig.sh")
+        run_export_config_script()
 
     def help(self):
         # Show this help message and exit
