@@ -77,6 +77,18 @@ class PerfStatData:
             case _:
                 raise ValueError("Invalid data type")
 
+    def get_CPI_by_thread(self, threads: list):
+        """
+        Returns the CPI (Cycles Per Instruction) for the specified threads.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            float: The average CPI value for the specified threads.
+        """
+        return self.get_CPI_overall("thread").loc[threads]["CPI"].mean()
+
     def plot_CPI_time_by_thread(self, threads: list):
         """
         Plots CPI over time for the specified threads.
