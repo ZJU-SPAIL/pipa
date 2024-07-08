@@ -116,6 +116,131 @@ class PerfStatData:
         p.set_ylabel("CPI")
         return p
 
+    def get_events_overall(self, events: str, data_type="thread"):
+        """
+        Calculate the overall events based on the given data type.
+
+        Parameters:
+        - events (str): The type of events to calculate. Can be "cache-references", "cache-misses", "branch-misses", etc.
+        - data_type (str): The type of data to calculate events for. Can be "thread" or "system".
+
+        Returns:
+        - If data_type is "thread", returns a DataFrame with events values per thread.
+        - If data_type is "system", returns the overall events value for the system.
+
+        Raises:
+        - ValueError: If an invalid data type is provided.
+        """
+        df = self.data[self.data["metric_type"] == events]
+        match data_type:
+            case "thread":
+                return df[["cpu_id", "value"]].groupby("cpu_id").sum()
+            case "system":
+                return df["value"].sum()
+            case _:
+                raise ValueError("Invalid data type")
+
+    def get_cycles_overall(self, data_type="thread"):
+        """
+        Calculate the overall cycles based on the given data type.
+
+        Parameters:
+        - data_type (str): The type of data to calculate cycles for. Can be "thread" or "system".
+
+        Returns:
+        - If data_type is "thread", returns a DataFrame with cycles values per thread.
+        - If data_type is "system", returns the overall cycles value for the system.
+
+        Raises:
+        - ValueError: If an invalid data type is provided.
+        """
+        return self.get_events_overall("cycles", data_type)
+
+    def get_instructions_overall(self, data_type="thread"):
+        """
+        Calculate the overall instructions based on the given data type.
+
+        Parameters:
+        - data_type (str): The type of data to calculate instructions for. Can be "thread" or "system".
+
+        Returns:
+        - If data_type is "thread", returns a DataFrame with instructions values per thread.
+        - If data_type is "system", returns the overall instructions value for the system.
+
+        Raises:
+        - ValueError: If an invalid data type is provided.
+        """
+        return self.get_events_overall("instructions", data_type)
+
+    def get_cycles_by_thread(self, threads=None):
+        """
+        Returns the total cycles per thread.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the total cycles per thread.
+        """
+        if threads is None:
+            return self.get_cycles_overall("thread")["value_cycles"].sum()
+        return self.get_cycles_overall("thread").loc[threads]["value_cycles"].sum()
+
+    def get_instructions_by_thread(self, threads=None):
+        """
+        Returns the total instructions per thread.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            int: The total instructions in all threads used.
+        """
+        if threads is None:
+            return self.get_instructions_overall("system")
+        return self.get_instructions_overall("thread").loc[threads]["value"].sum()
+
+    def get_pathlength(self, num_transcations: int, threads: list):
+        """
+        Returns the pathlength for the given number of transcations and threads.
+
+        Args:
+            num_transcations (int): The number of transcations.
+            threads (list): A list of thread IDs.
+
+        Returns:
+            float: The pathlength value.
+        """
+        insns = self.get_instructions_by_thread(threads)
+        path_length = insns / num_transcations
+        return path_length
+
+    def get_cycles_per_second(self, seconds: int = 120, threads=None):
+        """
+        Returns the total cycles per second.
+
+        Args:
+            seconds (int): The number of seconds.
+            threads (list): A list of thread IDs.
+
+        Returns:
+            int: The total cycles per second.
+        """
+        return self.get_cycles_by_thread(threads) / seconds
+
+    def get_instructions_per_second(self, seconds: int = 120, threads=None):
+        """
+        Returns the total instructions per second.
+
+        Args:
+            seconds (int): The number of seconds.
+            threads (list): A list of thread IDs.
+
+        Returns:
+            int: The total instructions per second.
+        """
+        return self.get_instructions_by_thread(threads) / seconds
+
 
 def parse_perf_stat_file(stat_output_path: str):
     """
