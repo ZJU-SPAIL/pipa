@@ -95,6 +95,40 @@ class SarData:
         util[r"%util"] = 100 - util[r"%idle"]
         return util
 
+    def get_CPU_utilization_by_threads(self, threads: list = None):
+        """
+        Retrieves the average CPU utilization data for the specified threads.
+
+        Args:
+            threads (list): List of CPU threads to retrieve the utilization data for. 
+                            If None, retrieves the utilization data for all threads. Defaults to None.
+
+        Returns:
+            DataFrame: The filtered DataFrame containing the CPU utilization data for the specified threads.
+        """
+        util = self.get_CPU_utilization("average")
+        util_threads = (
+            util[util["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else util[util["CPU"] == "all"]
+        )
+        return util_threads
+
+    def get_CPU_util_summary(self, threads: list = None):
+        """
+        Retrieves the average CPU utilization summary for the specified threads.
+
+        Args:
+            threads (list, optional): List of CPU threads to retrieve the utilization summary for. If None, retrieves
+                                      the summary for all threads. Defaults to None.
+
+        Returns:
+            dict: A dictionary containing the average CPU utilization summary.
+        """
+
+        util_threads = self.get_CPU_utilization_by_threads(threads)
+        return util_threads.drop(columns=["timestamp", "CPU"]).mean().to_dict()
+
     def plot_CPU_util_time(self, threads: list = None):
         """
         Plots the CPU utilization over time.
