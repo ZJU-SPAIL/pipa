@@ -1,7 +1,7 @@
 from pipa.service.gengerate.common import load_yaml_config
 from pipa.service.gengerate.run_by_pipa import generate as generate_pipa
 from pipa.service.gengerate.run_by_user import generate as generate_user
-from pipa.export_config.cpu_config import get_cpu_cores
+from pipa.common.hardware.cpu import get_cpu_cores
 
 import questionary
 
