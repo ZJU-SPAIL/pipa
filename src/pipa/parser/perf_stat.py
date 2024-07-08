@@ -220,8 +220,8 @@ class PerfStatData:
         Returns the total cycles per second.
 
         Args:
-            seconds (int): The number of seconds.
-            threads (list): A list of thread IDs.
+            seconds (int): The number of seconds. Default is 120.
+            threads (list): A list of thread IDs. Default is None.
 
         Returns:
             int: The total cycles per second.
@@ -233,8 +233,8 @@ class PerfStatData:
         Returns the total instructions per second.
 
         Args:
-            seconds (int): The number of seconds.
-            threads (list): A list of thread IDs.
+            seconds (int): The number of seconds. Default is 120.
+            threads (list): A list of thread IDs. Default is None.
 
         Returns:
             int: The total instructions per second.
