@@ -195,8 +195,8 @@ class PerfStatData:
             pd.DataFrame: A DataFrame containing the total cycles per thread.
         """
         if threads is None:
-            return self.get_cycles_overall("thread")["value_cycles"].sum()
-        return self.get_cycles_overall("thread").loc[threads]["value_cycles"].sum()
+            return self.get_cycles_overall("thread")["value"].sum()
+        return self.get_cycles_overall("thread").loc[threads]["value"].sum()
 
     def get_instructions_by_thread(self, threads=None):
         """
