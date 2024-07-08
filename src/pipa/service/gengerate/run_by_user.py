@@ -44,7 +44,7 @@ def generate(config: dict):
     stat_time = config["duration_stat"]
     events_stat = config["events_stat"]
     count_delta_stat = config["count_delta_stat"]
-    mpp = config["mpp"]
+    mpp = config["MPP_HOME"]
     with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -84,7 +84,7 @@ def generate(config: dict):
 
         if config["use_emon"]:
             f.write(
-                f"python {mpp}/mpp/mpp.py -i ./emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+                f"python {mpp}/mpp/mpp.py -i $WORKSPACE/emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
 
         if annotete:
