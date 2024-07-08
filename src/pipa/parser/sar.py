@@ -97,7 +97,7 @@ class SarData:
 
     def get_CPU_utilization_by_threads(self, threads: list = None):
         """
-        Retrieves the average CPU utilization data for the specified threads.
+        Retrieves the average CPU utilization detailed data for the specified threads.
 
         Args:
             threads (list): List of CPU threads to retrieve the utilization data for.
@@ -114,7 +114,7 @@ class SarData:
         )
         return util_threads
 
-    def get_CPU_util_summary(self, threads: list = None):
+    def get_CPU_util_threads_summary(self, threads: list = None):
         """
         Retrieves the average CPU utilization summary for the specified threads.
 
