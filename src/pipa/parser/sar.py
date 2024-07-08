@@ -125,8 +125,7 @@ class SarData:
         Returns:
             dict: A dictionary containing the average CPU utilization summary.
         """
-
-        util_threads = self.get_CPU_utilization_by_threads(threads)
+        util_threads = self.get_CPU_util_avg_by_threads(threads)
         return util_threads.drop(columns=["timestamp", "CPU"]).mean().to_dict()
 
     def plot_CPU_util_time(self, threads: list = None):
@@ -266,7 +265,7 @@ class SarData:
         return (
             self.get_memory_usage("average")
             .drop(columns=["timestamp"])
-            .to_dict(orient="records")
+            .to_dict(orient="records")[0]
         )
 
     def plot_memory_usage(self):
@@ -315,7 +314,7 @@ class SarData:
             self.get_disk_usage(dev, "average")
             .drop(columns=["timestamp"])
             .rename(columns={"%util": "%disk_util"})
-            .to_dict(orient="records")
+            .to_dict(orient="records")[0]
         )
 
     def plot_disk_usage(self, dev: str = None, metrics="tps"):
