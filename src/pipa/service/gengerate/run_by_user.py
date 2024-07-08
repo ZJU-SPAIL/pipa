@@ -44,7 +44,7 @@ def generate(config: dict):
     stat_time = config["stat_time"]
     events_stat = config["events_stat"]
     count_delta_stat = config["count_delta_stat"]
-
+    mpp = config["mpp"]
     with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -63,7 +63,7 @@ def generate(config: dict):
         f.write("sar_pid=$!\n")
         if config["use_emon"]:
             f.write(
-                f"emon -i {config['mpp']}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental "
+                f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental "
                 + (f"-w sleep {stat_time}\n" if stat_time else "\n")
             )
         else:
@@ -84,7 +84,7 @@ def generate(config: dict):
 
         if config["use_emon"]:
             f.write(
-                f"python {config["mpp"]}/mpp/mpp.py -i ./emon_result.txt -m {config["mpp"]}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+                f"python {mpp}/mpp/mpp.py -i ./emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
 
         if annotete:

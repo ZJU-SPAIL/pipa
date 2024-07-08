@@ -80,7 +80,7 @@ def generate(config):
     events_stat = config["events_stat"]
     annotete = config["annotete"]
     command = config["command"]
-
+    mpp = config["mpp"]
     with open(workspace + "/pipa-run.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -99,7 +99,9 @@ def generate(config):
         f.write("sar_pid=$!\n")
 
         if config["use_emon"]:
-            f.write(f"emon -i {config["mpp"]}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental -w {command} &\n")
+            f.write(
+                f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental -w {command} &\n"
+            )
         else:
             f.write(
                 f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
@@ -110,7 +112,7 @@ def generate(config):
 
         if config["use_emon"]:
             f.write(
-                f"python {config["mpp"]}/mpp/mpp.py -i ./emon_result.txt -m {config["mpp"]}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+                f"python {mpp}/mpp/mpp.py -i ./emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
 
         if annotete:
