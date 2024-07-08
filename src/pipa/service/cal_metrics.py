@@ -33,7 +33,9 @@ class PIPAShuData:
         """
         return cls(None, None, None)
 
-    def get_metrics(self, num_transcations: int, threads: list, run_time: int = 120):
+    def get_metrics(
+        self, num_transcations: int, threads: list, run_time: int = 120, dev: str = None
+    ):
         """
         Get the performance statistics metrics.
 
@@ -54,7 +56,10 @@ class PIPAShuData:
         path_length = self.perf_stat_data.get_pathlength(num_transcations, threads)
         CPI = self.perf_stat_data.get_CPI_by_thread(threads)
         cycles_per_requests = cycles / num_transcations
-        return {
+
+        perf_stat_metrics = {
+            "use_threads": threads,
+            "run_time": run_time,
             "cycles": cycles,
             "instructions": instructions,
             "cycles_per_second": cycles_per_second,
@@ -63,3 +68,9 @@ class PIPAShuData:
             "cycles_per_requests": cycles_per_requests,
             "path_length": path_length,
         }
+
+        sar_cpu = self.sar_data.get_CPU_util_avg_summary(threads)
+        sar_mem = self.sar_data.get_memory_usage_avg()
+        sar_disk = self.sar_data.get_disk_usage(dev, "average")
+
+        return {**perf_stat_metrics, **sar_cpu, **sar_mem, **sar_disk}
