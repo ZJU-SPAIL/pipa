@@ -2,7 +2,7 @@ import pandas as pd
 import re
 from pipa.common.logger import logger
 import multiprocessing
-from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
+from psutil import cpu_count
 
 
 def parse_one_line(line):
@@ -65,7 +65,7 @@ def parse_one_line(line):
     ]
 
 
-def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
+def parse_perf_script_file(parsed_script_path, processes_num=cpu_count(logical=False)):
     """
     Parses a perf script file and returns the data as a pandas DataFrame.
 
