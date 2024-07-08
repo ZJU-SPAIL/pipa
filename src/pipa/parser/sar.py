@@ -195,6 +195,21 @@ class SarData:
         else:
             sns.lineplot(data=df, x="timestamp", y="MHz")
 
+    def get_cpu_freq_avg(self, threads: list = None):
+        """
+        Returns the average CPU frequency data for the specified threads.
+
+        Args:
+            threads (list, optional): List of CPU threads to retrieve the frequency data for. If None, retrieves the
+                                      frequency data for all threads. Defaults to None.
+
+        Returns:
+            dict: A dictionary containing the average CPU frequency data for the specified threads.
+        """
+        df = self.get_CPU_frequency("average")
+        df = df[df["CPU"].isin([str(t) for t in threads])] if threads else df
+        return {"avg_freq_MHz": df["MHz"].mean()}
+
     def get_CPU_util_freq(self, data_type: str = "detail"):
         """
         Returns the CPU utilization and frequency data.
@@ -239,6 +254,19 @@ class SarData:
                 "kbpgtbl": int,
                 "kbvmused": int,
             }
+        )
+
+    def get_memory_usage_avg(self):
+        """
+        Returns the average memory usage data.
+
+        Returns:
+            dict: A dictionary containing the average memory usage data.
+        """
+        return (
+            self.get_memory_usage("average")
+            .drop(columns=["timestamp"])
+            .to_dict(orient="records")
         )
 
     def plot_memory_usage(self):
