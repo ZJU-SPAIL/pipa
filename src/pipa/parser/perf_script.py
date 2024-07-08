@@ -121,7 +121,7 @@ def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
             "event",
             "addr",
             "symbol",
-            "caller",
+            "dso_short_name",
         ],
     )
 
