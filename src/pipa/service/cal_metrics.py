@@ -43,6 +43,7 @@ class PIPAShuData:
             num_transcations (int): The number of transactions.
             threads (list): The list of threads.
             run_time (int): The run time.
+            dev (str): The device name.
 
         Returns:
             dict: The performance statistics metrics.
@@ -58,6 +59,8 @@ class PIPAShuData:
         cycles_per_requests = cycles / num_transcations
 
         perf_stat_metrics = {
+            "transactions": num_transcations,
+            "throughput": num_transcations / run_time,
             "use_threads": threads,
             "run_time": run_time,
             "cycles": cycles,
