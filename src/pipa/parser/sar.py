@@ -95,7 +95,7 @@ class SarData:
         util[r"%util"] = 100 - util[r"%idle"]
         return util
 
-    def get_CPU_utilization_by_threads(self, threads: list = None):
+    def get_CPU_util_avg_by_threads(self, threads: list = None):
         """
         Retrieves the average CPU utilization detailed data for the specified threads.
 
@@ -114,7 +114,7 @@ class SarData:
         )
         return util_threads
 
-    def get_CPU_util_threads_summary(self, threads: list = None):
+    def get_CPU_util_avg_summary(self, threads: list = None):
         """
         Retrieves the average CPU utilization summary for the specified threads.
 
