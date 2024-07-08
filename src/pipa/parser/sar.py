@@ -73,6 +73,7 @@ class SarData:
 
         Args:
             data_type (str, optional): The type of CPU utilization data to retrieve. Defaults to "detail".
+            Valid values are "detail", "raw", and "average".
 
         Returns:
             DataFrame: The filtered DataFrame containing the CPU utilization data.
