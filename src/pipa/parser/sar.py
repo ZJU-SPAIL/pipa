@@ -249,7 +249,7 @@ class SarData:
         df = trans_time_to_seconds(df)
         sns.lineplot(data=df, x="timestamp", y=r"%memused")
 
-    def get_disk_usage(self, data_type: str = "detail"):
+    def get_disk_usage(self, dev: str = None, data_type: str = "detail"):
         """
         Returns the disk usage data.
 
@@ -259,7 +259,7 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the disk usage data.
         """
-        return self.filter_dataframe(self.sar_data[11], data_type).astype(
+        df = self.filter_dataframe(self.sar_data[11], data_type).astype(
             {
                 "tps": "float64",
                 r"rkB/s": "float64",
@@ -270,6 +270,24 @@ class SarData:
                 "await": "float64",
                 r"%util": "float64",
             }
+        )
+        return df[df["DEV"] == dev] if dev else df
+
+    def get_disk_usage_avg(self, dev: str = None):
+        """
+        Returns the average disk usage data.
+
+        Args:
+            dev (str, optional): The disk device to retrieve the average data for. Defaults to None.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the average disk usage data.
+        """
+        return (
+            self.get_disk_usage(dev, "average")
+            .drop(columns=["timestamp"])
+            .rename(columns={"%util": "%disk_util"})
+            .to_dict(orient="records")
         )
 
     def plot_disk_usage(self, dev: str = None, metrics="tps"):
