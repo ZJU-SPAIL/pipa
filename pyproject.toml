@@ -41,6 +41,8 @@ dependencies = [
     "pandarallel",
     "seaborn",
     "psutil",
+    "grpcio",
+    "grpcio-tools",
 ]
 
 [project.urls]
