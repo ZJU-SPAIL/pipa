@@ -65,6 +65,9 @@ echo "CPU information exported to $DST/cpuinfo.txt"
 perf list > "$DST/perf-list.txt"
 echo "Perf list exported to $DST/perf-list.txt"
 
+ulimit -a > "$DST/ulimit.txt"
+echo "Ulimit information exported to $DST/ulimit.txt"
+
 echo "Configuration exported to $DST"
 
 
