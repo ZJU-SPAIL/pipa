@@ -24,8 +24,15 @@ jobs:
       - name: Install dependencies
         run: pip install flake8
 
-      - name: Run linting
+      - name: Run linting check
         run: flake8 .
+
+      - name: Run code formatting check
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "./src"
+          version: ">= 22.0"
 
   build:
     runs-on: ubuntu-latest
