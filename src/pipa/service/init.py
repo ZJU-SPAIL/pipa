@@ -1,7 +1,6 @@
 import os
 from pipa.common.config import ALL_PATH
 from pipa.common.logger import logger
-from pipa.export_config.all import get_all_config
 
 
 def create_directories():
@@ -12,11 +11,5 @@ def create_directories():
     logger.info("All directories created successfully.")
 
 
-def get_config():
-    get_all_config()
-    logger.info("System configuration exported successfully.")
-
-
 if __name__ == "__main__":
     create_directories()
-    get_config()
