@@ -43,8 +43,12 @@
 * [x] Extend the metrics in plot_disk_usage
 * [x] Implement pipa-version command
 * [x] Unified interface specification for robustness
-* [ ] Support data collection by `emon`
+* [x] Support data collection by `emon`
 * [ ] Integrate key metrics into Grafana. Implement Client/Server with `grpc`.
-* [ ] Integrate export perf.data to SQLite3
+* [x] Integrate export `perf.data` to `SQLite3`
+
+### Version 0.0.9
+
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
+* [ ] Improve unit tests
