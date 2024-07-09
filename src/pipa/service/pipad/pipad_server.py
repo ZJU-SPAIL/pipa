@@ -219,7 +219,7 @@ class PIPADServer:
         server.wait_for_termination()
 
 
-if __name__ == "__main__":
+def main():
     logger.setLevel(level=logging.DEBUG)
     stream_handler.setLevel(level=logging.DEBUG)
     argp = argparse.ArgumentParser()
@@ -256,3 +256,7 @@ if __name__ == "__main__":
         table=table,
     )
     server.serve()
+
+
+if __name__ == "__main__":
+    main()

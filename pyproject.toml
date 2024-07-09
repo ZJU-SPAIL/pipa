@@ -52,6 +52,7 @@ Source = "https://github.com/ZJU-SPAIL/pipa"
 
 [project.scripts]
 pipa = "pipa.main:main"
+pipad = "pipa.service.pipad.pipad_server:main"
 
 [build-system]
 requires = ["hatchling"]
