@@ -253,6 +253,33 @@ class PerfStatData:
         """
         return self.get_instructions_by_thread(threads) / seconds
 
+    def get_time_range(self):
+        """
+        Returns the time range of the data.
+
+        Returns:
+            tuple: A tuple containing the minimum and maximum timestamps.
+        """
+        return self.data["timestamp"].min(), self.data["timestamp"].max()
+
+    def get_time_delta(self):
+        """
+        Returns the time delta of the data.
+
+        Returns:
+            float: The time delta between timestamps.
+        """
+        return self.data["timestamp"].diff().mean()
+
+    def get_time_total(self):
+        """
+        Returns the total time of the data.
+
+        Returns:
+            float: The total time of the data.
+        """
+        return self.data["timestamp"].max() - self.data["timestamp"].min()  # in seconds
+
 
 def parse_perf_stat_file(stat_output_path: str):
     """
