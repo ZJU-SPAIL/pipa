@@ -49,6 +49,7 @@
 
 ### Version 0.0.9
 
+* [ ] Improve PIPA CLI
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
 * [ ] Improve unit tests
