@@ -27,8 +27,8 @@ import logging
 import sqlite3
 import grpc
 import argparse
-import pipad_pb2 as pipadlib
-import pipad_pb2_grpc as pipadgrpc
+from . import pipad_pb2 as pipadlib
+from . import pipad_pb2_grpc as pipadgrpc
 
 
 def type_proto_to_sqlite(proto: type) -> str:

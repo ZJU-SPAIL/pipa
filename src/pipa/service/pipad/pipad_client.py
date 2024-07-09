@@ -70,8 +70,8 @@ from pipa.common.logger import logger, stream_handler
 import logging
 import argparse
 import grpc
-import pipad_pb2 as pipadlib
-import pipad_pb2_grpc as pipadgrpc
+from . import pipad_pb2 as pipadlib
+from . import pipad_pb2_grpc as pipadgrpc
 
 
 class PIPADClient():
