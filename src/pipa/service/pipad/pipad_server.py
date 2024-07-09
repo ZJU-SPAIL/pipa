@@ -158,6 +158,7 @@ class PIPADServer:
         table: str = "example",
         grafana_api_k: Optional[str] = None,
         grafana_url: Optional[str] = None,
+        grafana_path: Optional[str] = None
     ) -> None:
         """
         Initialize the PIPADServer.
@@ -170,6 +171,7 @@ class PIPADServer:
             table (str, optional): The name of the table in the database to store the results. Defaults to "example".
             grafana_api_k (str, optional): The API key for Grafana. Required if grafana_url is provided.
             grafana_url (str, optional): The URL for Grafana. Required if grafana_api_k is provided.
+            grafana_path (str, optional): Replace the exact path name in grafana's database connection settings. Usefule for service in container.
         """
         self._dlocation = data_location
         self._port = port
@@ -178,12 +180,16 @@ class PIPADServer:
         self._table = table
         self._database_loc = os.path.join(data_location, database)
         if grafana_api_k is not None and grafana_url is not None:
+            if grafana_path is not None:
+                exact_path = f"{grafana_path}/{database}"
+            else:
+                exact_path = self._database_loc
             self._grafana = {"api_key": grafana_api_k, "url": grafana_url}
             new_conn = {
                 "name": database,
                 "type": "frser-sqlite-datasource",
                 "access": "proxy",
-                "jsonData": {"path": self._database_loc},
+                "jsonData": {"path": exact_path},
             }
             headers = {
                 "Content-Type": "application/json",
@@ -242,18 +248,33 @@ def main():
     argp.add_argument(
         "-l", "--data-location", type=str, default="./", help="Specify data location"
     )
+    argp.add_argument(
+        "--grafana-key", type=str, default=None, help="Specify grafana api key for connection"
+    )
+    argp.add_argument(
+        "--grafana-url", type=str, default=None, help="Specify grafana url"
+    )
+    argp.add_argument(
+        "--grafana-path", type=str, default=None, help="Specify grafana's exact data store path mapping with data-location"
+    )
     args = argp.parse_args()
     address = getattr(args, "address")
     port = getattr(args, "port")
     database = getattr(args, "database")
     table = getattr(args, "table")
     dlocation = getattr(args, "data_location")
+    gkey = getattr(args, "grafana_key")
+    gurl = getattr(args, "grafana_url")
+    gpath = getattr(args, "grafana_path")
     server = PIPADServer(
         data_location=dlocation,
         port=port,
         address=address,
         database=database,
         table=table,
+        grafana_api_k=gkey,
+        grafana_url=gurl,
+        grafana_path=gpath
     )
     server.serve()
 
