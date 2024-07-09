@@ -33,6 +33,7 @@ jobs:
           options: "--check --verbose"
           src: "./src"
           version: ">= 22.0"
+          use_pyproject: true
 
   build:
     runs-on: ubuntu-latest
