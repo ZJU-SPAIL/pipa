@@ -207,7 +207,7 @@ class SarData:
         """
         df = self.get_CPU_frequency("average")
         df = df[df["CPU"].isin([str(t) for t in threads])] if threads else df
-        return {"avg_freq_MHz": df["MHz"].mean()}
+        return {"cpu_frequency_mhz": df["MHz"].mean()}
 
     def get_CPU_util_freq(self, data_type: str = "detail"):
         """
@@ -313,7 +313,7 @@ class SarData:
         return (
             self.get_disk_usage(dev, "average")
             .drop(columns=["timestamp"])
-            .rename(columns={"%util": "%disk_util"})
+            .rename(columns={"%util": "%disk_util", "await": "disk_await"})
             .to_dict(orient="records")[0]
         )
 
