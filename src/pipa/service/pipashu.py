@@ -79,7 +79,7 @@ class PIPAShuData:
         }
 
         sar_cpu = self.sar_data.get_CPU_util_avg_summary(threads)
-        sar_freq = self.get_cpu_freq_avg(threads)
+        sar_freq = self.sar_data.get_cpu_freq_avg(threads)
         sar_mem = self.sar_data.get_memory_usage_avg()
         sar_disk = self.sar_data.get_disk_usage_avg(dev)
 
