@@ -53,3 +53,4 @@
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
 * [ ] Improve unit tests
+* [x] Set up format check tools and configuration
