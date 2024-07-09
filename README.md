@@ -11,6 +11,12 @@ PIPA consists of three parts: loquat tree, flower and fruit, which represent the
 
 PIPA is still in the active development process, and the current development focus is on the loquat tree.
 
+![GitHub License](https://img.shields.io/github/license/ZJU-SPAIL/pipa)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ZJU-SPAIL/pipa/main.yml)
+![GitHub top language](https://img.shields.io/github/languages/top/ZJU-SPAIL/pipa)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 ## Features
 
 - **Data Collecting**: PIPA can collect data from a variety of sources, using tools like perf, sar, and more. It supports multiple platforms including x86_64, ARM, and RISC-V, making it versatile and adaptable. Currently PIPA is capable of collecting and parsing perf and sar data, providing detailed performance metrics.
