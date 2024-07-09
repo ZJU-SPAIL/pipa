@@ -132,8 +132,7 @@ def send(data: dict):
     )
 
 
-def main():
-    config = quest()
+def main(config=quest()):
     data = build(config)
     send(data)
 
