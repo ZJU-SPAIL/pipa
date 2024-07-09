@@ -158,7 +158,7 @@ class PIPADServer:
         table: str = "example",
         grafana_api_k: Optional[str] = None,
         grafana_url: Optional[str] = None,
-        grafana_path: Optional[str] = None
+        grafana_path: Optional[str] = None,
     ) -> None:
         """
         Initialize the PIPADServer.
@@ -249,13 +249,19 @@ def main():
         "-l", "--data-location", type=str, default="./", help="Specify data location"
     )
     argp.add_argument(
-        "--grafana-key", type=str, default=None, help="Specify grafana api key for connection"
+        "--grafana-key",
+        type=str,
+        default=None,
+        help="Specify grafana api key for connection",
     )
     argp.add_argument(
         "--grafana-url", type=str, default=None, help="Specify grafana url"
     )
     argp.add_argument(
-        "--grafana-path", type=str, default=None, help="Specify grafana's exact data store path mapping with data-location"
+        "--grafana-path",
+        type=str,
+        default=None,
+        help="Specify grafana's exact data store path mapping with data-location",
     )
     args = argp.parse_args()
     address = getattr(args, "address")
@@ -274,7 +280,7 @@ def main():
         table=table,
         grafana_api_k=gkey,
         grafana_url=gurl,
-        grafana_path=gpath
+        grafana_path=gpath,
     )
     server.serve()
 
