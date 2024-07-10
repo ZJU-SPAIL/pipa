@@ -81,7 +81,7 @@ class PIPADClient:
         self._port = port
         self._address = address
 
-    def deploy(self, data: pipadlib.DeployRequest) -> None:
+    def deploy(self, data: pipadlib.DeployRequest) -> Optional[pipadlib.DeployResp]:
         """
         Deploys the performance data using the PIPADClient to server, will store them to specified database.
 
@@ -97,6 +97,7 @@ class PIPADClient:
             stub = pipadgrpc.PIPADStub(channel)
             response: pipadlib.DeployResp = stub.Deploy(data)
             logger.info(f"PIPAD client received: {response.message}")
+        return response
 
 
 if __name__ == "__main__":
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     address = getattr(args, "address")
     port = getattr(args, "port")
     client = PIPADClient(port, address)
-    client.deploy(
+    resp = client.deploy(
         data=pipadlib.DeployRequest(
             transactions=7561946,
             throughput=25171.548361957342,
@@ -171,4 +172,7 @@ if __name__ == "__main__":
             comment="",
             username="HiAll",
         )
+    )
+    logger.info(
+        f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
     )
