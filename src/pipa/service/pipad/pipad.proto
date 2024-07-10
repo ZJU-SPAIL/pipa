@@ -65,6 +65,12 @@ message DeployRequest {
   string sw_info = 52;
   string platform = 53;
   string comment = 54;
+  string username = 55;
 }
 
-message DeployResp { string message = 1; }
+message DeployResp { 
+  string message = 1;
+  string username = 2;
+  string time = 3;
+  string hash = 4;
+}
