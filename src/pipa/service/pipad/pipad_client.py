@@ -169,5 +169,6 @@ if __name__ == "__main__":
             sw_info="1 thread, RocksDB 7.9.2 build in release mode, debug_level=0, threads_num=1, db_bench with benchmark.sh",
             platform="SPR 4510",
             comment="",
+            username="HiAll"
         )
     )

@@ -6,7 +6,63 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Optional as _Op
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class DeployRequest(_message.Message):
-    __slots__ = ("workload", "transactions", "throughput", "used_threads", "run_time", "cycles", "instructions", "cycles_per_second", "instructions_per_second", "CPI", "cycles_per_requests", "path_length", "cpu_frequency_mhz", "cpu_usr", "cpu_nice", "cpu_sys", "cpu_iowait", "cpu_steal", "cpu_irq", "cpu_soft", "cpu_guest", "cpu_gnice", "cpu_idle", "cpu_util", "kbmemfree", "kbavail", "kbmemused", "percent_memused", "kbbuffers", "kbcached", "kbcommit", "percent_commit", "kbactive", "kbinact", "kbdirty", "kbanonpg", "kbslab", "kbkstack", "kbpgtbl", "kbvmused", "dev", "tps", "rkB_s", "wkB_s", "dkB_s", "areq_sz", "aqu_sz", "disk_await", "percent_disk_util", "data_location", "hw_info", "sw_info", "platform", "comment")
+    __slots__ = (
+        "workload",
+        "transactions",
+        "throughput",
+        "used_threads",
+        "run_time",
+        "cycles",
+        "instructions",
+        "cycles_per_second",
+        "instructions_per_second",
+        "CPI",
+        "cycles_per_requests",
+        "path_length",
+        "cpu_frequency_mhz",
+        "cpu_usr",
+        "cpu_nice",
+        "cpu_sys",
+        "cpu_iowait",
+        "cpu_steal",
+        "cpu_irq",
+        "cpu_soft",
+        "cpu_guest",
+        "cpu_gnice",
+        "cpu_idle",
+        "cpu_util",
+        "kbmemfree",
+        "kbavail",
+        "kbmemused",
+        "percent_memused",
+        "kbbuffers",
+        "kbcached",
+        "kbcommit",
+        "percent_commit",
+        "kbactive",
+        "kbinact",
+        "kbdirty",
+        "kbanonpg",
+        "kbslab",
+        "kbkstack",
+        "kbpgtbl",
+        "kbvmused",
+        "dev",
+        "tps",
+        "rkB_s",
+        "wkB_s",
+        "dkB_s",
+        "areq_sz",
+        "aqu_sz",
+        "disk_await",
+        "percent_disk_util",
+        "data_location",
+        "hw_info",
+        "sw_info",
+        "platform",
+        "comment",
+        "username",
+    )
     WORKLOAD_FIELD_NUMBER: _ClassVar[int]
     TRANSACTIONS_FIELD_NUMBER: _ClassVar[int]
     THROUGHPUT_FIELD_NUMBER: _ClassVar[int]
@@ -61,6 +117,7 @@ class DeployRequest(_message.Message):
     SW_INFO_FIELD_NUMBER: _ClassVar[int]
     PLATFORM_FIELD_NUMBER: _ClassVar[int]
     COMMENT_FIELD_NUMBER: _ClassVar[int]
+    USERNAME_FIELD_NUMBER: _ClassVar[int]
     workload: str
     transactions: int
     throughput: float
@@ -115,10 +172,80 @@ class DeployRequest(_message.Message):
     sw_info: str
     platform: str
     comment: str
-    def __init__(self, workload: _Optional[str] = ..., transactions: _Optional[int] = ..., throughput: _Optional[float] = ..., used_threads: _Optional[_Iterable[int]] = ..., run_time: _Optional[float] = ..., cycles: _Optional[int] = ..., instructions: _Optional[int] = ..., cycles_per_second: _Optional[float] = ..., instructions_per_second: _Optional[float] = ..., CPI: _Optional[float] = ..., cycles_per_requests: _Optional[float] = ..., path_length: _Optional[float] = ..., cpu_frequency_mhz: _Optional[float] = ..., cpu_usr: _Optional[float] = ..., cpu_nice: _Optional[float] = ..., cpu_sys: _Optional[float] = ..., cpu_iowait: _Optional[float] = ..., cpu_steal: _Optional[float] = ..., cpu_irq: _Optional[float] = ..., cpu_soft: _Optional[float] = ..., cpu_guest: _Optional[float] = ..., cpu_gnice: _Optional[float] = ..., cpu_idle: _Optional[float] = ..., cpu_util: _Optional[float] = ..., kbmemfree: _Optional[int] = ..., kbavail: _Optional[int] = ..., kbmemused: _Optional[int] = ..., percent_memused: _Optional[float] = ..., kbbuffers: _Optional[int] = ..., kbcached: _Optional[int] = ..., kbcommit: _Optional[int] = ..., percent_commit: _Optional[float] = ..., kbactive: _Optional[int] = ..., kbinact: _Optional[int] = ..., kbdirty: _Optional[int] = ..., kbanonpg: _Optional[int] = ..., kbslab: _Optional[int] = ..., kbkstack: _Optional[int] = ..., kbpgtbl: _Optional[int] = ..., kbvmused: _Optional[int] = ..., dev: _Optional[str] = ..., tps: _Optional[float] = ..., rkB_s: _Optional[float] = ..., wkB_s: _Optional[float] = ..., dkB_s: _Optional[float] = ..., areq_sz: _Optional[float] = ..., aqu_sz: _Optional[float] = ..., disk_await: _Optional[float] = ..., percent_disk_util: _Optional[float] = ..., data_location: _Optional[str] = ..., hw_info: _Optional[str] = ..., sw_info: _Optional[str] = ..., platform: _Optional[str] = ..., comment: _Optional[str] = ...) -> None: ...
+    username: str
+    def __init__(
+        self,
+        workload: _Optional[str] = ...,
+        transactions: _Optional[int] = ...,
+        throughput: _Optional[float] = ...,
+        used_threads: _Optional[_Iterable[int]] = ...,
+        run_time: _Optional[float] = ...,
+        cycles: _Optional[int] = ...,
+        instructions: _Optional[int] = ...,
+        cycles_per_second: _Optional[float] = ...,
+        instructions_per_second: _Optional[float] = ...,
+        CPI: _Optional[float] = ...,
+        cycles_per_requests: _Optional[float] = ...,
+        path_length: _Optional[float] = ...,
+        cpu_frequency_mhz: _Optional[float] = ...,
+        cpu_usr: _Optional[float] = ...,
+        cpu_nice: _Optional[float] = ...,
+        cpu_sys: _Optional[float] = ...,
+        cpu_iowait: _Optional[float] = ...,
+        cpu_steal: _Optional[float] = ...,
+        cpu_irq: _Optional[float] = ...,
+        cpu_soft: _Optional[float] = ...,
+        cpu_guest: _Optional[float] = ...,
+        cpu_gnice: _Optional[float] = ...,
+        cpu_idle: _Optional[float] = ...,
+        cpu_util: _Optional[float] = ...,
+        kbmemfree: _Optional[int] = ...,
+        kbavail: _Optional[int] = ...,
+        kbmemused: _Optional[int] = ...,
+        percent_memused: _Optional[float] = ...,
+        kbbuffers: _Optional[int] = ...,
+        kbcached: _Optional[int] = ...,
+        kbcommit: _Optional[int] = ...,
+        percent_commit: _Optional[float] = ...,
+        kbactive: _Optional[int] = ...,
+        kbinact: _Optional[int] = ...,
+        kbdirty: _Optional[int] = ...,
+        kbanonpg: _Optional[int] = ...,
+        kbslab: _Optional[int] = ...,
+        kbkstack: _Optional[int] = ...,
+        kbpgtbl: _Optional[int] = ...,
+        kbvmused: _Optional[int] = ...,
+        dev: _Optional[str] = ...,
+        tps: _Optional[float] = ...,
+        rkB_s: _Optional[float] = ...,
+        wkB_s: _Optional[float] = ...,
+        dkB_s: _Optional[float] = ...,
+        areq_sz: _Optional[float] = ...,
+        aqu_sz: _Optional[float] = ...,
+        disk_await: _Optional[float] = ...,
+        percent_disk_util: _Optional[float] = ...,
+        data_location: _Optional[str] = ...,
+        hw_info: _Optional[str] = ...,
+        sw_info: _Optional[str] = ...,
+        platform: _Optional[str] = ...,
+        comment: _Optional[str] = ...,
+        username: _Optional[str] = ...,
+    ) -> None: ...
 
 class DeployResp(_message.Message):
-    __slots__ = ("message",)
+    __slots__ = ("message", "username", "time", "hash")
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    USERNAME_FIELD_NUMBER: _ClassVar[int]
+    TIME_FIELD_NUMBER: _ClassVar[int]
+    HASH_FIELD_NUMBER: _ClassVar[int]
     message: str
-    def __init__(self, message: _Optional[str] = ...) -> None: ...
+    username: str
+    time: str
+    hash: str
+    def __init__(
+        self,
+        message: _Optional[str] = ...,
+        username: _Optional[str] = ...,
+        time: _Optional[str] = ...,
+        hash: _Optional[str] = ...,
+    ) -> None: ...
