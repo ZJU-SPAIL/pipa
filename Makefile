@@ -10,11 +10,16 @@ install:
 	pip install dist/*.whl
 
 uninstall:
-	pip uninstall -y pypipa
+	@if pip freeze | grep -q pypipa; then \
+		pip uninstall -y pypipa; \
+	else \
+		echo "pypipa not installed."; \
+	fi
 
 .PHONY: test
 test:
 	pytest
 
 lint:
-	flake8 . --count --show-source --statistics
+	flake8 ./src --count --show-source --statistics
+	black ./src --check --verbose
