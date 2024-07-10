@@ -233,19 +233,22 @@ class DeployRequest(_message.Message):
     ) -> None: ...
 
 class DeployResp(_message.Message):
-    __slots__ = ("message", "username", "time", "hash")
+    __slots__ = ("message", "username", "time", "hash", "status_code")
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     USERNAME_FIELD_NUMBER: _ClassVar[int]
     TIME_FIELD_NUMBER: _ClassVar[int]
     HASH_FIELD_NUMBER: _ClassVar[int]
+    STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
     message: str
     username: str
     time: str
     hash: str
+    status_code: int
     def __init__(
         self,
         message: _Optional[str] = ...,
         username: _Optional[str] = ...,
         time: _Optional[str] = ...,
         hash: _Optional[str] = ...,
+        status_code: _Optional[int] = ...,
     ) -> None: ...
