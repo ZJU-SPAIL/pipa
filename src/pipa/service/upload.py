@@ -5,6 +5,7 @@ from pipa.service.pipashu import PIPAShuData
 from pipa.common.logger import logger
 from pipa.service.pipad.pipad_client import PIPADClient
 import pipa.service.pipad.pipad_pb2 as pipadlib
+import getpass
 
 
 def check_workload(workload):
@@ -150,6 +151,8 @@ def build(config: dict):
     config.pop("transaction")
     config.pop("cores")
     config.pop("dev")
+
+    config["username"] = getpass.getuser()
     return {**data, **config}
 
 
