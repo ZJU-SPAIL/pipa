@@ -146,12 +146,15 @@ class PIPADServer:
                     conn.commit()
             except sqlite3.Error as e:
                 logger.debug(f"Database Error: {e}")
-                return pipadlib.DeployResp(message=f"deploy failed. Contact admin. {e}")
+                return pipadlib.DeployResp(
+                    message=f"deploy failed. Contact admin. {e}", status_code=500
+                )
             return pipadlib.DeployResp(
                 message="deploy success",
                 username=request.username,
                 hash=hs_txt,
                 time=f"{upload_time}",
+                status_code=200,
             )
 
     def __init__(

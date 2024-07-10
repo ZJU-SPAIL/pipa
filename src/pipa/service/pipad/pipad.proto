@@ -73,4 +73,5 @@ message DeployResp {
   string username = 2;
   string time = 3;
   string hash = 4;
+  uint32 status_code = 5;
 }

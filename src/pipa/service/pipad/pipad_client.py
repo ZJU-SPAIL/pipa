@@ -93,11 +93,14 @@ class PIPADClient:
         """
         server = f"{self._address}:{self._port}"
         logger.info("try to deploy ...")
-        with grpc.insecure_channel(server) as channel:
-            stub = pipadgrpc.PIPADStub(channel)
-            response: pipadlib.DeployResp = stub.Deploy(data)
-            logger.info(f"PIPAD client received: {response.message}")
-        return response
+        try:
+            with grpc.insecure_channel(server) as channel:
+                stub = pipadgrpc.PIPADStub(channel)
+                response: pipadlib.DeployResp = stub.Deploy(data)
+            return response
+        except Exception as e:
+            logger.error(f"Client deploy received error: {e}")
+            return None
 
 
 if __name__ == "__main__":
@@ -173,6 +176,10 @@ if __name__ == "__main__":
             username="HiAll",
         )
     )
-    logger.info(
-        f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
-    )
+    if resp is not None:
+        if resp.status_code == 200:
+            logger.info(
+                f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
+            )
+        else:
+            logger.warning(f"PIPAD server resp faild: {resp.message}")
