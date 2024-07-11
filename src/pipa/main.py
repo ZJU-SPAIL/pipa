@@ -36,7 +36,7 @@ class PipaCLI:
         print("Options:")
         print("  generate  Generate the performance collection scripts")
         print("  export    Export system configuration")
-        print("  upload    Upload the performance data")
+        print("  upload    Upload the performance data to PIPAD server")
         print("  version   Show the version of PIPA")
         print("  help      Show this help message and exit")
 
