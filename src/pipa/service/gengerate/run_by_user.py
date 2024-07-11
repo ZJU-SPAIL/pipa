@@ -78,8 +78,12 @@ def generate(config: dict):
     with open(workspace + "/pipa-parse.sh", "w", opener=opener) as f:
         write_title(f)
         f.write("WORKSPACE=" + workspace + "\n")
-        f.write("perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n")
-        f.write("perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n")
+        f.write(
+            "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"
+        )
+        f.write(
+            "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
+        )
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
         if config["use_emon"]:

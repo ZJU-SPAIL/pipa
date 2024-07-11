@@ -92,8 +92,12 @@ def generate(config):
         f.write(
             f"perf record -e '{events_record}' -a -F {freq_record} -o $WORKSPACE/perf.data {command}\n"
         )
-        f.write("perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n")
-        f.write("perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n")
+        f.write(
+            "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"
+        )
+        f.write(
+            "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
+        )
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
