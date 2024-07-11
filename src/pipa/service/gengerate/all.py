@@ -9,32 +9,27 @@ from pipa.service.gengerate.parse_pipashu_config import main as parse_pipashu_co
 def quest_summary():
     # TODO make these code more elegant
 
-    try:
-        how_to_run = questionary.select(
-            "Please select the way of workload you want to run.",
-            choices=[
-                "Build scripts that collect global performance data.",
-                "Build a script that collects performance data and start the workload by perf.",
-                "Generate a configuration template configuration of PIPA-SHU.",
-                "Build scripts based on the configuration file of PIPA-SHU.",
-                "Exit.",
-            ],
-        ).ask()
-        if (
-            how_to_run
-            == "Build a script that collects performance data and start the workload by perf."
-        ):
-            run_by_pipa()
-        elif how_to_run == "Build scripts that collect global performance data.":
-            run_by_user()
-        elif (
-            how_to_run == "Generate a configuration template configuration of PIPA-SHU."
-        ):
-            generate_template()
-        elif how_to_run == "Build scripts based on the configuration file of PIPA-SHU.":
-            parse_pipashu_config()
-        else:
-            exit(0)
-    except KeyboardInterrupt:
-        print("User cancelled.")
+    how_to_run = questionary.select(
+        "Please select the way of workload you want to run.",
+        choices=[
+            "Build scripts that collect global performance data.",
+            "Build a script that collects performance data and start the workload by perf.",
+            "Generate a configuration template configuration of PIPA-SHU.",
+            "Build scripts based on the configuration file of PIPA-SHU.",
+            "Exit.",
+        ],
+    ).ask()
+
+    if (
+        how_to_run
+        == "Build a script that collects performance data and start the workload by perf."
+    ):
+        run_by_pipa()
+    elif how_to_run == "Build scripts that collect global performance data.":
+        run_by_user()
+    elif how_to_run == "Generate a configuration template configuration of PIPA-SHU.":
+        generate_template()
+    elif how_to_run == "Build scripts based on the configuration file of PIPA-SHU.":
+        parse_pipashu_config()
+    else:
         exit(0)

@@ -2,19 +2,23 @@ import fire
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.service.export_sys_config import run_export_config_script
 from pipa.service.upload import main as pipa_upload
+from pipa.common.utils import handle_user_cancelled
 from pipa.__about__ import __version__
 from rich import print
 
 
 class PipaCLI:
+    @handle_user_cancelled
     def generate(self):
         # Generate the performance collection scripts
         generate_sh()
 
+    @handle_user_cancelled
     def export(self):
         # Export system configuration
         run_export_config_script()
 
+    @handle_user_cancelled
     def upload(self):
         # Upload the performance data
         pipa_upload()
