@@ -222,7 +222,7 @@ def send(data: dict, addr: str = None, port: int = 50051):
             dkB_s=data[r"dkB/s"],
             areq_sz=data["areq-sz"],
             aqu_sz=data["aqu-sz"],
-            disk_await=data["await"],
+            disk_await=data["disk_await"],
             percent_disk_util=data[r"%disk_util"],
             workload=data["workload"],
             data_location=data["data_location"],
