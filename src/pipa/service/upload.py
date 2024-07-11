@@ -234,7 +234,7 @@ def send(data: dict, addr: str = None, port: int = 50051):
     )
 
 
-def main(config=quest()):
+def main(config: dict = None):
     """
     This is the main function for the upload service in the pipa project.
 
@@ -244,6 +244,8 @@ def main(config=quest()):
     Returns:
         None
     """
+    if not config:
+        config = quest()
     data = build(config)
     send(data)
 
