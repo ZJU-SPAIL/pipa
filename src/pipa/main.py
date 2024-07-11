@@ -9,9 +9,9 @@ from rich import print
 
 class PipaCLI:
     @handle_user_cancelled
-    def generate(self):
+    def generate(self, config_path: str = None):
         # Generate the performance collection scripts
-        generate_sh()
+        generate_sh(config_path)
 
     @handle_user_cancelled
     def export(self):

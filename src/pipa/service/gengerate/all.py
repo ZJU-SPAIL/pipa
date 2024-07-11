@@ -6,8 +6,10 @@ from pipa.service.gengerate.export_pipashu_config_template import generate_templ
 from pipa.service.gengerate.parse_pipashu_config import main as parse_pipashu_config
 
 
-def quest_summary():
+def quest_summary(config_path: str = None):
     # TODO make these code more elegant
+    if config_path:
+        return parse_pipashu_config(config_path)
 
     how_to_run = questionary.select(
         "Please select the way of workload you want to run.",

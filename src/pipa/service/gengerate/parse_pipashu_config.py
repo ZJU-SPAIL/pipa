@@ -45,5 +45,11 @@ def build(path: str):
         generate_user(config)
 
 
-def main():
-    build(quest())
+def main(config_path: str = None):
+    if config_path is None:
+        config_path = quest()
+    return build(config_path)
+
+
+if __name__ == "__main__":
+    main()
