@@ -6,6 +6,7 @@ from pipa.common.logger import logger
 from pipa.service.pipad.pipad_client import PIPADClient
 import pipa.service.pipad.pipad_pb2 as pipadlib
 import getpass
+import yaml
 
 
 def check_workload(workload):
@@ -234,17 +235,20 @@ def send(data: dict, addr: str = None, port: int = 50051):
     )
 
 
-def main(config: dict = None):
+def main(config_path: str = None):
     """
     This is the main function for the upload service in the pipa project.
 
     Args:
-        config: The configuration for the upload service. Defaults to the result of the `quest` function.
+        config_path (str, optional): The path to the configuration file. If not provided, the user will be prompted to enter the configuration.
 
     Returns:
         None
     """
-    if not config:
+    if config_path:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    else:
         config = quest()
     data = build(config)
     send(data)
