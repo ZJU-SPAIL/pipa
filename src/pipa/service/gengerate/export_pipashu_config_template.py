@@ -57,12 +57,16 @@ def query_filepath():
     return workspace
 
 
-def generate_template():
+def generate_template(filename: str):
     workspace = query_filepath()
-    config_file_path = os.path.join(workspace, "config-pipa-shu.yaml")
+    config_file_path = os.path.join(workspace, filename)
     if not os.path.exists(workspace):
         os.makedirs(workspace)
-    write_config(config_file_path)
+    return write_config(config_file_path)
+
+
+def generate_pipashu_template():
+    return generate_template("config-pipa-shu.yaml")
 
 
 upload_template = """workload: rocksdb
@@ -91,9 +95,4 @@ pipad_port: 50051
 
 
 def generate_upload_template():
-    workspace = query_filepath()
-    config_file_path = os.path.join(workspace, "config-upload.yaml")
-    if not os.path.exists(workspace):
-        os.makedirs(workspace)
-    with open(config_file_path, "w") as f:
-        f.write(upload_template)
+    return generate_template("config-upload.yaml")

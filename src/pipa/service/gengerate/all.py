@@ -1,9 +1,9 @@
 import questionary
 
-from pipa.service.gengerate.run_by_pipa import main as run_by_pipa
-from pipa.service.gengerate.run_by_user import main as run_by_user
-from pipa.service.gengerate.export_pipashu_config_template import generate_template
-from pipa.service.gengerate.parse_pipashu_config import main as parse_pipashu_config
+from .run_by_pipa import main as run_by_pipa
+from .run_by_user import main as run_by_user
+from .export_pipashu_config_template import generate_pipashu_template
+from .parse_pipashu_config import main as parse_pipashu_config
 from .export_pipashu_config_template import generate_upload_template
 
 
@@ -32,7 +32,7 @@ def quest_summary(config_path: str = None):
     elif how_to_run == "Build scripts that collect global performance data.":
         run_by_user()
     elif how_to_run == "Generate a configuration template configuration of PIPA-SHU.":
-        generate_template()
+        generate_pipashu_template()
     elif how_to_run == "Build scripts based on the configuration file of PIPA-SHU.":
         parse_pipashu_config()
     elif (
