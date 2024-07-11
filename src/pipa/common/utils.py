@@ -1,6 +1,5 @@
 import datetime
 import sys
-from pipa.common.logger import logger
 from rich import print
 
 
