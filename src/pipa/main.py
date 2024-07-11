@@ -12,6 +12,7 @@ class PipaCLI:
     The PipaCLI represents the command-line interface for PIPA (Platform Integrated Performance Analytics).
     It provides methods for generating performance collection scripts, exporting system configuration,
     uploading performance data, and displaying help and version information.
+    Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL
 
     Usage:
       pipa generate
