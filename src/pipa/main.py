@@ -8,6 +8,26 @@ from rich import print
 
 
 class PipaCLI:
+    """
+    The PipaCLI represents the command-line interface for PIPA (Platform Integrated Performance Analytics).
+    It provides methods for generating performance collection scripts, exporting system configuration,
+    uploading performance data, and displaying help and version information.
+
+    Usage:
+      pipa generate
+      pipa export
+      pipa upload
+      pipa version
+      pipa help
+
+    Options:
+      generate  Generate the performance collection scripts
+      export    Export system configuration
+      upload    Upload the performance data to PIPAD server
+      version   Show the version of PIPA
+      help      Show this help message and exit
+    """
+
     @handle_user_cancelled
     def generate(self, config_path: str = None):
         # Generate the performance collection scripts
