@@ -231,6 +231,7 @@ def send(data: dict, addr: str = None, port: int = 50051):
             sw_info=data["sw_info"],
             platform=data["platform"],
             comment=data["comment"],
+            username=data["username"],
         )
     )
 
