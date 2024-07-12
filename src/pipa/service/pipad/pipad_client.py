@@ -5,7 +5,9 @@ send performance data to server:
 
 ```python
 from pipa.service.pipad.pipad_client import PIPADClient
-client = PIPADClient(port, address)
+import pipa.service.pipad.pipad_pb2 as pipadlib
+
+client = PIPADClient(port="50051", address="127.0.0.1")
 client.deploy(data=pipadlib.DeployRequest(
     transactions=3423523,
     throughput=251.57342,
