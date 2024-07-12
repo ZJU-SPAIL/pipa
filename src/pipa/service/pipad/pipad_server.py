@@ -238,7 +238,11 @@ class PIPADServer:
         server.add_insecure_port(binding)
         server.start()
         logger.info(f"Server started, listening on {binding}")
-        server.wait_for_termination()
+        try:
+            server.wait_for_termination()
+        except KeyboardInterrupt as e:
+            logger.info("Server stop")
+            server.stop(5)
 
 
 def main():
