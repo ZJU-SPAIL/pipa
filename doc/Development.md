@@ -44,12 +44,12 @@
 * [x] Implement pipa-version command
 * [x] Unified interface specification for robustness
 * [x] Support data collection by `emon`
-* [ ] Integrate key metrics into Grafana. Implement Client/Server with `grpc`.
+* [x] Integrate key metrics into Grafana. Implement Client/Server with `grpc`.
 * [x] Integrate export `perf.data` to `SQLite3`
 
 ### Version 0.0.9
 
-* [ ] Improve PIPA CLI
+* [x] Improve PIPA CLI
 * [ ] Implement tiny table
 * [ ] Provides combinations of different performance data collection tools
 * [ ] Improve unit tests
