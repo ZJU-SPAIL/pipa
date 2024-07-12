@@ -187,6 +187,14 @@ class PIPADServer:
         self._database = database
         self._table = table
         self._database_loc = os.path.join(data_location, database)
+        try:
+            with sqlite3.connect(self._database_loc) as conn:
+                logger.info(f"Use SQLite3: {sqlite3.sqlite_version}")
+        except sqlite3.Error as e:
+            logger.debug(
+                f"Encounting problems when creating {self._database_loc}: {e}."
+            )
+            return
         if grafana_api_k is not None and grafana_url is not None:
             if grafana_path is not None:
                 exact_path = f"{grafana_path}/{database}"
