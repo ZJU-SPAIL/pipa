@@ -292,7 +292,8 @@ class PerfStatData:
 
     def get_wider_data(self):
         """
-        Get the wider data by adding the columns of the optional metric value and the optional unit of metric.
+        Get the wider data with columns for each metric type.
+        Tidy the data by pivoting the metric_type column.
 
         Returns:
             pd.DataFrame: The wider data.
