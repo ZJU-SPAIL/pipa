@@ -317,7 +317,7 @@ class PerfStatData:
         Tidy the data by pivoting the metric_type column.
 
         Args:
-            thread_list (list, optional): A list of hardware thread names to include in the tidy data. 
+            thread_list (list, optional): A list of hardware thread names to include in the tidy data.
             If None, all threads are included. Default is None.
 
         Returns:
