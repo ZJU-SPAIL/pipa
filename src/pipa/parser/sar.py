@@ -393,7 +393,7 @@ def add_post_fix(sar_line: list, len_columns: int):
 def process_subtable(
     sar_columns: list, sar_blocks: list, processes_num=min(12, NUM_CORES_PHYSICAL)
 ):
-    if len(sar_blocks) <= 1e6 or processes_num <= 1:
+    if len(sar_blocks) <= 10**6 or processes_num <= 1:
         # if the number of lines is less than 1e6, use single process
         return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
     pool = multiprocessing.Pool(processes=processes_num)
