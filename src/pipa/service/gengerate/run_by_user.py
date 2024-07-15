@@ -13,10 +13,10 @@ def quest():
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
 
-    record_time, stat_time = None, None
+    duration_record, duration_stat = None, None
 
     if set_record == "Yes":
-        record_time = questionary.text(
+        duration_record = questionary.text(
             "How long do you want to run perf-record? (Default: 120s)\n", "120"
         ).ask()
 
@@ -25,12 +25,12 @@ def quest():
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
     if set_stat == "Yes":
-        stat_time = questionary.text(
+        duration_stat = questionary.text(
             "How long do you want to run perf-stat? (Default: 120s)\n", "120"
         ).ask()
 
-    config["record_time"] = record_time
-    config["stat_time"] = stat_time
+    config["duration_record"] = duration_record
+    config["duration_stat"] = duration_stat
 
     return config
 
@@ -40,7 +40,7 @@ def generate(config: dict):
     freq_record = config["freq_record"]
     events_record = config["events_record"]
     annotete = config["annotete"]
-    record_time = config["duration_record"]
+    duration_record = config["duration_record"]
     stat_time = config["duration_stat"]
     events_stat = config["events_stat"]
     count_delta_stat = config["count_delta_stat"]
@@ -56,7 +56,7 @@ def generate(config: dict):
         f.write(
             f"perf record -e '{events_record}' -a -F"
             + f" {freq_record} -o $WORKSPACE/perf.data"
-            + (f" -- sleep {record_time}\n" if record_time else "\n")
+            + (f" -- sleep {duration_record}\n" if duration_record else "\n")
         )
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
