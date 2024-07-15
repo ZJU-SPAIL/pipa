@@ -311,21 +311,22 @@ class PerfStatData:
         self._df_wider = df_wider
         return df_wider
 
-    def get_tidy_data(self, cpu_range: list = None):
+    def get_tidy_data(self, thread_list: list = None):
         """
         Get the tidied data with columns for each metric type.
         Tidy the data by pivoting the metric_type column.
 
         Args:
-            cpu_range (list, optional): A list of CPU IDs to include. Default is None.
+            thread_list (list, optional): A list of hardware thread names to include in the tidy data. 
+            If None, all threads are included. Default is None.
 
         Returns:
             pd.DataFrame: The tidied data.
         """
         df = self.get_wider_data()
-        if cpu_range:
-            cpu_range = [int(cpu) for cpu in cpu_range]
-            df = df[df["cpu_id"].isin(cpu_range)]
+        if thread_list:
+            thread_list = [int(cpu) for cpu in thread_list]
+            df = df[df["cpu_id"].isin(thread_list)]
         df_t = df.pivot_table(index=["timestamp"], columns="cpu_id").reset_index()
         df_t.columns = [f"{col[0]}_{col[1]}" for col in df_t.columns]
         return df_t
