@@ -29,10 +29,16 @@ class PerfScriptData:
 
     def get_wider_data(self):
         """
-        Tidy data by merging cycles and instructions data.
+        Returns a wider version of the performance script data, where the cycles and instructions
+        are merged into a single DataFrame. The DataFrame includes columns for command, pid, cpu,
+        time, cycles, instructions, addr, symbol, dso_short_name, and CPI (cycles per instruction).
+
+        If the wider data has already been computed, it is returned from the cache. Otherwise, the
+        wider data is computed by merging the cycles and instructions DataFrames and calculating
+        the CPI.
 
         Returns:
-            pandas.DataFrame: The tidied data as a DataFrame.
+            pandas.DataFrame: The wider version of the performance script data.
         """
         if self._df_wider is not None:
             return self._df_wider
@@ -80,6 +86,30 @@ class PerfScriptData:
         df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
         self._df_wider = df_wider
         return df_wider
+
+    def get_tidy_data(self, thread_list: list = None):
+        """
+        Returns a tidy version of the data by pivoting the wider data and renaming the columns.
+
+        Args:
+            thread_list (list): A list of hardware thread names to include in the tidy data. If None, all
+                threads are included.
+
+        Returns:
+            pandas.DataFrame: A tidy version of the data.
+        """
+        df_wider = self.get_wider_data()
+
+        if thread_list is not None:
+            thread_list = [int(thread) for thread in thread_list]
+            df_wider = df_wider[df_wider["cpu"].isin(thread_list)]
+
+        df_t = df_wider.pivot_table(
+            index=["time"], columns="cpu", aggfunc="first"
+        ).reset_index()
+        df_t.columns = [f"{col[0]}_{col[1]}" for col in df_t.columns]
+        df_t.rename(columns={"time_": "time"}, inplace=True)
+        return df_t
 
 
 def parse_one_line(line):
