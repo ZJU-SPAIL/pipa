@@ -103,7 +103,8 @@ class PerfScriptData:
         if thread_list is not None:
             thread_list = [int(thread) for thread in thread_list]
             df_wider = df_wider[df_wider["cpu"].isin(thread_list)]
-
+            if len(thread_list) == 1:
+                return df_wider
         df_t = df_wider.pivot_table(
             index=["time"], columns="cpu", aggfunc="first"
         ).reset_index()

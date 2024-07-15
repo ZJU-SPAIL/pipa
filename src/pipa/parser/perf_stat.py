@@ -327,6 +327,8 @@ class PerfStatData:
         if thread_list:
             thread_list = [int(cpu) for cpu in thread_list]
             df = df[df["cpu_id"].isin(thread_list)]
+            if len(thread_list) == 1:
+                return df
         df_t = df.pivot_table(index=["timestamp"], columns="cpu_id").reset_index()
         df_t.columns = [f"{col[0]}_{col[1]}" for col in df_t.columns]
         df_t.rename(columns={"timestamp_": "timestamp"}, inplace=True)
