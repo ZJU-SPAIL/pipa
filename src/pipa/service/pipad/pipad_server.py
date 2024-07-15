@@ -67,6 +67,7 @@ def value_to_sqlite_str(v: Any) -> str:
     """
     t = type(v)
     if t is str:
+        v = v.replace("'", "''")
         return f"'{v}'"
     elif t is int or t is float:
         return f"{v}"
