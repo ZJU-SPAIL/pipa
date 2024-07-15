@@ -1,7 +1,14 @@
 import questionary
 import os
 
-config_template = """
+config_template = """# PIPA-Shu Configuration
+# Use pipa generate to generate data collection script based on this configuration.
+# Command Example: pipa generate --config_path=./data/config-pipa-shu.yaml
+
+# PIPA (Platform Integrated Performance Analytics)
+# Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL
+# All rights reserved.
+
 workspace: ./data # The workspace to store the performance data and collecting script. Will be created if not exists.
 freq_record: 999 # The frequency of perf-record.
 events_record: "{cycles,instructions}:S" # The events to be used in perf-record.
