@@ -339,7 +339,7 @@ def parse_sar_bin_to_txt(sar_bin_path: str):
     Returns:
         list: List of lines in the SAR binary file.
     """
-    sar_lines = run_command(f"sar -A -f {sar_bin_path}").split("\n")
+    sar_lines = run_command(f"LC_ALL='C' sar -A -f {sar_bin_path}").split("\n")
     return sar_lines
 
 
