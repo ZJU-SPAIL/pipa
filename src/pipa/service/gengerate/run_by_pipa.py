@@ -54,6 +54,8 @@ def quest():
 
     if use_taskset == "Yes":
         config["command"] = f"/usr/bin/taskset -c {core_list} {command}"
+    else:
+        config["command"] = command
     return config
 
 
