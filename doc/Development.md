@@ -50,7 +50,7 @@
 ### Version 0.0.9
 
 * [x] Improve PIPA CLI
-* [ ] Implement tiny table
-* [ ] Provides combinations of different performance data collection tools
+* [x] Implement tidy table
+* [x] Provides combinations of different performance data collection tools
 * [ ] Improve unit tests
 * [x] Set up format check tools and configuration
