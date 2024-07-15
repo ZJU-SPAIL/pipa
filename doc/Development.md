@@ -52,5 +52,9 @@
 * [x] Improve PIPA CLI
 * [x] Implement tidy table
 * [x] Provides combinations of different performance data collection tools
-* [ ] Improve unit tests
 * [x] Set up format check tools and configuration
+* [x] Fix bugs of pipa-generate
+
+### Version 0.0.10
+
+* [ ] Improve unit tests
