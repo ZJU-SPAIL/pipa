@@ -57,5 +57,6 @@
 
 ### Version 0.0.10
 
+* [x] Fix tidy data
 * [ ] Improve unit tests
 * [ ] Improve documentation
