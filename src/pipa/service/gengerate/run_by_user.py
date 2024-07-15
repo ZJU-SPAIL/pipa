@@ -47,7 +47,7 @@ def generate(config: dict):
     use_emon = config["use_emon"]
     if use_emon:
         mpp = config["MPP_HOME"]
-    with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
+    with open(os.path.join(workspace, "pipa-collect.sh"), "w", opener=opener) as f:
         write_title(f)
 
         f.write("WORKSPACE=" + workspace + "\n")
@@ -77,7 +77,7 @@ def generate(config: dict):
 
         f.write("echo 'Performance data collected successfully.'\n")
 
-    with open(workspace + "/pipa-parse.sh", "w", opener=opener) as f:
+    with open(os.path.join(workspace, "pipa-parse.sh"), "w", opener=opener) as f:
         write_title(f)
         f.write("WORKSPACE=" + workspace + "\n")
         f.write(
