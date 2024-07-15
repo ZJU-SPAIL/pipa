@@ -1,8 +1,20 @@
 import pandas as pd
 import re
-from pipa.common.logger import logger
 import multiprocessing
-from psutil import cpu_count
+import os
+from pipa.common.logger import logger
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+
+
+class PerfScriptData:
+    def __init__(self, parsed_script_path: str):
+        if not os.path.exists(parse_perf_script_file):
+            logger.error(f"File not found: {parsed_script_path}")
+            raise FileNotFoundError()
+        self._perf_script_data = parse_perf_script_file(parsed_script_path)
+
+    def get_raw_data(self):
+        return self._perf_script_data
 
 
 def parse_one_line(line):
@@ -65,7 +77,7 @@ def parse_one_line(line):
     ]
 
 
-def parse_perf_script_file(parsed_script_path, processes_num=cpu_count(logical=False)):
+def parse_perf_script_file(parsed_script_path: str, processes_num=NUM_CORES_PHYSICAL):
     """
     Parses a perf script file and returns the data as a pandas DataFrame.
 
