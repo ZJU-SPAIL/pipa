@@ -4,17 +4,81 @@ import multiprocessing
 import os
 from pipa.common.logger import logger
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pandarallel import pandarallel
 
 
 class PerfScriptData:
     def __init__(self, parsed_script_path: str):
-        if not os.path.exists(parse_perf_script_file):
+        if not os.path.exists(parsed_script_path):
             logger.error(f"File not found: {parsed_script_path}")
             raise FileNotFoundError()
         self._perf_script_data = parse_perf_script_file(parsed_script_path)
 
+        if len(self._perf_script_data) == 0:
+            logger.warning("No data found in the perf script file.")
+
+        if len(self._perf_script_data) >= 10**6:
+            threads_num = min(12, NUM_CORES_PHYSICAL)
+            logger.info(f"Using pandarallel to speed up, threads_num is {threads_num}.")
+            pandarallel.initialize(nb_workers=threads_num)
+
+        self.df_wider = None
+
     def get_raw_data(self):
         return self._perf_script_data
+
+    def get_wider_data(self):
+        """
+        Tidy data by merging cycles and instructions data.
+
+        Returns:
+            pandas.DataFrame: The tidied data as a DataFrame.
+        """
+        if self.df_wider is not None:
+            return self.df_wider
+
+        df = self._perf_script_data
+        df_cycles = df.query("event == 'cycles'")
+        df_insns = df.query("event == 'instructions'")
+        df_wider = (
+            df_cycles.merge(
+                df_insns,
+                on=[
+                    "time",
+                    "cpu",
+                    "command",
+                    "pid",
+                    "addr",
+                    "symbol",
+                    "dso_short_name",
+                ],
+                suffixes=("_cycles", "_insns"),
+            )
+            .drop(columns=["event_cycles", "event_insns"])
+            .rename(
+                {
+                    "value_cycles": "cycles",
+                    "value_insns": "instructions",
+                },
+                axis=1,
+            )
+        )
+
+        self.df_wider = df_wider[
+            [
+                "command",
+                "pid",
+                "cpu",
+                "time",
+                "cycles",
+                "instructions",
+                "addr",
+                "symbol",
+                "dso_short_name",
+            ]
+        ]
+        self.df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
+        return self.df_wider
 
 
 def parse_one_line(line):
