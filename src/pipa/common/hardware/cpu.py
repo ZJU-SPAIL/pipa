@@ -1,4 +1,5 @@
 from pipa.common.cmd import run_command
+from psutil import cpu_count
 
 
 def get_cpu_cores():
@@ -8,3 +9,6 @@ def get_cpu_cores():
         if not l.startswith("#")
     ]
     return [int(x) for x in cpu_list]
+
+
+NUM_CORES_PHYSICAL = cpu_count(logical=False)

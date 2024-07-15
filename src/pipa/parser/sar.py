@@ -2,7 +2,7 @@ import pandas as pd
 import seaborn as sns
 import re
 from pipa.common.cmd import run_command
-from psutil import cpu_count
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 import multiprocessing
 
 
@@ -391,7 +391,7 @@ def add_post_fix(sar_line: list, len_columns: int):
 
 
 def process_subtable(
-    sar_columns: list, sar_blocks: list, processes_num=cpu_count(logical=False) // 2
+    sar_columns: list, sar_blocks: list, processes_num=min(12, NUM_CORES_PHYSICAL)
 ):
     if len(sar_blocks) <= 1e6 or processes_num <= 1:
         # if the number of lines is less than 1e6, use single process
