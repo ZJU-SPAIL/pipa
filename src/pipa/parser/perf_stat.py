@@ -7,6 +7,7 @@ import seaborn as sns
 class PerfStatData:
     def __init__(self, perf_stat_csv_path: str):
         self.data = parse_perf_stat_file(perf_stat_csv_path)
+        self._df_wider = None
 
     def get_CPI(self):
         """
@@ -288,6 +289,26 @@ class PerfStatData:
             bool: True if the data contains multiplexing, False otherwise.
         """
         return all(self.data["run_percentage"].astype(int) == 100)
+
+    def get_wider_data(self):
+        """
+        Get the wider data by adding the columns of the optional metric value and the optional unit of metric.
+
+        Returns:
+            pd.DataFrame: The wider data.
+        """
+        if self._df_wider is not None:
+            return self._df_wider
+        df = self.data[["timestamp", "cpu_id", "value", "metric_type"]]
+        df_wider = df.pivot_table(
+            index=["timestamp", "cpu_id"],
+            columns="metric_type",
+            values="value",
+            aggfunc="first",
+        ).reset_index()
+        df_wider.columns = [f"{col}" for col in df_wider.columns]
+        self._df_wider = df_wider
+        return df_wider
 
 
 def parse_perf_stat_file(stat_output_path: str):
