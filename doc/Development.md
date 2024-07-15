@@ -58,3 +58,4 @@
 ### Version 0.0.10
 
 * [ ] Improve unit tests
+* [ ] Improve documentation
