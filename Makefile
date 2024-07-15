@@ -1,4 +1,4 @@
-all: clean lint test build uninstall install
+all: clean lint build uninstall install test
 
 build:
 	python -m build
