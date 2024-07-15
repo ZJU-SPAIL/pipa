@@ -44,7 +44,9 @@ def generate(config: dict):
     stat_time = config["duration_stat"]
     events_stat = config["events_stat"]
     count_delta_stat = config["count_delta_stat"]
-    mpp = config["MPP_HOME"]
+    use_emon = config["use_emon"]
+    if use_emon:
+        mpp = config["MPP_HOME"]
     with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -61,7 +63,7 @@ def generate(config: dict):
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
-        if config["use_emon"]:
+        if use_emon:
             f.write(
                 f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental "
                 + (f"-w sleep {stat_time}\n" if stat_time else "\n")
@@ -86,7 +88,7 @@ def generate(config: dict):
         )
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
-        if config["use_emon"]:
+        if use_emon:
             f.write(
                 f"python {mpp}/mpp/mpp.py -i $WORKSPACE/emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
