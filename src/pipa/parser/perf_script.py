@@ -22,7 +22,7 @@ class PerfScriptData:
             logger.info(f"Using pandarallel to speed up, threads_num is {threads_num}.")
             pandarallel.initialize(nb_workers=threads_num)
 
-        self.df_wider = None
+        self._df_wider = None
 
     def get_raw_data(self):
         return self._perf_script_data
@@ -34,8 +34,8 @@ class PerfScriptData:
         Returns:
             pandas.DataFrame: The tidied data as a DataFrame.
         """
-        if self.df_wider is not None:
-            return self.df_wider
+        if self._df_wider is not None:
+            return self._df_wider
 
         df = self._perf_script_data
         df_cycles = df.query("event == 'cycles'")
@@ -64,7 +64,7 @@ class PerfScriptData:
             )
         )
 
-        self.df_wider = df_wider[
+        self._df_wider = df_wider[
             [
                 "command",
                 "pid",
@@ -77,8 +77,8 @@ class PerfScriptData:
                 "dso_short_name",
             ]
         ]
-        self.df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
-        return self.df_wider
+        self._df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
+        return self._df_wider
 
 
 def parse_one_line(line):
