@@ -280,6 +280,15 @@ class PerfStatData:
         """
         return self.data["timestamp"].max() - self.data["timestamp"].min()  # in seconds
 
+    def is_multiplexing(self):
+        """
+        Check if the data contains multiplexing.
+
+        Returns:
+            bool: True if the data contains multiplexing, False otherwise.
+        """
+        return all(self.data["run_percentage"].astype(int) == 100)
+
 
 def parse_perf_stat_file(stat_output_path: str):
     """
