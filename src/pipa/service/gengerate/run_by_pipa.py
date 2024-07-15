@@ -80,7 +80,9 @@ def generate(config):
     events_stat = config["events_stat"]
     annotete = config["annotete"]
     command = config["command"]
-    mpp = config["MPP_HOME"]
+    use_emon = config["use_emon"]
+    if use_emon:
+        mpp = config["MPP_HOME"]
     with open(workspace + "/pipa-run.sh", "w", opener=opener) as f:
         write_title(f)
 
@@ -102,7 +104,7 @@ def generate(config):
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
 
-        if config["use_emon"]:
+        if use_emon:
             f.write(
                 f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental -w {command} &\n"
             )
@@ -114,7 +116,7 @@ def generate(config):
         f.write("kill -9 $sar_pid\n")
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
-        if config["use_emon"]:
+        if use_emon:
             f.write(
                 f"python {mpp}/mpp/mpp.py -i $WORKSPACE/emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
             )
