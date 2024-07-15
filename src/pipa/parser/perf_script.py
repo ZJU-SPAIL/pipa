@@ -64,7 +64,7 @@ class PerfScriptData:
             )
         )
 
-        self._df_wider = df_wider[
+        df_wider = df_wider[
             [
                 "command",
                 "pid",
@@ -77,8 +77,9 @@ class PerfScriptData:
                 "dso_short_name",
             ]
         ]
-        self._df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
-        return self._df_wider
+        df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
+        self._df_wider = df_wider
+        return df_wider
 
 
 def parse_one_line(line):
