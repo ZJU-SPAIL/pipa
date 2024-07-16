@@ -143,7 +143,7 @@ def build(config: dict):
         logger.error("sar.txt does not exist.")
         raise Exception("sar.txt does not exist.")
     elif not perf_script_path:
-        logger.warning("perf-record.txt does not exist.")
+        logger.warning("perf.script does not exist.")
         perf_script_path = None
 
     data = PIPAShuData(perf_stat_path, sar_path, perf_script_path).get_metrics(
