@@ -154,7 +154,11 @@ def build(config: dict):
     config.pop("dev")
 
     config["username"] = getpass.getuser()
-    return {**data, **config}
+
+    result = {**data, **config}
+    logger.info("Data built successfully.")
+    logger.debug(str(result))
+    return result
 
 
 def send(data: dict, addr: str = None, port: int = 50051):
@@ -233,7 +237,6 @@ def send(data: dict, addr: str = None, port: int = 50051):
     )
 
     logger.info(f"Sending data to {address}:{port}")
-    logger.debug("Data:" + str(data))
 
     resp = PIPADClient(port, address).deploy(req)
 
@@ -264,7 +267,7 @@ def main(config_path: str = None):
     else:
         config = quest()
     data = build(config)
-    send(data)
+    return send(data)
 
 
 if __name__ == "__main__":
