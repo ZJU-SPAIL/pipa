@@ -73,5 +73,6 @@ message DeployResp {
   string username = 2;
   string time = 3;
   string hash = 4;
-  uint32 status_code = 5;
+  string upload_datetime = 5;
+  uint32 status_code = 6;
 }

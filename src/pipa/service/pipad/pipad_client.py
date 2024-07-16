@@ -181,7 +181,7 @@ if __name__ == "__main__":
     if resp is not None:
         if resp.status_code == 200:
             logger.info(
-                f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
+                f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}, Datetime: {resp.upload_datetime}"
             )
         else:
             logger.warning(f"PIPAD server resp faild: {resp.message}")
