@@ -19,6 +19,7 @@ server = PIPADServer(data_location=dlocation, port=port, address=address, databa
 from concurrent import futures
 from typing import Optional, Any
 from pipa.common.logger import logger, stream_handler
+from datetime import datetime
 import time
 import os
 import requests
@@ -117,7 +118,7 @@ class PIPADServer:
                     logger.debug(f"{e}")
                     t = "TEXT"
                 if i == 0:
-                    hs_prefix = f"{value}"
+                    record_prefix = f"{value}"
                 try:
                     vtsqlites = value_to_sqlite_str(value)
                 except NotImplementedError as e:
@@ -128,12 +129,16 @@ class PIPADServer:
                 ks.append(f"{name}")
                 vs.append(f"{vtsqlites}")
             kvpairs.append(f"upload_time{upload_time}")
-            hs_txt = f"'{hs_prefix}-{hash(tuple(kvpairs))}'"
+            hasht = f"'{hash(tuple(kvpairs))}'"
+            upload_datetime = datetime.fromtimestamp(upload_time).strftime(
+                r"%Y-%m-%d %H:%M:%S"
+            )
+            record = f"{record_prefix}-{upload_datetime}"
             kvs = ",".join(params)
             kss = ",".join(ks)
             vss = ",".join(vs)
-            create_table_comm = f"CREATE TABLE IF NOT EXISTS {self._outer._table} (hash TEXT PRIMARY KEY,upload_time INTEGER,{kvs})"
-            insert_table_comm = f"INSERT INTO {self._outer._table} (hash,upload_time,{kss}) VALUES ({hs_txt},{upload_time},{vss})"
+            create_table_comm = f"CREATE TABLE IF NOT EXISTS {self._outer._table} (hash TEXT PRIMARY KEY,upload_time INTEGER,record TEXT,{kvs})"
+            insert_table_comm = f"INSERT INTO {self._outer._table} (hash,upload_time,record,{kss}) VALUES ({hasht},{upload_time},{value_to_sqlite_str(record)},{vss})"
             logger.debug(f"Request to Table component: {kvs}")
             logger.debug(f"Request's Keys: {kss}")
             logger.debug(f"Request's Values: {vss}")
@@ -153,8 +158,9 @@ class PIPADServer:
             return pipadlib.DeployResp(
                 message="deploy success",
                 username=request.username,
-                hash=hs_txt,
+                hash=hasht,
                 time=f"{upload_time}",
+                upload_datetime=upload_datetime,
                 status_code=200,
             )
 

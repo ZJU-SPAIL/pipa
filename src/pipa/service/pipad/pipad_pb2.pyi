@@ -233,16 +233,25 @@ class DeployRequest(_message.Message):
     ) -> None: ...
 
 class DeployResp(_message.Message):
-    __slots__ = ("message", "username", "time", "hash", "status_code")
+    __slots__ = (
+        "message",
+        "username",
+        "time",
+        "hash",
+        "upload_datetime",
+        "status_code",
+    )
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     USERNAME_FIELD_NUMBER: _ClassVar[int]
     TIME_FIELD_NUMBER: _ClassVar[int]
     HASH_FIELD_NUMBER: _ClassVar[int]
+    UPLOAD_DATETIME_FIELD_NUMBER: _ClassVar[int]
     STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
     message: str
     username: str
     time: str
     hash: str
+    upload_datetime: str
     status_code: int
     def __init__(
         self,
@@ -250,5 +259,6 @@ class DeployResp(_message.Message):
         username: _Optional[str] = ...,
         time: _Optional[str] = ...,
         hash: _Optional[str] = ...,
+        upload_datetime: _Optional[str] = ...,
         status_code: _Optional[int] = ...,
     ) -> None: ...
