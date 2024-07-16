@@ -174,66 +174,78 @@ def send(data: dict, addr: str = None, port: int = 50051):
         address = data["pipad_addr"]
     if not port:
         port = data["pipad_port"]
-
-    return PIPADClient(port, address).deploy(
-        pipadlib.DeployRequest(
-            transactions=data["transactions"],
-            throughput=data["throughput"],
-            used_threads=data["used_threads"],
-            run_time=data["run_time"],
-            cycles=data["cycles"],
-            instructions=data["instructions"],
-            cycles_per_second=data["cycles_per_second"],
-            instructions_per_second=data["instructions_per_second"],
-            CPI=data["CPI"],
-            cycles_per_requests=data["cycles_per_requests"],
-            path_length=data["path_length"],
-            cpu_frequency_mhz=data["cpu_frequency_mhz"],
-            cpu_usr=data[r"%usr"],
-            cpu_nice=data[r"%nice"],
-            cpu_sys=data[r"%sys"],
-            cpu_iowait=data[r"%iowait"],
-            cpu_steal=data[r"%steal"],
-            cpu_irq=data[r"%irq"],
-            cpu_soft=data[r"%soft"],
-            cpu_guest=data[r"%guest"],
-            cpu_gnice=data[r"%gnice"],
-            cpu_idle=data[r"%idle"],
-            cpu_util=data[r"%util"],
-            kbmemfree=data["kbmemfree"],
-            kbavail=data["kbavail"],
-            kbmemused=data["kbmemused"],
-            percent_memused=data[r"%memused"],
-            kbbuffers=data["kbbuffers"],
-            kbcached=data["kbcached"],
-            kbcommit=data["kbcommit"],
-            percent_commit=data[r"%commit"],
-            kbactive=data["kbactive"],
-            kbinact=data["kbinact"],
-            kbdirty=data["kbdirty"],
-            kbanonpg=data["kbanonpg"],
-            kbslab=data["kbslab"],
-            kbkstack=data["kbkstack"],
-            kbpgtbl=data["kbpgtbl"],
-            kbvmused=data["kbvmused"],
-            tps=data["tps"],
-            rkB_s=data[r"rkB/s"],
-            wkB_s=data[r"wkB/s"],
-            dkB_s=data[r"dkB/s"],
-            areq_sz=data["areq-sz"],
-            aqu_sz=data["aqu-sz"],
-            disk_await=data["disk_await"],
-            percent_disk_util=data[r"%disk_util"],
-            workload=data["workload"],
-            data_location=data["data_location"],
-            dev=data["DEV"],
-            hw_info=data["hw_info"],
-            sw_info=data["sw_info"],
-            platform=data["platform"],
-            comment=data["comment"],
-            username=data["username"],
-        )
+    req = pipadlib.DeployRequest(
+        transactions=data["transactions"],
+        throughput=data["throughput"],
+        used_threads=data["used_threads"],
+        run_time=data["run_time"],
+        cycles=data["cycles"],
+        instructions=data["instructions"],
+        cycles_per_second=data["cycles_per_second"],
+        instructions_per_second=data["instructions_per_second"],
+        CPI=data["CPI"],
+        cycles_per_requests=data["cycles_per_requests"],
+        path_length=data["path_length"],
+        cpu_frequency_mhz=data["cpu_frequency_mhz"],
+        cpu_usr=data[r"%usr"],
+        cpu_nice=data[r"%nice"],
+        cpu_sys=data[r"%sys"],
+        cpu_iowait=data[r"%iowait"],
+        cpu_steal=data[r"%steal"],
+        cpu_irq=data[r"%irq"],
+        cpu_soft=data[r"%soft"],
+        cpu_guest=data[r"%guest"],
+        cpu_gnice=data[r"%gnice"],
+        cpu_idle=data[r"%idle"],
+        cpu_util=data[r"%util"],
+        kbmemfree=data["kbmemfree"],
+        kbavail=data["kbavail"],
+        kbmemused=data["kbmemused"],
+        percent_memused=data[r"%memused"],
+        kbbuffers=data["kbbuffers"],
+        kbcached=data["kbcached"],
+        kbcommit=data["kbcommit"],
+        percent_commit=data[r"%commit"],
+        kbactive=data["kbactive"],
+        kbinact=data["kbinact"],
+        kbdirty=data["kbdirty"],
+        kbanonpg=data["kbanonpg"],
+        kbslab=data["kbslab"],
+        kbkstack=data["kbkstack"],
+        kbpgtbl=data["kbpgtbl"],
+        kbvmused=data["kbvmused"],
+        tps=data["tps"],
+        rkB_s=data[r"rkB/s"],
+        wkB_s=data[r"wkB/s"],
+        dkB_s=data[r"dkB/s"],
+        areq_sz=data["areq-sz"],
+        aqu_sz=data["aqu-sz"],
+        disk_await=data["disk_await"],
+        percent_disk_util=data[r"%disk_util"],
+        workload=data["workload"],
+        data_location=data["data_location"],
+        dev=data["DEV"],
+        hw_info=data["hw_info"],
+        sw_info=data["sw_info"],
+        platform=data["platform"],
+        comment=data["comment"],
+        username=data["username"],
     )
+
+    logger.info(f"Sending data to {address}:{port}")
+    logger.debug("Data:" + str(data))
+
+    resp = PIPADClient(port, address).deploy(req)
+
+    if resp is not None:
+        if resp.status_code == 200:
+            logger.info("Upload success.")
+            logger.info(
+                f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
+            )
+        else:
+            logger.warning(f"Upload faild: {resp.message}")
+    return resp
 
 
 def main(config_path: str = None):
