@@ -300,16 +300,15 @@ def main(config_path: str = None, verbose: bool = False):
         config = quest()
 
     if verbose:
-        logger.setLevel("DEBUG")
-        logger.debug("Verbose mode enabled.")
-        logger.debug("Configuration:")
-        logger.debug(str(config))
+        print("Verbose mode enabled.")
+        print("Configuration:")
+        print(config)
 
     data = build(config)
 
     if verbose:
-        logger.debug("Data:")
-        logger.debug(str(data))
+        print("Data:")
+        print(str(data))
 
     return send(data)
 
