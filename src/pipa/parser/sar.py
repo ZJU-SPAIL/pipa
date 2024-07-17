@@ -207,6 +207,8 @@ class SarData:
         """
         df = self.get_CPU_frequency("average")
         df = df[df["CPU"].isin([str(t) for t in threads])] if threads else df
+        if df.empty:
+            return {"cpu_frequency_mhz": 0}
         return {"cpu_frequency_mhz": df["MHz"].mean()}
 
     def get_CPU_util_freq(self, data_type: str = "detail"):

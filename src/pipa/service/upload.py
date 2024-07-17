@@ -96,6 +96,13 @@ def quest():
 
     platform = questionary.text("What's the platform?", default="IceLake 8383C").ask()
 
+    cpu_frequency_mhz = None
+    if "huawei" in platform.lower():
+        cpu_frequency_mhz = questionary.text(
+            "What's the CPU frequency in MHz?", default="2600"
+        ).ask()
+        cpu_frequency_mhz = int(cpu_frequency_mhz)
+
     comment = questionary.text("Any comments?").ask()
 
     pipad_server = questionary.text("What's the PIPAD server address?").ask()
@@ -111,6 +118,7 @@ def quest():
         "hw_info": hw_info,
         "sw_info": sw_info,
         "platform": platform,
+        "cpu_frequency_mhz": cpu_frequency_mhz,
         "comment": comment,
         "pipad_addr": pipad_server,
         "pipad_port": pipad_port,
@@ -161,9 +169,15 @@ def build(config: dict):
         logger.warning("perf.script does not exist.")
         perf_script_path = None
 
+    cpu_frequency_mhz = config.get("cpu_frequency_mhz", None)
+
     data = PIPAShuData(perf_stat_path, sar_path, perf_script_path).get_metrics(
-        config["transaction"], config["cores"], dev=config["dev"]
+        config["transaction"],
+        config["cores"],
+        dev=config["dev"],
+        freq_MHz=cpu_frequency_mhz,
     )
+
     config.pop("transaction")
     config.pop("cores")
     config.pop("dev")

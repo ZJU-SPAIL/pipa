@@ -39,6 +39,7 @@ class PIPAShuData:
         threads: list,
         run_time: int = None,
         dev: str = None,
+        freq_MHz: int = None,
     ):
         """
         Get the performance statistics metrics.
@@ -48,6 +49,7 @@ class PIPAShuData:
             threads (list): The list of threads.
             run_time (int): The run time.
             dev (str): The device name.
+            freq_MHz (int): The frequency in MHz.
 
         Returns:
             dict: The performance statistics metrics.
@@ -80,6 +82,10 @@ class PIPAShuData:
 
         sar_cpu = self.sar_data.get_CPU_util_avg_summary(threads)
         sar_freq = self.sar_data.get_cpu_freq_avg(threads)
+
+        if sar_freq["cpu_frequency_mhz"] == 0 and freq_MHz:
+            sar_freq = freq_MHz
+
         sar_mem = self.sar_data.get_memory_usage_avg()
         sar_disk = self.sar_data.get_disk_usage_avg(dev)
 
