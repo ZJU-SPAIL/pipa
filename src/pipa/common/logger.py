@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Set the logging level
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 # Create a stream handler and set its level
 stream_handler = logging.StreamHandler()

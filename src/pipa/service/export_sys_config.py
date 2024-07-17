@@ -88,5 +88,4 @@ def run_export_config_script(
         os.makedirs(destination)
     with open(shell_script_path, "w") as f:
         write_export_config_script(f, destination)
-    run_command("bash /tmp/pipa-export.sh")
-    return destination
+    return run_command("bash /tmp/pipa-export.sh")

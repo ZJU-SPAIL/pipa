@@ -8,17 +8,19 @@ from pandarallel import pandarallel
 
 
 class PerfScriptData:
-    def __init__(self, parsed_script_path: str):
+    def __init__(
+        self, parsed_script_path: str, threads_num=min(12, NUM_CORES_PHYSICAL)
+    ):
         if not os.path.exists(parsed_script_path):
             logger.error(f"File not found: {parsed_script_path}")
             raise FileNotFoundError()
-        self._perf_script_data = parse_perf_script_file(parsed_script_path)
+        self._perf_script_data = parse_perf_script_file(parsed_script_path, threads_num)
 
         if len(self._perf_script_data) == 0:
             logger.warning("No data found in the perf script file.")
 
         if len(self._perf_script_data) >= 10**6:
-            threads_num = min(12, NUM_CORES_PHYSICAL)
+
             logger.info(f"Using pandarallel to speed up, threads_num is {threads_num}.")
             pandarallel.initialize(nb_workers=threads_num)
 
