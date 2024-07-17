@@ -1,5 +1,6 @@
 import questionary
 import os
+from rich import print
 
 config_template = """# PIPA-Shu Configuration
 # Use pipa generate to generate data collection script based on this configuration.
@@ -50,11 +51,6 @@ export_config: True # Whether to export the configuration after parsing.
 """
 
 
-def write_config(content: str, config_file="config-pipa-shu.yaml"):
-    with open(config_file, "w") as f:
-        f.write(content)
-
-
 def query_filepath():
     workspace = questionary.text(
         "Where do you want to store the configuration template? (Default: ./)\n", "./"
@@ -69,7 +65,10 @@ def generate_template(content: str, filename: str):
     config_file_path = os.path.join(workspace, filename)
     if not os.path.exists(workspace):
         os.makedirs(workspace)
-    return write_config(content, config_file_path)
+    with open(config_file_path, "w") as f:
+        result = f.write(content)
+    print(f"Template has been generated at {config_file_path}")
+    return result
 
 
 def generate_pipashu_template():
