@@ -2,7 +2,7 @@ import questionary
 import os
 from rich import print
 
-config_template = """# PIPA-Shu Configuration
+CONFIG_TEMPLATE = """# PIPA-Shu Configuration
 # Use pipa generate to generate data collection script based on this configuration.
 # Command Example: pipa generate --config_path=./data/config-pipa-shu.yaml
 
@@ -94,10 +94,10 @@ def generate_pipashu_template():
     Returns:
         int: The number of characters written to the template file.
     """
-    return generate_template(config_template, "config-pipa-shu.yaml")
+    return generate_template(CONFIG_TEMPLATE, "config-pipa-shu.yaml")
 
 
-upload_template = """# PIPA-Shu Upload Configuration
+UPLOAD_TEMPLATE = """# PIPA-Shu Upload Configuration
 # Use pipa upload to upload the data to PIPAD server based on this configuration.
 # Command Example: pipa upload --config_path=./data/config-upload.yaml
 workload: rocksdb
@@ -142,4 +142,4 @@ def generate_upload_template(filename: str = "config-upload.yaml"):
     Returns:
         str: The generated template as a string.
     """
-    return generate_template(upload_template, filename)
+    return generate_template(UPLOAD_TEMPLATE, filename)
