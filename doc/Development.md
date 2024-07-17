@@ -58,5 +58,6 @@
 ### Version 0.0.10
 
 * [x] Fix tidy data
+* [x] Improve Grafana table format
 * [ ] Improve unit tests
 * [ ] Improve documentation
