@@ -50,9 +50,9 @@ export_config: True # Whether to export the configuration after parsing.
 """
 
 
-def write_config(config_file="config-pipa-shu.yaml"):
+def write_config(content: str, config_file="config-pipa-shu.yaml"):
     with open(config_file, "w") as f:
-        f.write(config_template)
+        f.write(content)
 
 
 def query_filepath():
@@ -64,34 +64,44 @@ def query_filepath():
     return workspace
 
 
-def generate_template(filename: str):
+def generate_template(content: str, filename: str):
     workspace = query_filepath()
     config_file_path = os.path.join(workspace, filename)
     if not os.path.exists(workspace):
         os.makedirs(workspace)
-    return write_config(config_file_path)
+    return write_config(content, config_file_path)
 
 
 def generate_pipashu_template():
-    return generate_template("config-pipa-shu.yaml")
+    return generate_template(config_template, "config-pipa-shu.yaml")
 
 
-upload_template = """workload: rocksdb
+upload_template = """# PIPA-Shu Upload Configuration
+# Use pipa upload to upload the data to PIPAD server based on this configuration.
+# Command Example: pipa upload --config_path=./data/config-upload.yaml
+workload: rocksdb
 # The name of the workload.
 transaction: 7561946
 # The number of transactions.
 data_location: /path/to/data/collected/by/pipashu
 # The location of the data collected by PIPAShu.
+
 cores: [36, 37, 38, 39]
 # The numbers of logical cores used in the workload.
 dev: sdc
 # The used disk device name.
+
 hw_info: 1*4*1
 # The hardware configuration (sockets*cores*SMT).
 sw_info: RocksDB 7.9.2 build in release mode, debug_level=0, threads_num=16, db_bench with benchmark.sh
 # The software configuration.
+
 platform: Intel SPR 4510
 # The platform user used.
+cpu_frequency_mhz: 2600
+# The CPU frequency in MHz.
+# Only needed when the platform is Huawei.
+
 comment: "This is a template for the upload configuration."
 # Any comments.
 pipad_addr: 10.82.77.113
@@ -101,5 +111,5 @@ pipad_port: 50051
 """
 
 
-def generate_upload_template():
-    return generate_template("config-upload.yaml")
+def generate_upload_template(filename: str = "config-upload.yaml"):
+    return generate_template(upload_template, filename)
