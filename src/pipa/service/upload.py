@@ -117,6 +117,21 @@ def quest():
     }
 
 
+def build_with_config_path(config_path: str):
+    """
+    Build with a configuration file path.
+
+    Args:
+        config_path (str): The path to the configuration file.
+
+    Returns:
+        The result of the build process.
+    """
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return build(config)
+
+
 def build(config: dict):
     """
     Builds the data for upload based on the given configuration.
@@ -253,7 +268,7 @@ def send(data: dict, addr: str = None, port: int = 50051):
     return resp
 
 
-def main(config_path: str = None):
+def main(config_path: str = None, verbose: bool = False):
     """
     This is the main function for the upload service in the pipa project.
 
