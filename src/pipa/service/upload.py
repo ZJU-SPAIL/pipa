@@ -247,7 +247,9 @@ def send(data: dict, addr: str = None, port: int = 50051):
                 f"Message: {resp.message}, Username: {resp.username}, Hash: {resp.hash}, Time: {resp.time}"
             )
         else:
-            logger.warning(f"Upload faild: {resp.message}")
+            logger.warning(
+                f"Upload failed: {resp.message} Status: {resp.status_code} time: {resp.time}"
+            )
     return resp
 
 
