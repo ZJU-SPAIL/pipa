@@ -2,7 +2,7 @@ import pandas as pd
 import seaborn as sns
 import re
 from pipa.common.cmd import run_command
-from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 import multiprocessing
 
 
@@ -73,6 +73,7 @@ class SarData:
 
         Args:
             data_type (str, optional): The type of CPU utilization data to retrieve. Defaults to "detail".
+            Valid values are "detail", "raw", and "average".
 
         Returns:
             DataFrame: The filtered DataFrame containing the CPU utilization data.
@@ -93,6 +94,39 @@ class SarData:
         )
         util[r"%util"] = 100 - util[r"%idle"]
         return util
+
+    def get_CPU_util_avg_by_threads(self, threads: list = None):
+        """
+        Retrieves the average CPU utilization detailed data for the specified threads.
+
+        Args:
+            threads (list): List of CPU threads to retrieve the utilization data for.
+                            If None, retrieves the utilization data for all threads. Defaults to None.
+
+        Returns:
+            DataFrame: The filtered DataFrame containing the CPU utilization data for the specified threads.
+        """
+        util = self.get_CPU_utilization("average")
+        util_threads = (
+            util[util["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else util[util["CPU"] == "all"]
+        )
+        return util_threads
+
+    def get_CPU_util_avg_summary(self, threads: list = None):
+        """
+        Retrieves the average CPU utilization summary for the specified threads.
+
+        Args:
+            threads (list, optional): List of CPU threads to retrieve the utilization summary for. If None, retrieves
+                                      the summary for all threads. Defaults to None.
+
+        Returns:
+            dict: A dictionary containing the average CPU utilization summary.
+        """
+        util_threads = self.get_CPU_util_avg_by_threads(threads)
+        return util_threads.drop(columns=["timestamp", "CPU"]).mean().to_dict()
 
     def plot_CPU_util_time(self, threads: list = None):
         """
@@ -160,6 +194,21 @@ class SarData:
         else:
             sns.lineplot(data=df, x="timestamp", y="MHz")
 
+    def get_cpu_freq_avg(self, threads: list = None):
+        """
+        Returns the average CPU frequency data for the specified threads.
+
+        Args:
+            threads (list, optional): List of CPU threads to retrieve the frequency data for. If None, retrieves the
+                                      frequency data for all threads. Defaults to None.
+
+        Returns:
+            dict: A dictionary containing the average CPU frequency data for the specified threads.
+        """
+        df = self.get_CPU_frequency("average")
+        df = df[df["CPU"].isin([str(t) for t in threads])] if threads else df
+        return {"cpu_frequency_mhz": df["MHz"].mean()}
+
     def get_CPU_util_freq(self, data_type: str = "detail"):
         """
         Returns the CPU utilization and frequency data.
@@ -206,6 +255,19 @@ class SarData:
             }
         )
 
+    def get_memory_usage_avg(self):
+        """
+        Returns the average memory usage data.
+
+        Returns:
+            dict: A dictionary containing the average memory usage data.
+        """
+        return (
+            self.get_memory_usage("average")
+            .drop(columns=["timestamp"])
+            .to_dict(orient="records")[0]
+        )
+
     def plot_memory_usage(self):
         """
         Plots the memory usage over time.
@@ -214,7 +276,7 @@ class SarData:
         df = trans_time_to_seconds(df)
         sns.lineplot(data=df, x="timestamp", y=r"%memused")
 
-    def get_disk_usage(self, data_type: str = "detail"):
+    def get_disk_usage(self, dev: str = None, data_type: str = "detail"):
         """
         Returns the disk usage data.
 
@@ -224,7 +286,7 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the disk usage data.
         """
-        return self.filter_dataframe(self.sar_data[11], data_type).astype(
+        df = self.filter_dataframe(self.sar_data[11], data_type).astype(
             {
                 "tps": "float64",
                 r"rkB/s": "float64",
@@ -235,6 +297,24 @@ class SarData:
                 "await": "float64",
                 r"%util": "float64",
             }
+        )
+        return df[df["DEV"] == dev] if dev else df
+
+    def get_disk_usage_avg(self, dev: str = None):
+        """
+        Returns the average disk usage data.
+
+        Args:
+            dev (str, optional): The disk device to retrieve the average data for. Defaults to None.
+
+        Returns:
+            pd.DataFrame: Dataframe containing the average disk usage data.
+        """
+        return (
+            self.get_disk_usage(dev, "average")
+            .drop(columns=["timestamp"])
+            .rename(columns={"%util": "%disk_util", "await": "disk_await"})
+            .to_dict(orient="records")[0]
         )
 
     def plot_disk_usage(self, dev: str = None, metrics="tps"):
@@ -259,7 +339,7 @@ def parse_sar_bin_to_txt(sar_bin_path: str):
     Returns:
         list: List of lines in the SAR binary file.
     """
-    sar_lines = run_command(f"sar -A -f {sar_bin_path}").split("\n")
+    sar_lines = run_command(f"LC_ALL='C' sar -A -f {sar_bin_path}").split("\n")
     return sar_lines
 
 
@@ -311,9 +391,9 @@ def add_post_fix(sar_line: list, len_columns: int):
 
 
 def process_subtable(
-    sar_columns: list, sar_blocks: list, processes_num=NB_PHYSICAL_CORES // 2
+    sar_columns: list, sar_blocks: list, processes_num=min(12, NUM_CORES_PHYSICAL)
 ):
-    if len(sar_blocks) <= 1e6 or processes_num <= 1:
+    if len(sar_blocks) <= 10**6 or processes_num <= 1:
         # if the number of lines is less than 1e6, use single process
         return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
     pool = multiprocessing.Pool(processes=processes_num)

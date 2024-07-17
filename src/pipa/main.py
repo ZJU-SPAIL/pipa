@@ -1,18 +1,48 @@
 import fire
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.service.export_sys_config import run_export_config_script
+from pipa.service.upload import main as pipa_upload
+from pipa.common.utils import handle_user_cancelled
 from pipa.__about__ import __version__
 from rich import print
 
 
 class PipaCLI:
-    def generate(self):
-        # Generate the performance collection scripts
-        generate_sh()
+    """
+    The PipaCLI represents the command-line interface for PIPA (Platform Integrated Performance Analytics).
+    It provides methods for generating performance collection scripts, exporting system configuration,
+    uploading performance data, and displaying help and version information.
+    Developed by: SPAIL, ZJU https://github.com/ZJU-SPAIL
 
+    Usage:
+      pipa generate
+      pipa export
+      pipa upload
+      pipa version
+      pipa help
+
+    Options:
+      generate  Generate the performance collection scripts
+      export    Export system configuration
+      upload    Upload the performance data to PIPAD server
+      version   Show the version of PIPA
+      help      Show this help message and exit
+    """
+
+    @handle_user_cancelled
+    def generate(self, config_path: str = None):
+        # Generate the performance collection scripts
+        generate_sh(config_path)
+
+    @handle_user_cancelled
     def export(self):
         # Export system configuration
-        run_export_config_script("/tmp/pipa-export-sysconfig.sh")
+        run_export_config_script()
+
+    @handle_user_cancelled
+    def upload(self, config_path: str = None):
+        # Upload the performance data
+        pipa_upload(config_path)
 
     def help(self):
         # Show this help message and exit
@@ -21,11 +51,13 @@ class PipaCLI:
         print("Usage:")
         print("  pipa generate")
         print("  pipa export")
+        print("  pipa upload")
         print("  pipa version")
         print("  pipa help")
         print("Options:")
         print("  generate  Generate the performance collection scripts")
         print("  export    Export system configuration")
+        print("  upload    Upload the performance data to PIPAD server")
         print("  version   Show the version of PIPA")
         print("  help      Show this help message and exit")
 

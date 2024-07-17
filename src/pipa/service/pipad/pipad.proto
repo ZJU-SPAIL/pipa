@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package pipa;
+
+service PIPAD {
+  rpc Deploy(DeployRequest) returns (DeployResp) {}
+
+  rpc DeployStreamReply(DeployRequest) returns (stream DeployResp) {}
+
+  rpc DeployBidiStream(stream DeployRequest) returns (stream DeployResp) {}
+}
+
+message DeployRequest {
+  string workload = 1; // the first one must be workload
+  uint64 transactions = 2;
+  double throughput = 3;
+  repeated uint32 used_threads = 4;
+  double run_time = 5;
+  uint64 cycles = 6;
+  uint64 instructions = 7;
+  double cycles_per_second = 8;
+  double instructions_per_second = 9;
+  double CPI = 10;
+  double cycles_per_requests = 11;
+  double path_length = 12;
+  double cpu_frequency_mhz = 13;
+  optional double cpu_usr = 14;
+  optional double cpu_nice = 15;
+  optional double cpu_sys = 16;
+  optional double cpu_iowait = 17;
+  optional double cpu_steal = 18;
+  optional double cpu_irq = 19;
+  optional double cpu_soft = 20;
+  optional double cpu_guest = 21;
+  optional double cpu_gnice = 22;
+  optional double cpu_idle = 23;
+  optional double cpu_util = 24;
+  optional uint64 kbmemfree = 25;
+  optional uint64 kbavail = 26;
+  optional uint64 kbmemused = 27;
+  optional double percent_memused = 28;
+  optional uint64 kbbuffers = 29;
+  optional uint64 kbcached = 30;
+  optional uint64 kbcommit = 31;
+  optional double percent_commit = 32;
+  optional uint64 kbactive = 33;
+  optional uint64 kbinact = 34;
+  optional uint64 kbdirty = 35;
+  optional uint64 kbanonpg = 36;
+  optional uint64 kbslab = 37;
+  optional uint64 kbkstack = 38;
+  optional uint64 kbpgtbl = 39;
+  optional uint64 kbvmused = 40;
+  string dev = 41;
+  optional double tps = 42;
+  optional double rkB_s = 43;
+  optional double wkB_s = 44;
+  optional double dkB_s = 45;
+  optional double areq_sz = 46;
+  optional double aqu_sz = 47;
+  optional double disk_await = 48;
+  optional double percent_disk_util = 49;
+  string data_location = 50;
+  string hw_info = 51;
+  string sw_info = 52;
+  string platform = 53;
+  optional string comment = 54;
+  string username = 55;
+}
+
+message DeployResp { 
+  string message = 1;
+  string username = 2;
+  string time = 3;
+  string hash = 4;
+  string upload_datetime = 5;
+  uint32 status_code = 6;
+}

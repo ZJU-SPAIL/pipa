@@ -1,0 +1,883 @@
+{
+    "__inputs": [
+        {
+            "name": "DS_EXAMPLE.DB",
+            "label": "example.db",
+            "description": "",
+            "type": "datasource",
+            "pluginId": "frser-sqlite-datasource",
+            "pluginName": "SQLite"
+        }
+    ],
+    "__elements": {},
+    "__requires": [
+        {
+            "type": "datasource",
+            "id": "frser-sqlite-datasource",
+            "name": "SQLite",
+            "version": "3.5.0"
+        },
+        {
+            "type": "grafana",
+            "id": "grafana",
+            "name": "Grafana",
+            "version": "10.2.2"
+        },
+        {
+            "type": "panel",
+            "id": "piechart",
+            "name": "Pie chart",
+            "version": ""
+        },
+        {
+            "type": "panel",
+            "id": "table",
+            "name": "Table",
+            "version": ""
+        }
+    ],
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "description": "Metrics visualization of PIPA",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "liveNow": false,
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 6,
+            "panels": [],
+            "title": "All Data",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "center",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "HW Config"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 174
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Owner"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 72
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Workload"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 95
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 24,
+                "x": 0,
+                "y": 1
+            },
+            "id": 5,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                    {
+                        "desc": true,
+                        "displayName": "path_length"
+                    }
+                ]
+            },
+            "pluginVersion": "10.2.2",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Throught performance\", \nthroughput as \"TPC(trans per sec) performance\", \ncycles_per_second AS \"cycles per sec\", \ninstructions_per_second AS \"insts_per_sec\", \ncpu_frequency_mhz AS \"CPU Freq(MHZ)\", \nCPI, cycles_per_requests AS CPR, \npath_length, platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\ncomment AS \"Comment\" from \"$Table\";",
+                    "queryType": "table",
+                    "rawQueryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Throught performance\", \nthroughput as \"TPC(trans per sec) performance\", \ncycles_per_second AS \"cycles per sec\", \ninstructions_per_second AS \"insts_per_sec\", \ncpu_frequency_mhz AS \"CPU Freq(MHZ)\", \nCPI, cycles_per_requests AS CPR, \npath_length, platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\ncomment AS \"Comment\" from \"$Table\";",
+                    "refId": "A",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "Show Me Your Datas",
+            "type": "table"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 12
+            },
+            "id": 7,
+            "panels": [],
+            "title": "MyData",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "center",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Owner"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 74
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Workload"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 103
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Platform"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 13
+            },
+            "id": 8,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": []
+            },
+            "pluginVersion": "10.2.2",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "SELECT username AS Owner, \nworkload AS Workload,\ntransactions AS \"Throught/Latency performance\", \nthroughput AS \"TPC(trans per sec) performance\", \ncycles_per_second AS \"cycles per sec\", \ninstructions_per_second AS \"insts_per_sec\", \ncpu_frequency_mhz AS \"CPU Freq(MHZ)\", \nCPI, cycles_per_requests AS CPR, path_length,\nplatform AS Platform, \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT username AS Owner, \nworkload AS Workload,\ntransactions AS \"Throught/Latency performance\", \nthroughput AS \"TPC(trans per sec) performance\", \ncycles_per_second AS \"cycles per sec\", \ninstructions_per_second AS \"insts_per_sec\", \ncpu_frequency_mhz AS \"CPU Freq(MHZ)\", \nCPI, cycles_per_requests AS CPR, path_length,\nplatform AS Platform, \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE hash = \"$Record\";",
+                    "refId": "A",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "Show Me My Data",
+            "type": "table"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "description": "CPU Utilization",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "fieldMinMax": false,
+                    "mappings": [
+                        {
+                            "options": {
+                                "NONE": {
+                                    "index": 0,
+                                    "text": "0"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "min": 0,
+                    "noValue": "0",
+                    "unit": "%"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 3,
+                "x": 0,
+                "y": 17
+            },
+            "id": 9,
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "pieType": "pie",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "SELECT cpu_usr AS \"usr%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_usr AS \"usr%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "user",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_nice AS \"nice%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_nice AS \"nice%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "nice",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_sys AS \"sys%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_sys AS \"sys%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "sys",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_iowait AS \"iowait%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_iowait AS \"iowait%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "iowait",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_steal AS \"steal%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_steal AS \"steal%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "steal",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_irq AS \"irq%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_irq AS \"irq%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "irq",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_soft AS \"soft%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_soft AS \"soft%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "soft",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_guest AS \"guest%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_guest AS \"guest%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "guest",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_gnice AS \"gnice%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_gnice AS \"gnice%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "gnice",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT cpu_idle AS \"idle%\" FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT cpu_idle AS \"idle%\" FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "idle",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "CPU Utils",
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "description": "Average Memory Utilization",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "deckbytes"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 3,
+                "x": 3,
+                "y": 17
+            },
+            "id": 12,
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "pieType": "pie",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "SELECT kbmemfree FROM $Table;",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbmemfree FROM $Table;",
+                    "refId": "Memfree",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT kbmemused FROM $Table;",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbmemused FROM $Table;",
+                    "refId": "Memused",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT kbbuffers FROM $Table;",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbbuffers FROM $Table;",
+                    "refId": "Buffers",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT kbcached FROM $Table;",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbcached FROM $Table;",
+                    "refId": "Cached",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                },
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "hide": false,
+                    "queryText": "SELECT kbslab FROM $Table;",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbslab FROM $Table;",
+                    "refId": "Slab",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "Avg Mem Utils",
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "description": "Memory Utilization",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "center",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 18,
+                "x": 6,
+                "y": 17
+            },
+            "id": 10,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true
+            },
+            "pluginVersion": "10.2.2",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "SELECT kbavail, percent_memused, kbactive, kbinact, kbdirty, kbanonpg, kbkstack, kbpgtbl, kbvmused, kbcommit, percent_commit FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT kbavail, percent_memused, kbactive, kbinact, kbdirty, kbanonpg, kbkstack, kbpgtbl, kbvmused, kbcommit, percent_commit FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "A",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "Mem Utils",
+            "type": "table"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${DS_EXAMPLE.DB}"
+            },
+            "description": "DIsk I/O Utilization",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "center",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "inspect": false
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 18,
+                "x": 6,
+                "y": 21
+            },
+            "id": 11,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true
+            },
+            "pluginVersion": "10.2.2",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "frser-sqlite-datasource",
+                        "uid": "${DS_EXAMPLE.DB}"
+                    },
+                    "queryText": "SELECT dev, tps, disk_await, percent_disk_util, rkB_s, wkB_s, dkB_s, areq_sz, aqu_sz FROM $Table WHERE hash = \"$Record\";",
+                    "queryType": "table",
+                    "rawQueryText": "SELECT dev, tps, disk_await, percent_disk_util, rkB_s, wkB_s, dkB_s, areq_sz, aqu_sz FROM $Table WHERE hash = \"$Record\";",
+                    "refId": "A",
+                    "timeColumns": [
+                        "time",
+                        "ts"
+                    ]
+                }
+            ],
+            "title": "DIsk I/O Utils",
+            "type": "table"
+        }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 38,
+    "tags": [],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "selected": false,
+                    "text": "example.db",
+                    "value": "e97e35c9-e492-47fc-a0a6-f143727bfb70"
+                },
+                "description": "Dynamically select PIPD Connections",
+                "hide": 0,
+                "includeAll": false,
+                "multi": false,
+                "name": "Database",
+                "options": [],
+                "query": "frser-sqlite-datasource",
+                "queryValue": "",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "type": "datasource"
+            },
+            {
+                "current": {},
+                "datasource": {
+                    "type": "frser-sqlite-datasource",
+                    "uid": "${DS_EXAMPLE.DB}"
+                },
+                "definition": "SELECT name FROM sqlite_master WHERE type = \"table\"",
+                "hide": 0,
+                "includeAll": false,
+                "multi": false,
+                "name": "Table",
+                "options": [],
+                "query": "SELECT name FROM sqlite_master WHERE type = \"table\"",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 0,
+                "type": "query"
+            },
+            {
+                "current": {},
+                "datasource": {
+                    "type": "frser-sqlite-datasource",
+                    "uid": "${DS_EXAMPLE.DB}"
+                },
+                "definition": "SELECT hash FROM $Table;",
+                "hide": 0,
+                "includeAll": false,
+                "multi": false,
+                "name": "Record",
+                "options": [],
+                "query": "SELECT hash FROM $Table;",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 0,
+                "type": "query"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "ShowMeYourPIPA",
+    "uid": "baa63607-6a0d-406c-a505-c4604bf8c1be",
+    "version": 40,
+    "weekStart": ""
+}

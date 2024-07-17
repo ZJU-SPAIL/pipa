@@ -1,8 +1,116 @@
 import pandas as pd
 import re
-from pipa.common.logger import logger
 import multiprocessing
-from pipa.export_config.cpu_config import NB_PHYSICAL_CORES
+import os
+from pipa.common.logger import logger
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pandarallel import pandarallel
+
+
+class PerfScriptData:
+    def __init__(self, parsed_script_path: str):
+        if not os.path.exists(parsed_script_path):
+            logger.error(f"File not found: {parsed_script_path}")
+            raise FileNotFoundError()
+        self._perf_script_data = parse_perf_script_file(parsed_script_path)
+
+        if len(self._perf_script_data) == 0:
+            logger.warning("No data found in the perf script file.")
+
+        if len(self._perf_script_data) >= 10**6:
+            threads_num = min(12, NUM_CORES_PHYSICAL)
+            logger.info(f"Using pandarallel to speed up, threads_num is {threads_num}.")
+            pandarallel.initialize(nb_workers=threads_num)
+
+        self._df_wider = None
+
+    def get_raw_data(self):
+        return self._perf_script_data
+
+    def get_wider_data(self):
+        """
+        Returns a wider version of the performance script data, where the cycles and instructions
+        are merged into a single DataFrame. The DataFrame includes columns for command, pid, cpu,
+        time, cycles, instructions, addr, symbol, dso_short_name, and CPI (cycles per instruction).
+
+        If the wider data has already been computed, it is returned from the cache. Otherwise, the
+        wider data is computed by merging the cycles and instructions DataFrames and calculating
+        the CPI.
+
+        Returns:
+            pandas.DataFrame: The wider version of the performance script data.
+        """
+        if self._df_wider is not None:
+            return self._df_wider
+
+        df = self._perf_script_data
+        df_cycles = df.query("event == 'cycles'")
+        df_insns = df.query("event == 'instructions'")
+        df_wider = (
+            df_cycles.merge(
+                df_insns,
+                on=[
+                    "time",
+                    "cpu",
+                    "command",
+                    "pid",
+                    "addr",
+                    "symbol",
+                    "dso_short_name",
+                ],
+                suffixes=("_cycles", "_insns"),
+            )
+            .drop(columns=["event_cycles", "event_insns"])
+            .rename(
+                {
+                    "value_cycles": "cycles",
+                    "value_insns": "instructions",
+                },
+                axis=1,
+            )
+        )
+
+        df_wider = df_wider[
+            [
+                "command",
+                "pid",
+                "cpu",
+                "time",
+                "cycles",
+                "instructions",
+                "addr",
+                "symbol",
+                "dso_short_name",
+            ]
+        ]
+        df_wider["CPI"] = df_wider["cycles"] / df_wider["instructions"]
+        self._df_wider = df_wider
+        return df_wider
+
+    def get_tidy_data(self, thread_list: list = None):
+        """
+        Returns a tidy version of the data by pivoting the wider data and renaming the columns.
+
+        Args:
+            thread_list (list): A list of hardware thread names to include in the tidy data. If None, all
+                threads are included.
+
+        Returns:
+            pandas.DataFrame: A tidy version of the data.
+        """
+        df_wider = self.get_wider_data()
+
+        if thread_list is not None:
+            thread_list = [int(thread) for thread in thread_list]
+            df_wider = df_wider[df_wider["cpu"].isin(thread_list)]
+            if len(thread_list) == 1:
+                return df_wider
+        df_t = df_wider.pivot_table(
+            index=["time"], columns="cpu", aggfunc="first"
+        ).reset_index()
+        df_t.columns = [f"{col[0]}_{col[1]}" for col in df_t.columns]
+        df_t.rename(columns={"time_": "time"}, inplace=True)
+        return df_t
 
 
 def parse_one_line(line):
@@ -65,7 +173,7 @@ def parse_one_line(line):
     ]
 
 
-def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
+def parse_perf_script_file(parsed_script_path: str, processes_num=NUM_CORES_PHYSICAL):
     """
     Parses a perf script file and returns the data as a pandas DataFrame.
 
@@ -121,7 +229,7 @@ def parse_perf_script_file(parsed_script_path, processes_num=NB_PHYSICAL_CORES):
             "event",
             "addr",
             "symbol",
-            "caller",
+            "dso_short_name",
         ],
     )
 

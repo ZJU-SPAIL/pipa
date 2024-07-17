@@ -6,19 +6,17 @@ import os
 
 
 def quest():
-    workspace, freq_record, events_record, freq_stat, events_stat, annotete = (
-        quest_basic()
-    )
+    config = quest_basic()
 
     set_record = questionary.select(
         "Whether to set the duration of the perf-record run?\n",
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
 
-    record_time, stat_time = None, None
+    duration_record, duration_stat = None, None
 
     if set_record == "Yes":
-        record_time = questionary.text(
+        duration_record = questionary.text(
             "How long do you want to run perf-record? (Default: 120s)\n", "120"
         ).ask()
 
@@ -27,33 +25,29 @@ def quest():
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
     if set_stat == "Yes":
-        stat_time = questionary.text(
+        duration_stat = questionary.text(
             "How long do you want to run perf-stat? (Default: 120s)\n", "120"
         ).ask()
 
-    return (
-        workspace,
-        freq_record,
-        events_record,
-        freq_stat,
-        events_stat,
-        annotete,
-        record_time,
-        stat_time,
-    )
+    config["duration_record"] = duration_record
+    config["duration_stat"] = duration_stat
+
+    return config
 
 
-def generate(
-    workspace,
-    freq_record,
-    events_record,
-    freq_stat,
-    events_stat,
-    annotete,
-    record_time,
-    stat_time,
-):
-    with open(workspace + "/pipa-collect.sh", "w", opener=opener) as f:
+def generate(config: dict):
+    workspace = config["workspace"]
+    freq_record = config["freq_record"]
+    events_record = config["events_record"]
+    annotete = config["annotete"]
+    duration_record = config["duration_record"]
+    stat_time = config["duration_stat"]
+    events_stat = config["events_stat"]
+    count_delta_stat = config["count_delta_stat"]
+    use_emon = config["use_emon"]
+    if use_emon:
+        mpp = config["MPP_HOME"]
+    with open(os.path.join(workspace, "pipa-collect.sh"), "w", opener=opener) as f:
         write_title(f)
 
         f.write("WORKSPACE=" + workspace + "\n")
@@ -64,25 +58,40 @@ def generate(
         f.write(
             f"perf record -e '{events_record}' -a -F"
             + f" {freq_record} -o $WORKSPACE/perf.data"
-            + (f" -- sleep {record_time}\n" if record_time else "\n")
+            + (f" -- sleep {duration_record}\n" if duration_record else "\n")
         )
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
-        f.write(
-            f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {freq_stat} -o $WORKSPACE/perf-stat.csv"
-            + (f" sleep {stat_time}\n" if stat_time else "\n")
-        )
+        if use_emon:
+            f.write(
+                f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental "
+                + (f"-w sleep {stat_time}\n" if stat_time else "\n")
+            )
+        else:
+            f.write(
+                f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv"
+                + (f" sleep {stat_time}\n" if stat_time else "\n")
+            )
         f.write("kill -9 $sar_pid\n")
 
         f.write("echo 'Performance data collected successfully.'\n")
 
-    with open(workspace + "/pipa-parse.sh", "w", opener=opener) as f:
+    with open(os.path.join(workspace, "pipa-parse.sh"), "w", opener=opener) as f:
         write_title(f)
         f.write("WORKSPACE=" + workspace + "\n")
-        f.write("perf script -i $WORKSPACE/perf.data > $WORKSPACE/perf.script\n")
-        f.write("perf report -i $WORKSPACE/perf.data > $WORKSPACE/perf.report\n\n")
+        f.write(
+            "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"
+        )
+        f.write(
+            "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
+        )
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
+
+        if use_emon:
+            f.write(
+                f"python {mpp}/mpp/mpp.py -i $WORKSPACE/emon_result.txt -m {mpp}/metrics/icelake_server_2s_nda.xml -o ./ --thread-view"
+            )
 
         if annotete:
             f.write(
@@ -107,7 +116,7 @@ def generate(
 
 
 def main():
-    generate(*quest())
+    generate(quest())
 
 
 if __name__ == "__main__":
