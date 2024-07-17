@@ -52,6 +52,12 @@ export_config: True # Whether to export the configuration after parsing.
 
 
 def query_filepath():
+    """
+    Prompt the user to enter the filepath where they want to store the configuration template.
+
+    Returns:
+        str: The filepath entered by the user.
+    """
     workspace = questionary.text(
         "Where do you want to store the configuration template? (Default: ./)\n", "./"
     ).ask()
@@ -61,6 +67,16 @@ def query_filepath():
 
 
 def generate_template(content: str, filename: str):
+    """
+    Generate a template file with the given content and filename.
+
+    Args:
+        content (str): The content to be written to the template file.
+        filename (str): The name of the template file.
+
+    Returns:
+        int: The number of characters written to the template file.
+    """
     workspace = query_filepath()
     config_file_path = os.path.join(workspace, filename)
     if not os.path.exists(workspace):
@@ -72,6 +88,12 @@ def generate_template(content: str, filename: str):
 
 
 def generate_pipashu_template():
+    """
+    Generates a Pipa Shu configuration template.
+
+    Returns:
+        int: The number of characters written to the template file.
+    """
     return generate_template(config_template, "config-pipa-shu.yaml")
 
 
@@ -111,4 +133,13 @@ pipad_port: 50051
 
 
 def generate_upload_template(filename: str = "config-upload.yaml"):
+    """
+    Generate an upload template for PipaSHU configuration.
+
+    Args:
+        filename (str, optional): The name of the output file. Defaults to "config-upload.yaml".
+
+    Returns:
+        str: The generated template as a string.
+    """
     return generate_template(upload_template, filename)
