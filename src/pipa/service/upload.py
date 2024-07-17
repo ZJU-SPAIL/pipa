@@ -288,6 +288,7 @@ def main(config_path: str = None, verbose: bool = False):
 
     Args:
         config_path (str, optional): The path to the configuration file. If not provided, the user will be prompted to enter the configuration.
+        verbose (bool, optional): If True, the logger will be set to DEBUG level.
 
     Returns:
         None
@@ -297,7 +298,19 @@ def main(config_path: str = None, verbose: bool = False):
             config = yaml.safe_load(f)
     else:
         config = quest()
+
+    if verbose:
+        logger.setLevel("DEBUG")
+        logger.debug("Verbose mode enabled.")
+        logger.debug("Configuration:")
+        logger.debug(str(config))
+
     data = build(config)
+
+    if verbose:
+        logger.debug("Data:")
+        logger.debug(str(data))
+
     return send(data)
 
 
