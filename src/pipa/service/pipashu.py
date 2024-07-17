@@ -84,7 +84,7 @@ class PIPAShuData:
         sar_freq = self.sar_data.get_cpu_freq_avg(threads)
 
         if sar_freq["cpu_frequency_mhz"] == 0 and freq_MHz:
-            sar_freq = freq_MHz
+            sar_freq["cpu_frequency_mhz"] = freq_MHz
 
         sar_mem = self.sar_data.get_memory_usage_avg()
         sar_disk = self.sar_data.get_disk_usage_avg(dev)
