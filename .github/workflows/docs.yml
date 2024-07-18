@@ -27,8 +27,7 @@ jobs:
       - run: pip install -e .
       - run: pip install pdoc
       # build documentation into docs/.
-      - run: export PDOC_ALLOW_EXEC=1
-      - run: pdoc -o docs/ ./src/pipa
+      - run: export PDOC_ALLOW_EXEC=1 && pdoc -o docs/ ./src/pipa
 
       - uses: actions/upload-pages-artifact@v3
         with:
