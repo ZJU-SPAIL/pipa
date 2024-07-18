@@ -6,6 +6,12 @@ import os
 
 
 def quest():
+    """
+    Asks the user for configuration options related to perf-record and perf-stat runs.
+
+    Returns:
+        dict: A dictionary containing the configuration options.
+    """
     config = quest_basic()
 
     set_record = questionary.select(
@@ -36,6 +42,26 @@ def quest():
 
 
 def generate(config: dict):
+    """
+    Generate shell scripts for collecting and parsing performance data.
+
+    Args:
+        config (dict): Configuration dictionary containing the following keys:
+            - workspace (str): Path to the workspace directory.
+            - freq_record (str): Frequency of recording events.
+            - events_record (str): Events to be recorded.
+            - annotete (bool): Flag indicating whether to annotate the performance data.
+            - duration_record (int): Duration of recording events.
+            - stat_time (int): Duration of statistical analysis.
+            - events_stat (str): Events for statistical analysis.
+            - count_delta_stat (int): Count delta for statistical analysis.
+            - use_emon (bool): Flag indicating whether to use emon for analysis.
+            - MPP_HOME (str): Path to the MPP_HOME directory (required if use_emon is True).
+
+    Returns:
+        None
+    """
+
     workspace = config["workspace"]
     freq_record = config["freq_record"]
     events_record = config["events_record"]
