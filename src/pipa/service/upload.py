@@ -240,7 +240,7 @@ def build(config: dict):
 
     result = {**data, **config}
     logger.info("Data built successfully.")
-    logger.debug(str(result))
+    logger.info(str(result))
     return result
 
 
