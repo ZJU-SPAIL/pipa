@@ -301,14 +301,12 @@ def main(config_path: str = None, verbose: bool = False):
 
     if verbose:
         print("Verbose mode enabled.")
-        print("Configuration:")
-        print(config)
+        print("Configuration:", str(config))
 
     data = build(config)
 
     if verbose:
-        print("Data:")
-        print(str(data))
+        print("Data:", str(data))
 
     return send(data)
 
