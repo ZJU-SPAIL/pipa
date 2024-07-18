@@ -2,6 +2,7 @@ import fire
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.service.export_sys_config import run_export_config_script
 from pipa.service.upload import main as pipa_upload
+from pipa.service.upload import pipa_dump
 from pipa.common.utils import handle_user_cancelled
 from pipa.__about__ import __version__
 from rich import print
@@ -43,6 +44,11 @@ class PipaCLI:
     def upload(self, config_path: str = None, verbose: bool = False):
         # Upload the performance data
         pipa_upload(config_path, verbose)
+
+    @handle_user_cancelled
+    def dump(self, output_path: str, config_path: str = None, verbose: bool = False):
+        # Dump the performance data
+        pipa_dump(output_path, config_path, verbose)
 
     def help(self):
         # Show this help message and exit

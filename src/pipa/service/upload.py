@@ -331,6 +331,23 @@ def send(data: dict, addr: str = None, port: int = 50051):
     return resp
 
 
+def dump(output_path: str, config_path: str = None, verbose: bool = False):
+    if config_path:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    else:
+        config = quest()
+
+    if verbose:
+        print("Verbose mode enabled.")
+        print("Configuration:", str(config))
+
+    data = build(config)
+
+    yaml.dump(data, output_path)
+    logger.info(f"Data dumped to {output_path}")
+
+
 def main(config_path: str = None, verbose: bool = False):
     """
     This is the main function for the upload service in the pipa project.
