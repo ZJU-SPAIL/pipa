@@ -35,6 +35,17 @@ CORES_ALL = get_cpu_cores()
 
 
 def quest_basic():
+    """
+    Asks the user a series of questions to gather basic information for data storage and performance recording.
+
+    Returns:
+        dict: A dictionary containing the user's choices for workspace, frequency of perf-record, event of perf-record,
+              whether to use perf-annotate, whether to use perf-stat or emon, count deltas of perf-stat, events of perf-stat,
+              and the location of mpp if emon is chosen.
+
+    Raises:
+        ValueError: If an invalid choice is made.
+    """
     workspace = questionary.text(
         "Where do you want to store your data? (Default: ./)\n", "./"
     ).ask()
@@ -99,6 +110,12 @@ def quest_basic():
 
 
 def write_title(file: TextIOWrapper):
+    """
+    Writes the title section to the given file.
+
+    Args:
+        file (TextIOWrapper): The file object to write the title section to.
+    """
     current_time = datetime.now().isoformat()
     file.write(
         f"""#!/bin/bash
@@ -136,37 +153,16 @@ def load_yaml_config(file_path: str = "config-pipa-shu.yaml") -> dict:
 
 
 def opener(path, flags):
+    """
+    Opens a file at the given path with the specified flags.
+    Mode is set to 0o755.
+
+    Args:
+        path (str): The path to the file.
+        flags (int): The flags to use when opening the file.
+
+    Returns:
+        int: The file descriptor of the opened file.
+    """
     descriptor = os.open(path=path, flags=flags, mode=0o755)
     return descriptor
-
-
-def parse_basic(data: dict):
-    workspace = data["workspace"]
-    freq_record = data["freq_record"]
-    events_record = data["events_record"]
-    freq_stat = data["count_delta_stat"]
-    events_stat = data["events_stat"]
-    annotete = data["annotete"]
-    run_by_perf = data["run_by_perf"]
-    return (
-        workspace,
-        freq_record,
-        events_record,
-        freq_stat,
-        events_stat,
-        annotete,
-        run_by_perf,
-    )
-
-
-def parse_run_by_pipa(data: dict):
-    use_taskset = data["use_taskset"]
-    core_range = data["core_range"]
-    command = data["command"]
-    return use_taskset, core_range, command
-
-
-def parse_run_by_user(data: dict):
-    duration_record = data["duration_record"]
-    duration_stat = data["duration_stat"]
-    return duration_record, duration_stat

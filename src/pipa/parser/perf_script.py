@@ -11,6 +11,16 @@ class PerfScriptData:
     def __init__(
         self, parsed_script_path: str, threads_num=min(12, NUM_CORES_PHYSICAL)
     ):
+        """
+        Initialize the PerfScriptParser object.
+
+        Args:
+            parsed_script_path (str): The path to the parsed script file.
+            threads_num (int, optional): The number of threads to use for parsing. Defaults to min(12, NUM_CORES_PHYSICAL).
+
+        Raises:
+            FileNotFoundError: If the parsed script file does not exist.
+        """
         if not os.path.exists(parsed_script_path):
             logger.error(f"File not found: {parsed_script_path}")
             raise FileNotFoundError()
@@ -20,13 +30,18 @@ class PerfScriptData:
             logger.warning("No data found in the perf script file.")
 
         if len(self._perf_script_data) >= 10**6:
-
             logger.info(f"Using pandarallel to speed up, threads_num is {threads_num}.")
             pandarallel.initialize(nb_workers=threads_num)
 
         self._df_wider = None
 
     def get_raw_data(self):
+        """
+        Returns the raw data of the perf script.
+
+        Returns:
+            The raw data of the perf script.
+        """
         return self._perf_script_data
 
     def get_wider_data(self):

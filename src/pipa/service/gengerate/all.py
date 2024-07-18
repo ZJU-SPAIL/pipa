@@ -8,6 +8,16 @@ from .export_pipashu_config_template import generate_upload_template
 
 
 def quest_summary(config_path: str = None):
+    """
+    Displays a menu to the user and performs different actions based on their selection.
+
+    Args:
+        config_path (str, optional): Path to the configuration file. Defaults to None.
+
+    Returns:
+        None
+    """
+
     # TODO make these code more elegant
     if config_path:
         return parse_pipashu_config(config_path)

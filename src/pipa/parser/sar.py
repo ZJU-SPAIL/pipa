@@ -207,6 +207,8 @@ class SarData:
         """
         df = self.get_CPU_frequency("average")
         df = df[df["CPU"].isin([str(t) for t in threads])] if threads else df
+        if df.empty:
+            return {"cpu_frequency_mhz": 0}
         return {"cpu_frequency_mhz": df["MHz"].mean()}
 
     def get_CPU_util_freq(self, data_type: str = "detail"):
@@ -360,22 +362,31 @@ def split_sar_block(sar_lines: list):
 
 
 def trans_time_to_seconds(df):
+    """
+    Transforms the timestamp column in the given DataFrame to seconds.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the timestamp column.
+
+    Returns:
+        pandas.DataFrame: The DataFrame with the timestamp column transformed to seconds.
+    """
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S")
     df["timestamp"] -= df.loc[:, "timestamp"].iloc[0]
     df["timestamp"] = df["timestamp"].dt.total_seconds()
     return df
 
 
-def trans_time_to_24h(time: str) -> str:
-    time = time.split()
-    if time[-1] == "PM":
-        h, m, s = time[0].split(":")
-        h = str(int(time[0].split(":")[0]) + 12)
-        time[0] = ":".join([h, m, s])
-    return time[0]
-
-
 def merge_one_line(sar_line: str) -> list:
+    """
+    Merge a single line of SAR data into a list.
+
+    Args:
+        sar_line (str): The SAR data line to be merged.
+
+    Returns:
+        list: The merged SAR data as a list.
+    """
     sar_line = sar_line.split()
     if sar_line[1] in ["AM", "PM"]:
         sar_line.pop(1)
@@ -383,6 +394,16 @@ def merge_one_line(sar_line: str) -> list:
 
 
 def add_post_fix(sar_line: list, len_columns: int):
+    """
+    Adds post-fix to the given SAR line to match the specified number of columns.
+
+    Args:
+        sar_line (list): The SAR line to add post-fix to.
+        len_columns (int): The desired number of columns.
+
+    Returns:
+        list: The SAR line with post-fix added to match the specified number of columns.
+    """
     while len(sar_line) < len_columns:
         sar_line.append("")
     if len(sar_line) > len_columns:
@@ -393,6 +414,19 @@ def add_post_fix(sar_line: list, len_columns: int):
 def process_subtable(
     sar_columns: list, sar_blocks: list, processes_num=min(12, NUM_CORES_PHYSICAL)
 ):
+    """
+    Process the subtable data by merging lines and adding post-fixes.
+
+    Args:
+        sar_columns (list): List of SAR columns.
+        sar_blocks (list): List of SAR blocks.
+        processes_num (int, optional): Number of processes to use for parallel processing.
+            Defaults to the minimum of 12 and the number of physical CPU cores.
+
+    Returns:
+        list: List of processed subtable data.
+
+    """
     if len(sar_blocks) <= 10**6 or processes_num <= 1:
         # if the number of lines is less than 1e6, use single process
         return [add_post_fix(merge_one_line(x), len(sar_columns)) for x in sar_blocks]
@@ -408,6 +442,16 @@ def process_subtable(
 
 
 def sar_to_df(sar_blocks: list):
+    """
+    Convert SAR blocks to a pandas DataFrame.
+
+    Args:
+        sar_blocks (list): A list of SAR blocks.
+
+    Returns:
+        pandas.DataFrame: A DataFrame containing the processed SAR data.
+
+    """
     while sar_blocks[0] == "":
         sar_blocks = sar_blocks[1:]
 

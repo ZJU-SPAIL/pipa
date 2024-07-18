@@ -40,9 +40,9 @@ class PipaCLI:
         run_export_config_script()
 
     @handle_user_cancelled
-    def upload(self, config_path: str = None):
+    def upload(self, config_path: str = None, verbose: bool = False):
         # Upload the performance data
-        pipa_upload(config_path)
+        pipa_upload(config_path, verbose)
 
     def help(self):
         # Show this help message and exit

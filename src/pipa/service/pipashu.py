@@ -4,10 +4,23 @@ from pipa.parser.perf_script import parse_perf_script_file
 
 
 class PIPAShuData:
+    """
+    A class representing PipaShu data.
+
+    Attributes:
+        sar_data (SarData): The SAR data.
+        perf_stat_data (PerfStatData): The performance statistics data.
+        perf_record_data (Optional): The performance record data.
+
+    Methods:
+        __init__: Initialize a PipaShuData object with data from text files.
+        init_without_data: Initialize a PipaShuData object without data.
+        get_metrics: Get the performance statistics metrics.
+    """
 
     def __init__(self, perf_stat_path, sar_path, perf_record_path=None):
         """
-        Initialize a PipaShu object with data from text files.
+        Initialize a PipaShuData object with data from text files.
 
         Args:
             perf_stat_path (str): The path to the performance statistics text file.
@@ -26,7 +39,7 @@ class PIPAShuData:
     @classmethod
     def init_without_data(cls):
         """
-        Initialize a PipaShu object without data.
+        Initialize a PipaShuData object without data.
 
         Returns:
             None
@@ -39,6 +52,7 @@ class PIPAShuData:
         threads: list,
         run_time: int = None,
         dev: str = None,
+        freq_MHz: int = None,
     ):
         """
         Get the performance statistics metrics.
@@ -48,6 +62,7 @@ class PIPAShuData:
             threads (list): The list of threads.
             run_time (int): The run time.
             dev (str): The device name.
+            freq_MHz (int): The frequency in MHz.
 
         Returns:
             dict: The performance statistics metrics.
@@ -80,6 +95,10 @@ class PIPAShuData:
 
         sar_cpu = self.sar_data.get_CPU_util_avg_summary(threads)
         sar_freq = self.sar_data.get_cpu_freq_avg(threads)
+
+        if sar_freq["cpu_frequency_mhz"] == 0 and freq_MHz:
+            sar_freq["cpu_frequency_mhz"] = freq_MHz
+
         sar_mem = self.sar_data.get_memory_usage_avg()
         sar_disk = self.sar_data.get_disk_usage_avg(dev)
 

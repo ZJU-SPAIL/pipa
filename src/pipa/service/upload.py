@@ -10,12 +10,38 @@ import yaml
 
 
 def check_workload(workload):
+    """
+    Check if the workload name is valid.
+
+    Args:
+        workload (str): The name of the workload.
+
+    Returns:
+        None
+
+    Raises:
+        SystemExit: If the workload name is empty.
+
+    """
     if workload == "":
         print("Please input a valid workload name.")
         exit(1)
 
 
 def check_transaction(transaction):
+    """
+    Check if the given transaction is a valid number.
+
+    Args:
+        transaction (str): The transaction to be checked.
+
+    Returns:
+        int: The transaction converted to an integer if it is a valid number.
+
+    Raises:
+        ValueError: If the transaction is not a valid number.
+
+    """
     if not transaction.isdigit():
         print("Please input a valid number.")
         exit(1)
@@ -28,6 +54,16 @@ def check_transaction(transaction):
 
 
 def check_path(data_location):
+    """
+    Check if the specified data location is valid.
+
+    Args:
+        data_location (str): The path to the data location.
+
+    Raises:
+        SystemExit: If the data location is empty or does not exist.
+
+    """
     if data_location == "":
         print("Please input a valid data location.")
         exit(1)
@@ -37,6 +73,19 @@ def check_path(data_location):
 
 
 def check_cores(cores):
+    """
+    Check if the given cores are valid.
+
+    Args:
+        cores (str): A string representing the core numbers separated by commas.
+
+    Returns:
+        list: A list of integers representing the valid core numbers.
+
+    Raises:
+        ValueError: If the input is not a valid core number.
+
+    """
     if cores == "":
         print("Please input a valid core number.")
         exit(1)
@@ -96,6 +145,13 @@ def quest():
 
     platform = questionary.text("What's the platform?", default="IceLake 8383C").ask()
 
+    cpu_frequency_mhz = None
+    if "huawei" in platform.lower():
+        cpu_frequency_mhz = questionary.text(
+            "What's the CPU frequency in MHz?", default="2600"
+        ).ask()
+        cpu_frequency_mhz = int(cpu_frequency_mhz)
+
     comment = questionary.text("Any comments?").ask()
 
     pipad_server = questionary.text("What's the PIPAD server address?").ask()
@@ -111,10 +167,26 @@ def quest():
         "hw_info": hw_info,
         "sw_info": sw_info,
         "platform": platform,
+        "cpu_frequency_mhz": cpu_frequency_mhz,
         "comment": comment,
         "pipad_addr": pipad_server,
         "pipad_port": pipad_port,
     }
+
+
+def build_with_config_path(config_path: str):
+    """
+    Build with a configuration file path.
+
+    Args:
+        config_path (str): The path to the configuration file.
+
+    Returns:
+        The result of the build process.
+    """
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return build(config)
 
 
 def build(config: dict):
@@ -146,9 +218,15 @@ def build(config: dict):
         logger.warning("perf.script does not exist.")
         perf_script_path = None
 
+    cpu_frequency_mhz = config.get("cpu_frequency_mhz", None)
+
     data = PIPAShuData(perf_stat_path, sar_path, perf_script_path).get_metrics(
-        config["transaction"], config["cores"], dev=config["dev"]
+        config["transaction"],
+        config["cores"],
+        dev=config["dev"],
+        freq_MHz=cpu_frequency_mhz,
     )
+
     config.pop("transaction")
     config.pop("cores")
     config.pop("dev")
@@ -253,12 +331,13 @@ def send(data: dict, addr: str = None, port: int = 50051):
     return resp
 
 
-def main(config_path: str = None):
+def main(config_path: str = None, verbose: bool = False):
     """
     This is the main function for the upload service in the pipa project.
 
     Args:
         config_path (str, optional): The path to the configuration file. If not provided, the user will be prompted to enter the configuration.
+        verbose (bool, optional): If True, the function will print additional information.
 
     Returns:
         None
@@ -268,7 +347,16 @@ def main(config_path: str = None):
             config = yaml.safe_load(f)
     else:
         config = quest()
+
+    if verbose:
+        print("Verbose mode enabled.")
+        print("Configuration:", str(config))
+
     data = build(config)
+
+    if verbose:
+        print("Data:", str(data))
+
     return send(data)
 
 
