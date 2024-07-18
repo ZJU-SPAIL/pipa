@@ -203,10 +203,15 @@ def build(config: dict):
         Exception: If the required files are missing.
 
     """
-    data_dir = config["data_location"]
-    perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
-    sar_path = os.path.join(data_dir, "sar.txt")
-    perf_script_path = os.path.exists(os.path.join(data_dir, "perf.script"))
+    data_dir = config.get("data_location", None)
+    if data_dir:
+        perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
+        sar_path = os.path.join(data_dir, "sar.txt")
+        perf_script_path = os.path.exists(os.path.join(data_dir, "perf.script"))
+    else:
+        perf_stat_path = config.get("perf_stat_path", None)
+        sar_path = config.get("sar_path", None)
+        perf_script_path = config.get("perf_script_path", None)
 
     if not os.path.exists(perf_stat_path):
         logger.error("perf-stat.csv does not exist.")
