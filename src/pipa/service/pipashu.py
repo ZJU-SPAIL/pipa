@@ -102,4 +102,8 @@ class PIPAShuData:
         sar_mem = self.sar_data.get_memory_usage_avg()
         sar_disk = self.sar_data.get_disk_usage_avg(dev)
 
+        if dev is None:
+            # Get the disk with the highest utilization if no device is specified
+            sar_disk = max(sar_disk, key=lambda x: x["%disk_util"])
+
         return {**perf_stat_metrics, **sar_cpu, **sar_freq, **sar_mem, **sar_disk}
