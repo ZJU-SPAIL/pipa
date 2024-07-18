@@ -41,12 +41,11 @@ dependencies = [
     "seaborn",
     "psutil",
     "grpcio",
-    "grpcio-tools",
     "requests",
 ]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "pytest"]
+dev = ["black", "flake8", "pytest", "grpcio-tools"]
 
 [project.urls]
 Documentation = "https://github.com/ZJU-SPAIL/pipa#readme"
