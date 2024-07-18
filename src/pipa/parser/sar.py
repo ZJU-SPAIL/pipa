@@ -8,7 +8,14 @@ import multiprocessing
 
 class SarData:
     def __init__(self, sar_string: str):
-        self.sar_data = parse_sar_string(sar_string)
+        """
+        Initialize a SAR object with the given SAR string.
+
+        Args:
+            sar_string (str): The SAR string to parse.
+
+        """
+        self.sar_data: list[pd.DataFrame] = parse_sar_string(sar_string)
 
     @classmethod
     def init_with_sar_txt(cls, sar_txt_path: str):

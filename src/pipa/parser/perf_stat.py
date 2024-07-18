@@ -346,16 +346,16 @@ def parse_perf_stat_file(stat_output_path: str):
         pandas.DataFrame: The parsed data as a DataFrame.
 
     The fields are in this order:
-    •   optional usec time stamp in fractions of second (with -I xxx)
-    •   optional CPU, core, or socket identifier
-    •   optional number of logical CPUs aggregated
-    •   counter value
-    •   unit of the counter value or empty
-    •   event name
-    •   run time of counter
-    •   percentage of measurement time the counter was running
-    •   optional metric value
-    •   optional unit of metric
+    -   optional usec time stamp in fractions of second (with -I xxx)
+    -   optional CPU, core, or socket identifier
+    -   optional number of logical CPUs aggregated
+    -   counter value
+    -   unit of the counter value or empty
+    -   event name
+    -   run time of counter
+    -   percentage of measurement time the counter was running
+    -   optional metric value
+    -   optional unit of metric
     """
     pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
     df = pd.read_csv(
