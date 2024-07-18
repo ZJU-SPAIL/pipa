@@ -26,8 +26,9 @@ def quest():
             "How long do you want to run perf-record? (Default: 120s)\n", "120"
         ).ask()
 
+    stat_tool = "emon" if config["use_emon"] else "perf-stat"
     set_stat = questionary.select(
-        "Whether to set the duration of the perf-stat run?\n",
+        f"Whether to set the duration of the {stat_tool} run?\n",
         choices=["Yes", "No, I'll control it by myself. (Exit by Ctrl+C)"],
     ).ask()
     if set_stat == "Yes":
@@ -68,11 +69,14 @@ def generate(config: dict):
     annotete = config["annotete"]
     duration_record = config["duration_record"]
     stat_time = config["duration_stat"]
-    events_stat = config["events_stat"]
-    count_delta_stat = config["count_delta_stat"]
     use_emon = config["use_emon"]
+
     if use_emon:
-        mpp = config["MPP_HOME"]
+        mpp = config.get("MPP_HOME", config.get("mpp", None))
+    else:
+        events_stat = config["events_stat"]
+        count_delta_stat = config.get("count_delta_stat", 1000)
+
     with open(os.path.join(workspace, "pipa-collect.sh"), "w", opener=opener) as f:
         write_title(f)
 
