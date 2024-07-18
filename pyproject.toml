@@ -43,6 +43,7 @@ dependencies = [
     "psutil",
     "grpcio",
     "grpcio-tools",
+    "requests",
 ]
 
 [project.urls]

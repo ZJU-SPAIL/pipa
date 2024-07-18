@@ -59,5 +59,6 @@
 
 * [x] Fix tidy data
 * [x] Improve Grafana table format
+* [x] Integrate the automated documentation generation process into CI
 * [ ] Improve unit tests
 * [ ] Improve documentation
