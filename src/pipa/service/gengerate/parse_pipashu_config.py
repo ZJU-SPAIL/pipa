@@ -33,7 +33,9 @@ def build_command(use_taskset: bool, core_range, command):
 
             left, right = left.strip(), right.strip()
             if not left.isdigit() or not right.isdigit():
-                raise ValueError("Please input cores as a valid range, non-digit char detected.")
+                raise ValueError(
+                    "Please input cores as a valid range, non-digit char detected."
+                )
             left, right = int(left), int(right)
             if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
                 raise ValueError("Please input cores as a valid range.")
