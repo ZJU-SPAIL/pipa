@@ -4,10 +4,23 @@ from pipa.parser.perf_script import parse_perf_script_file
 
 
 class PIPAShuData:
+    """
+    A class representing PipaShu data.
+
+    Attributes:
+        sar_data (SarData): The SAR data.
+        perf_stat_data (PerfStatData): The performance statistics data.
+        perf_record_data (Optional): The performance record data.
+
+    Methods:
+        __init__: Initialize a PipaShuData object with data from text files.
+        init_without_data: Initialize a PipaShuData object without data.
+        get_metrics: Get the performance statistics metrics.
+    """
 
     def __init__(self, perf_stat_path, sar_path, perf_record_path=None):
         """
-        Initialize a PipaShu object with data from text files.
+        Initialize a PipaShuData object with data from text files.
 
         Args:
             perf_stat_path (str): The path to the performance statistics text file.
@@ -26,7 +39,7 @@ class PIPAShuData:
     @classmethod
     def init_without_data(cls):
         """
-        Initialize a PipaShu object without data.
+        Initialize a PipaShuData object without data.
 
         Returns:
             None

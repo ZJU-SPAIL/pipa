@@ -75,6 +75,16 @@ echo "Configuration exported to $DST"
 
 
 def write_export_config_script(file: TextIOWrapper, destination: str):
+    """
+    Writes the export configuration script to the given file.
+
+    Args:
+        file (TextIOWrapper): The file object to write the script to.
+        destination (str): The destination directory for the exported configuration.
+
+    Returns:
+        int: The number of characters written to the file.
+    """
     return file.write(f'DST="{destination}"\nmkdir -p {destination}') and file.write(
         shell_script
     )
@@ -84,6 +94,18 @@ def run_export_config_script(
     destination=os.path.join(CONFIG_DIR, "config"),
     shell_script_path="/tmp/pipa-export.sh",
 ):
+    """
+    Runs the export configuration script.
+
+    Args:
+        destination (str): The destination directory to export the configuration to.
+            Defaults to the 'config' directory in the CONFIG_DIR.
+        shell_script_path (str): The path to the shell script that will be created.
+            Defaults to '/tmp/pipa-export.sh'.
+
+    Returns:
+        str: The output of the command executed by the shell script.
+    """
     if not os.path.exists(destination):
         os.makedirs(destination)
     with open(shell_script_path, "w") as f:

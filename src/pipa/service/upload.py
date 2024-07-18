@@ -10,12 +10,38 @@ import yaml
 
 
 def check_workload(workload):
+    """
+    Check if the workload name is valid.
+
+    Args:
+        workload (str): The name of the workload.
+
+    Returns:
+        None
+
+    Raises:
+        SystemExit: If the workload name is empty.
+
+    """
     if workload == "":
         print("Please input a valid workload name.")
         exit(1)
 
 
 def check_transaction(transaction):
+    """
+    Check if the given transaction is a valid number.
+
+    Args:
+        transaction (str): The transaction to be checked.
+
+    Returns:
+        int: The transaction converted to an integer if it is a valid number.
+
+    Raises:
+        ValueError: If the transaction is not a valid number.
+
+    """
     if not transaction.isdigit():
         print("Please input a valid number.")
         exit(1)
@@ -28,6 +54,16 @@ def check_transaction(transaction):
 
 
 def check_path(data_location):
+    """
+    Check if the specified data location is valid.
+
+    Args:
+        data_location (str): The path to the data location.
+
+    Raises:
+        SystemExit: If the data location is empty or does not exist.
+
+    """
     if data_location == "":
         print("Please input a valid data location.")
         exit(1)
@@ -37,6 +73,19 @@ def check_path(data_location):
 
 
 def check_cores(cores):
+    """
+    Check if the given cores are valid.
+
+    Args:
+        cores (str): A string representing the core numbers separated by commas.
+
+    Returns:
+        list: A list of integers representing the valid core numbers.
+
+    Raises:
+        ValueError: If the input is not a valid core number.
+
+    """
     if cores == "":
         print("Please input a valid core number.")
         exit(1)
@@ -288,7 +337,7 @@ def main(config_path: str = None, verbose: bool = False):
 
     Args:
         config_path (str, optional): The path to the configuration file. If not provided, the user will be prompted to enter the configuration.
-        verbose (bool, optional): If True, the logger will be set to DEBUG level.
+        verbose (bool, optional): If True, the function will print additional information.
 
     Returns:
         None
