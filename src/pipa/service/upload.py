@@ -228,7 +228,7 @@ def build(config: dict):
     data = PIPAShuData(perf_stat_path, sar_path, perf_script_path).get_metrics(
         config["transaction"],
         config["cores"],
-        dev=config["dev"],
+        dev=config.get("dev", None),
         freq_MHz=cpu_frequency_mhz,
     )
 
