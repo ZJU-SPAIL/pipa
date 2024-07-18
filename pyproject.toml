@@ -37,7 +37,6 @@ dependencies = [
     "fire>=0.6.0",
     "questionary>=2.0.1",
     "rich>=13.7.1",
-    "pytest",
     "pandarallel",
     "seaborn",
     "psutil",
@@ -45,6 +44,9 @@ dependencies = [
     "grpcio-tools",
     "requests",
 ]
+
+[project.optional-dependencies]
+dev = ["black", "flake8", "pytest"]
 
 [project.urls]
 Documentation = "https://github.com/ZJU-SPAIL/pipa#readme"
