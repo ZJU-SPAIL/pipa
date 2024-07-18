@@ -368,15 +368,6 @@ def trans_time_to_seconds(df):
     return df
 
 
-def trans_time_to_24h(time: str) -> str:
-    time = time.split()
-    if time[-1] == "PM":
-        h, m, s = time[0].split(":")
-        h = str(int(time[0].split(":")[0]) + 12)
-        time[0] = ":".join([h, m, s])
-    return time[0]
-
-
 def merge_one_line(sar_line: str) -> list:
     sar_line = sar_line.split()
     if sar_line[1] in ["AM", "PM"]:
