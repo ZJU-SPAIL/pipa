@@ -213,6 +213,8 @@ def build(config: dict):
         sar_path = config.get("sar_path", None)
         perf_script_path = config.get("perf_script_path", None)
 
+        config["data_location"] = perf_stat_path.rsplit("/", 1)[0]
+
     if not os.path.exists(perf_stat_path):
         logger.error("perf-stat.csv does not exist.")
         raise Exception("perf-stat.csv does not exist.")
@@ -234,7 +236,8 @@ def build(config: dict):
 
     config.pop("transaction")
     config.pop("cores")
-    config.pop("dev")
+    if "dev" in config:
+        config.pop("dev")
 
     config["username"] = getpass.getuser()
 
