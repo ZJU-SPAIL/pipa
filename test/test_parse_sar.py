@@ -2,7 +2,6 @@ import unittest
 import pandas as pd
 from pipa.parser.sar import (
     trans_time_to_seconds,
-    trans_time_to_24h,
     merge_one_line,
     add_post_fix,
     split_sar_block,
@@ -19,20 +18,6 @@ class TestTransTimeToSeconds(unittest.TestCase):
         result = trans_time_to_seconds(self.df.copy())
         expected = pd.DataFrame({"timestamp": [0.0, 1.0, 2.0]})
         pd.testing.assert_frame_equal(result, expected)
-
-
-class TestTransTimeTo24h(unittest.TestCase):
-    def test_trans_time_to_24h_am(self):
-        time_str = "10:00:00 AM"
-        result = trans_time_to_24h(time_str)
-        expected = "10:00:00"
-        self.assertEqual(result, expected)
-
-    def test_trans_time_to_24h_pm(self):
-        time_str = "10:00:00 PM"
-        result = trans_time_to_24h(time_str)
-        expected = "22:00:00"
-        self.assertEqual(result, expected)
 
 
 class TestMergeOneLine(unittest.TestCase):
