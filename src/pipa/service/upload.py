@@ -203,10 +203,17 @@ def build(config: dict):
         Exception: If the required files are missing.
 
     """
-    data_dir = config["data_location"]
-    perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
-    sar_path = os.path.join(data_dir, "sar.txt")
-    perf_script_path = os.path.exists(os.path.join(data_dir, "perf.script"))
+    data_dir = config.get("data_location", None)
+    if data_dir:
+        perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
+        sar_path = os.path.join(data_dir, "sar.txt")
+        perf_script_path = os.path.exists(os.path.join(data_dir, "perf.script"))
+    else:
+        perf_stat_path = config.get("perf_stat_path", None)
+        sar_path = config.get("sar_path", None)
+        perf_script_path = config.get("perf_script_path", None)
+
+        config["data_location"] = perf_stat_path.rsplit("/", 1)[0]
 
     if not os.path.exists(perf_stat_path):
         logger.error("perf-stat.csv does not exist.")
@@ -223,19 +230,20 @@ def build(config: dict):
     data = PIPAShuData(perf_stat_path, sar_path, perf_script_path).get_metrics(
         config["transaction"],
         config["cores"],
-        dev=config["dev"],
+        dev=config.get("dev", None),
         freq_MHz=cpu_frequency_mhz,
     )
 
     config.pop("transaction")
     config.pop("cores")
-    config.pop("dev")
+    if "dev" in config:
+        config.pop("dev")
 
     config["username"] = getpass.getuser()
 
     result = {**data, **config}
     logger.info("Data built successfully.")
-    logger.debug(str(result))
+    logger.info(str(result))
     return result
 
 

@@ -8,7 +8,14 @@ import multiprocessing
 
 class SarData:
     def __init__(self, sar_string: str):
-        self.sar_data = parse_sar_string(sar_string)
+        """
+        Initialize a SAR object with the given SAR string.
+
+        Args:
+            sar_string (str): The SAR string to parse.
+
+        """
+        self.sar_data: list[pd.DataFrame] = parse_sar_string(sar_string)
 
     @classmethod
     def init_with_sar_txt(cls, sar_txt_path: str):
@@ -310,14 +317,16 @@ class SarData:
             dev (str, optional): The disk device to retrieve the average data for. Defaults to None.
 
         Returns:
-            pd.DataFrame: Dataframe containing the average disk usage data.
+            list: A list of dictionaries containing the average disk usage data for each device.
+            if dev is specified, returns a single dictionary.
         """
-        return (
+        disk_usage_avg = (
             self.get_disk_usage(dev, "average")
             .drop(columns=["timestamp"])
             .rename(columns={"%util": "%disk_util", "await": "disk_await"})
-            .to_dict(orient="records")[0]
+            .to_dict(orient="records")
         )
+        return disk_usage_avg[0] if dev else disk_usage_avg
 
     def plot_disk_usage(self, dev: str = None, metrics="tps"):
         """

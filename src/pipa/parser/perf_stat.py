@@ -316,12 +316,14 @@ class PerfStatData:
         Get the tidied data with columns for each metric type.
         Tidy the data by pivoting the metric_type column.
 
+        ```
         Args:
             thread_list (list, optional): A list of hardware thread names to include in the tidy data.
             If None, all threads are included. Default is None.
 
         Returns:
             pd.DataFrame: The tidied data.
+        ```
         """
         df = self.get_wider_data()
         if thread_list:
@@ -346,16 +348,16 @@ def parse_perf_stat_file(stat_output_path: str):
         pandas.DataFrame: The parsed data as a DataFrame.
 
     The fields are in this order:
-    •   optional usec time stamp in fractions of second (with -I xxx)
-    •   optional CPU, core, or socket identifier
-    •   optional number of logical CPUs aggregated
-    •   counter value
-    •   unit of the counter value or empty
-    •   event name
-    •   run time of counter
-    •   percentage of measurement time the counter was running
-    •   optional metric value
-    •   optional unit of metric
+    -   optional usec time stamp in fractions of second (with -I xxx)
+    -   optional CPU, core, or socket identifier
+    -   optional number of logical CPUs aggregated
+    -   counter value
+    -   unit of the counter value or empty
+    -   event name
+    -   run time of counter
+    -   percentage of measurement time the counter was running
+    -   optional metric value
+    -   optional unit of metric
     """
     pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
     df = pd.read_csv(
