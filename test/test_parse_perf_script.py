@@ -9,7 +9,7 @@ from pipa.common.logger import logger
 class TestParsePerfScriptFile(unittest.TestCase):
     def setUp(self):
         self.sample_perf_script = """
-# missing features: TRACING_DATA BRANCH_STACK AUXTRACE STAT CLOCKID DIR_FORMAT COMPRESSED CLOCK_DATA HYBRID_TOPOLOGY HYBRID_CPU_PMU_CAPS 
+# missing features: TRACING_DATA BRANCH_STACK AUXTRACE STAT CLOCKID DIR_FORMAT COMPRESSED CLOCK_DATA HYBRID_TOPOLOGY HYBRID_CPU_PMU_CAPS
 # ========
 #
             perf 3732494 [000] 954453.309835:       2715       cycles:  ffffffff8ae9ceb6 native_write_msr+0x6 ([kernel.kallsyms])
@@ -110,5 +110,4 @@ def run_test_parse_one_line():
 
 if __name__ == "__main__":
     result1 = run_test_parse_perf_script_file()
-
     result2 = run_test_parse_one_line()
