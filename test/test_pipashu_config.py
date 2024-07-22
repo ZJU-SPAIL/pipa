@@ -5,7 +5,7 @@ from pipa.common.hardware.cpu import get_cpu_cores
 from pipa.service.gengerate.parse_pipashu_config import build_command, quest, main
 
 
-class TestYourModule(unittest.TestCase):
+class TestPipashuConfig(unittest.TestCase):
 
     @patch("pipa.common.hardware.cpu.get_cpu_cores")
     def test_build_command_with_taskset(self, mock_get_cpu_cores):
