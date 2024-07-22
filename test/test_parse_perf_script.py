@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open
 import pandas as pd
 from pipa.parser.perf_script import parse_perf_script_file, parse_one_line
 from pipa.common.logger import logger
@@ -103,5 +103,7 @@ def test_parse_one_line_invalid_format(monkeypatch):
     result = parse_one_line(invalid_line)
     assert result is None
 
+
 if __name__ == "__main__":
     pytest.main([__file__])
+    
