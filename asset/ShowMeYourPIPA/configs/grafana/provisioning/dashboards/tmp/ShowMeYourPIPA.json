@@ -196,7 +196,7 @@
             "panels": [],
             "repeat": "Record",
             "repeatDirection": "h",
-            "title": "\"${Record}\"",
+            "title": "${Info}",
             "type": "row"
         },
         {
@@ -371,7 +371,7 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 8,
+                "w": 7,
                 "x": 0,
                 "y": 18
             },
@@ -560,76 +560,6 @@
                 "type": "frser-sqlite-datasource",
                 "uid": "${Database}"
             },
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
-                    "fieldMinMax": false,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 8,
-                "w": 7,
-                "x": 8,
-                "y": 18
-            },
-            "id": 13,
-            "options": {
-                "colorMode": "background_solid",
-                "graphMode": "area",
-                "justifyMode": "center",
-                "orientation": "horizontal",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "/.*/",
-                    "values": false
-                },
-                "textMode": "value_and_name",
-                "wideLayout": false
-            },
-            "pluginVersion": "10.2.2",
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "frser-sqlite-datasource",
-                        "uid": "d411eb66-539a-4867-91b8-374c82f650d0"
-                    },
-                    "queryText": "SELECT username AS \"Owner\", record AS \"Record\", platform AS \"Platform\" FROM \"$Table\" WHERE Record = \"$Record\";",
-                    "queryType": "table",
-                    "rawQueryText": "SELECT username AS \"Owner\", record AS \"Record\", platform AS \"Platform\" FROM \"$Table\" WHERE Record = \"$Record\";",
-                    "refId": "INFO",
-                    "timeColumns": [
-                        "time",
-                        "ts"
-                    ]
-                }
-            ],
-            "title": "Record Info",
-            "type": "stat"
-        },
-        {
-            "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "${Database}"
-            },
             "description": "Average Memory Utilization",
             "fieldConfig": {
                 "defaults": {
@@ -652,8 +582,8 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 9,
-                "x": 15,
+                "w": 8,
+                "x": 7,
                 "y": 18
             },
             "id": 12,
@@ -1230,7 +1160,7 @@
                     "showLineNumbers": false,
                     "showMiniMap": false
                 },
-                "content": "<style type=\"text/css\">\n  body {\n    font-family: monospace;\n    /* You can also use more advanced CSS for background patterns etc. */\n  }\n</style>\n\nTurn on this to make the dashboard's fonts monospace\n",
+                "content": "<!-- HTML -->\n<!-- <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css\"> -->\n<style type=\"text/css\">\n  /* CSS */\n  /*\n  @import url(https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css);\n  body { font-family: 'Fira Code', monospace; font-size: 1em; }\n\n  @supports (font-variation-settings: normal) {\n    body { font-family: 'Fira Code VF', monospace; font-size: 1em; }\n  }\n  */\n  body {\n    font-family: Consolas, Monaco, 'Courier New', monospace;\n  }\n</style>\n\nTurn on this to make the dashboard's fonts monospace\n",
                 "mode": "html"
             },
             "pluginVersion": "10.2.2",
@@ -1239,7 +1169,7 @@
             "type": "text"
         }
     ],
-    "refresh": "",
+    "refresh": false,
     "schemaVersion": 38,
     "tags": [],
     "templating": {
@@ -1308,17 +1238,41 @@
                 "skipUrlSync": false,
                 "sort": 0,
                 "type": "query"
+            },
+            {
+                "allValue": "blank = auto",
+                "current": {
+                    "selected": false,
+                    "text": "'rocksdb-xyjiang-Intel SPR 4510-1721188342.66236'",
+                    "value": "'rocksdb-xyjiang-Intel SPR 4510-1721188342.66236'"
+                },
+                "datasource": {
+                    "type": "frser-sqlite-datasource",
+                    "uid": "${Database}"
+                },
+                "definition": "SELECT \"'\" || workload || '-' || username || '-' || platform || '-' || upload_time || \"'\" FROM $Table WHERE Record = \"${Record}\";",
+                "hide": 0,
+                "includeAll": false,
+                "multi": false,
+                "name": "Info",
+                "options": [],
+                "query": "SELECT \"'\" || workload || '-' || username || '-' || platform || '-' || upload_time || \"'\" FROM $Table WHERE Record = \"${Record}\";",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 0,
+                "type": "query"
             }
         ]
     },
     "time": {
-        "from": "now-6h",
-        "to": "now"
+        "from": "2024-07-21T21:48:52.737Z",
+        "to": "2024-07-22T09:48:52.737Z"
     },
     "timepicker": {},
     "timezone": "",
     "title": "ShowMeYourPIPA",
     "uid": "baa63607-6a0d-406c-a505-c4604bf8c1be",
-    "version": 70,
+    "version": 78,
     "weekStart": ""
 }
