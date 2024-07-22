@@ -37,7 +37,7 @@ PAPI is a tool that provides a consistent interface and methodology for tool des
 
 The architecture of PAPI is illustrated in the following diagram:
 
-![PAPI Architecture](./src/PAPIarch.png)
+![PAPI Architecture](./asset/PAPIarch.png)
 
 #### Architecture Layers
 
