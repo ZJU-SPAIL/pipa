@@ -110,7 +110,5 @@ def run_test_parse_one_line():
 
 if __name__ == "__main__":
     result1 = run_test_parse_perf_script_file()
-    #print("TestParsePerfScriptFile Results:", result1)
 
     result2 = run_test_parse_one_line()
-    #print("TestParseOneLine Results:", result2)

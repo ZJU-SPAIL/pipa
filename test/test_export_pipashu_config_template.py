@@ -1,6 +1,5 @@
 import unittest
-from unittest.mock import patch, mock_open
-import os
+from unittest.mock import patch
 from pipa.service.gengerate.export_pipashu_config_template import (
     query_filepath,
     generate_pipashu_template,
