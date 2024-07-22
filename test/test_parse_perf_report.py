@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import mock_open, patch
+from unittest.mock import mock_open
 import pandas as pd
 from pipa.parser.perf_report import parse_perf_report_file, parse_one_line
 
