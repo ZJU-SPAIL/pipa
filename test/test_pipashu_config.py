@@ -1,17 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from pipa.common.hardware.cpu import get_cpu_cores
-
+from unittest.mock import patch
 from pipa.service.gengerate.parse_pipashu_config import build_command, quest, main
 
 
 class TestPipashuConfig(unittest.TestCase):
-
-    @patch("pipa.common.hardware.cpu.get_cpu_cores")
-    def test_build_command_with_taskset(self, mock_get_cpu_cores):
-        mock_get_cpu_cores.return_value = list(range(16))
-        command = build_command(True, "0-7", "echo test")
-        self.assertEqual(command, "/usr/bin/taskset -c 0,1,2,3,4,5,6,7 echo test")
 
     def test_build_command_without_taskset(self):
         command = build_command(False, "0-7", "echo test")

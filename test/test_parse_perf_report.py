@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import mock_open, patch
 import pandas as pd
 from pipa.parser.perf_report import parse_perf_report_file, parse_one_line
-from io import StringIO
 
 
 class TestParsePerfReportFile(unittest.TestCase):
@@ -106,7 +105,5 @@ def run_test_parse_perf_report_file():
 
 if __name__ == "__main__":
     result1 = run_test_parse_one_line()
-    #print("TestParseOneLine Results:", result1)
 
     result2 = run_test_parse_perf_report_file()
-    #print("TestParsePerfReportFile Results:", result2)
