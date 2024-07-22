@@ -1197,6 +1197,46 @@
             ],
             "title": "Average DIsk I/O Utils",
             "type": "table"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 34
+            },
+            "id": 15,
+            "panels": [],
+            "title": "Dashboard Style",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "${Database}"
+            },
+            "description": "",
+            "gridPos": {
+                "h": 3,
+                "w": 6,
+                "x": 0,
+                "y": 35
+            },
+            "id": 14,
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<style type=\"text/css\">\n  body {\n    font-family: monospace;\n    /* You can also use more advanced CSS for background patterns etc. */\n  }\n</style>\n\nTurn on this to make the dashboard's fonts monospace\n",
+                "mode": "html"
+            },
+            "pluginVersion": "10.2.2",
+            "title": "Monospaced Fonts On",
+            "transparent": true,
+            "type": "text"
         }
     ],
     "refresh": "",
@@ -1249,8 +1289,8 @@
             {
                 "current": {
                     "selected": true,
-                    "text": "rocksdb-2024-07-18 23:13:40",
-                    "value": "rocksdb-2024-07-18 23:13:40"
+                    "text": "rocksdb-2024-07-17 11:52:22",
+                    "value": "rocksdb-2024-07-17 11:52:22"
                 },
                 "datasource": {
                     "type": "frser-sqlite-datasource",
@@ -1279,6 +1319,6 @@
     "timezone": "",
     "title": "ShowMeYourPIPA",
     "uid": "baa63607-6a0d-406c-a505-c4604bf8c1be",
-    "version": 68,
+    "version": 70,
     "weekStart": ""
 }
