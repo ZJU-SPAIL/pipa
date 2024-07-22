@@ -45,7 +45,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "pytest", "grpcio-tools"]
+dev = ["build", "black", "flake8", "pytest", "grpcio-tools"]
 
 [project.urls]
 Documentation = "https://github.com/ZJU-SPAIL/pipa#readme"
