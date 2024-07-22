@@ -261,7 +261,7 @@ def send(data: dict, addr: str = None, port: int = 50051):
 
     """
     if not addr:
-        address = data["pipad_addr"]
+        addr = data["pipad_addr"]
     if not port:
         port = data["pipad_port"]
     req = pipadlib.DeployRequest(
@@ -322,9 +322,9 @@ def send(data: dict, addr: str = None, port: int = 50051):
         username=data["username"],
     )
 
-    logger.info(f"Sending data to {address}:{port}")
+    logger.info(f"Sending data to {addr}:{port}")
 
-    resp = PIPADClient(port, address).deploy(req)
+    resp = PIPADClient(port, addr).deploy(req)
 
     if resp is not None:
         if resp.status_code == 200:
