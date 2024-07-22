@@ -106,4 +106,3 @@ def test_parse_one_line_invalid_format(monkeypatch):
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    
