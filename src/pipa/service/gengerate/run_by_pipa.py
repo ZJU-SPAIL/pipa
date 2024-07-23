@@ -64,13 +64,14 @@ def generate(config):
     Generate a shell script for collecting performance data which start workload by perf.
 
     Args:
-        workspace (str): The path to the workspace directory.
-        freq_record (str): The frequency for recording events.
-        events_record (str): The events to be recorded.
-        freq_stat (str): The frequency for collecting statistics.
-        events_stat (str): The events to be collected for statistics.
-        annotete (bool): Whether to annotate the performance data.
-        command (str): The command to be executed.
+        config (dict): Configuration dictionary containing the following keys:
+            - workspace (str): The path to the workspace directory.
+            - freq_record (str): The frequency for recording events.
+            - events_record (str): The events to be recorded.
+            - freq_stat (str): The frequency for collecting statistics.
+            - events_stat (str): The events to be collected for statistics.
+            - annotete (bool): Whether to annotate the performance data.
+            - command (str): The command to be executed.
 
     Returns:
         None
