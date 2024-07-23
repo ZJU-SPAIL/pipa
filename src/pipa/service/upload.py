@@ -339,6 +339,19 @@ def send(data: dict, addr: str = None, port: int = 50051):
     return resp
 
 
+def load(config_path: str = None, verbose: bool = False):
+    if config_path:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    else:
+        config = quest()
+
+    if verbose:
+        print("Verbose mode enabled.")
+        print("Configuration:", str(config))
+    return config
+
+
 def main(config_path: str = None, verbose: bool = False):
     """
     This is the main function for the upload service in the pipa project.
@@ -350,17 +363,8 @@ def main(config_path: str = None, verbose: bool = False):
     Returns:
         None
     """
-    if config_path:
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-    else:
-        config = quest()
 
-    if verbose:
-        print("Verbose mode enabled.")
-        print("Configuration:", str(config))
-
-    data = build(config)
+    data = build(load(config_path, verbose))
 
     if verbose:
         print("Data:", str(data))
