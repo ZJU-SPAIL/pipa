@@ -136,6 +136,7 @@ def generate(config):
         print("Please check the script in " + workspace + "/pipa-run.sh")
         print(
             "Note that you may need to modify the script to meet your requirements.",
+            "The core list is generated according to the machine which runs this script now.",
             "pipa-run.sh is more suitable for reproducible workloads such as benchmark.",
         )
 

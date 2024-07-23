@@ -141,6 +141,7 @@ def generate(config: dict):
             "and the workload is finished when you call pipa-parsed.sh.",
             "Otherwise, the performance data may be incomplete or incorrect."
             "You should ensure that the total workload is longer than ten minutes."
+            "The core list is generated according to the machine which runs this script now.",
             "Please check the configuration file for more details.",
         )
 
