@@ -198,6 +198,21 @@ def build(config: dict):
 
     Returns:
         dict: A dictionary containing the built data for upload.
+            - workload: The name of the workload.
+            - transaction: The number of transactions.
+            - data_location: The location of the data collected by PIPAShu.
+            - cores: The hardware cores used in the workload.
+            - dev: The used disk device name.
+            - hw_info: The hardware configuration.
+            - sw_info: The software configuration.
+            - platform: The platform used.
+            - comment: Any comments.
+            - pipad_addr: The PIPAD server address. Optional.
+            - pipad_port: The PIPAD server port. Optional.
+            - perf_stat_path: The path to the perf-stat.csv file. Only required if data_location is not provided.
+            - sar_path: The path to the sar.txt file. Only required if data_location is not provided.
+            - perf_script_path: The path to the perf.script file. Only required if data_location is not provided.
+
 
     Raises:
         Exception: If the required files are missing.
@@ -221,7 +236,7 @@ def build(config: dict):
     elif not os.path.exists(sar_path):
         logger.error("sar.txt does not exist.")
         raise Exception("sar.txt does not exist.")
-    elif not perf_script_path:
+    elif not perf_script_path and not os.path.exists(perf_script_path):
         logger.warning("perf.script does not exist.")
         perf_script_path = None
 
