@@ -355,6 +355,17 @@ def send(data: dict, addr: str = None, port: int = 50051):
 
 
 def load(config_path: str = None, verbose: bool = False):
+    """
+    Load the configuration from a YAML file or prompt the user for configuration.
+
+    Args:
+        config_path (str, optional): Path to the YAML configuration file. Defaults to None.
+        verbose (bool, optional): Flag indicating whether to enable verbose mode. Defaults to False.
+
+    Returns:
+        dict: The loaded configuration.
+
+    """
     if config_path:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
