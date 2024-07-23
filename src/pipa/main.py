@@ -2,6 +2,7 @@ import fire
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.service.export_sys_config import run_export_config_script
 from pipa.service.upload import main as pipa_upload
+from pipa.service.dump import dump as pipa_dump
 from pipa.common.utils import handle_user_cancelled
 from pipa.__about__ import __version__
 from rich import print
@@ -18,6 +19,7 @@ class PipaCLI:
       pipa generate
       pipa export
       pipa upload
+      pipa dump
       pipa version
       pipa help
 
@@ -25,6 +27,7 @@ class PipaCLI:
       generate  Generate the performance collection scripts
       export    Export system configuration
       upload    Upload the performance data to PIPAD server
+      dump      Dump PIPASHU overview data to a file
       version   Show the version of PIPA
       help      Show this help message and exit
     """
@@ -44,6 +47,10 @@ class PipaCLI:
         # Upload the performance data
         pipa_upload(config_path, verbose)
 
+    def dump(self, output_path: str, config_path: str = None, verbose: bool = False):
+        # Dump PIPASHU overview data to a file
+        pipa_dump(output_path, config_path, verbose)
+
     def help(self):
         # Show this help message and exit
         print("PIPA (Platform Integrated Performance Analytics)")
@@ -52,12 +59,14 @@ class PipaCLI:
         print("  pipa generate")
         print("  pipa export")
         print("  pipa upload")
+        print("  pipa dump")
         print("  pipa version")
         print("  pipa help")
         print("Options:")
         print("  generate  Generate the performance collection scripts")
         print("  export    Export system configuration")
         print("  upload    Upload the performance data to PIPAD server")
+        print("  dump      Dump PIPASHU overview data to a file")
         print("  version   Show the version of PIPA")
         print("  help      Show this help message and exit")
 
