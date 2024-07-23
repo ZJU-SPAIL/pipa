@@ -60,6 +60,7 @@
 * [x] Fix tidy data
 * [x] Improve Grafana table format
 * [x] Integrate the automated documentation generation process into CI
+* [x] Implement dumping PIPASHU overview data to a file
 * [ ] Fix PIPA-upload with perf-record data
 * [ ] Improve unit tests
 * [ ] Improve documentation
