@@ -140,6 +140,18 @@
                                 "value": "rotmhz"
                             }
                         ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Running Time"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "s"
+                            }
+                        ]
                     }
                 ]
             },
@@ -171,9 +183,9 @@
                         "type": "frser-sqlite-datasource",
                         "uid": "${Database}"
                     },
-                    "queryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Throught\",\nthroughput as \"Throught/s\",\ncycles_per_second AS \"Cycles/s\",\ninstructions_per_second AS \"Insts/s\",\nCPI AS \"Cycles/Insts\", cycles_per_requests AS \"Cycles/REQ\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\npath_length AS \"Path Length\", platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\nrecord AS \"Record\",\ncomment AS \"Comment\" from \"$Table\";",
+                    "queryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Transactions\",\nrun_time AS \"Running Time\",\nthroughput as \"TransPerSec\",\ncycles_per_second AS \"CyclesPerSec\",\ninstructions_per_second AS \"InstsPerSec\",\nCPI AS \"CPI\", cycles_per_requests AS \"CyclesPerReq\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\npath_length AS \"Path Length\", platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\nrecord AS \"Record\",\ncomment AS \"Comment\" from \"$Table\";",
                     "queryType": "table",
-                    "rawQueryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Throught\",\nthroughput as \"Throught/s\",\ncycles_per_second AS \"Cycles/s\",\ninstructions_per_second AS \"Insts/s\",\nCPI AS \"Cycles/Insts\", cycles_per_requests AS \"Cycles/REQ\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\npath_length AS \"Path Length\", platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\nrecord AS \"Record\",\ncomment AS \"Comment\" from \"$Table\";",
+                    "rawQueryText": "select username as Owner, workload AS Workload, \ntransactions AS \"Transactions\",\nrun_time AS \"Running Time\",\nthroughput as \"TransPerSec\",\ncycles_per_second AS \"CyclesPerSec\",\ninstructions_per_second AS \"InstsPerSec\",\nCPI AS \"CPI\", cycles_per_requests AS \"CyclesPerReq\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\npath_length AS \"Path Length\", platform AS Platform, hw_info AS \"HW Config\", \nsw_info AS \"SW Config\", used_threads AS \"Logical Cores\",\nrecord AS \"Record\",\ncomment AS \"Comment\" from \"$Table\";",
                     "refId": "A",
                     "timeColumns": [
                         "time",
@@ -319,9 +331,9 @@
                         "type": "frser-sqlite-datasource",
                         "uid": "${Database}"
                     },
-                    "queryText": "SELECT transactions AS \"Throught\", \nthroughput AS \"Throught/s\", \ncycles_per_second AS \"Cycles/s\",\ninstructions_per_second AS \"Insts/s\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\nCPI AS \"Cycles/Insts\", cycles_per_requests AS \"Cycles/REQ\", path_length AS \"Path Length\", \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE Record = \"$Record\";",
+                    "queryText": "SELECT transactions AS \"Throught\", \nthroughput AS \"TransPerSec\", \ncycles_per_second AS \"CyclesPerSec\",\ninstructions_per_second AS \"InstsPerSec\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\nCPI AS \"CPI\", cycles_per_requests AS \"CyclesPerReq\", path_length AS \"Path Length\", \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE Record = \"$Record\";",
                     "queryType": "table",
-                    "rawQueryText": "SELECT transactions AS \"Throught\", \nthroughput AS \"Throught/s\", \ncycles_per_second AS \"Cycles/s\",\ninstructions_per_second AS \"Insts/s\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\nCPI AS \"Cycles/Insts\", cycles_per_requests AS \"Cycles/REQ\", path_length AS \"Path Length\", \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE Record = \"$Record\";",
+                    "rawQueryText": "SELECT transactions AS \"Throught\", \nthroughput AS \"TransPerSec\", \ncycles_per_second AS \"CyclesPerSec\",\ninstructions_per_second AS \"InstsPerSec\",\ncpu_frequency_mhz AS \"CPU Freq(MHz)\",\nCPI AS \"CPI\", cycles_per_requests AS \"CyclesPerReq\", path_length AS \"Path Length\", \nhw_info AS \"HW Config\", \nsw_info AS \"SW Config\", \nused_threads AS \"Logical Cores\" from \"$Table\" WHERE Record = \"$Record\";",
                     "refId": "A",
                     "timeColumns": [
                         "time",
@@ -367,11 +379,44 @@
                     "noValue": "0",
                     "unit": "%"
                 },
-                "overrides": []
+                "overrides": [
+                    {
+                        "__systemRef": "hideSeriesFrom",
+                        "matcher": {
+                            "id": "byNames",
+                            "options": {
+                                "mode": "exclude",
+                                "names": [
+                                    "usr%",
+                                    "nice%",
+                                    "sys%",
+                                    "iowait%",
+                                    "steal%",
+                                    "irq%",
+                                    "soft%",
+                                    "guest%",
+                                    "idle%"
+                                ],
+                                "prefix": "All except:",
+                                "readOnly": true
+                            }
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
             },
             "gridPos": {
-                "h": 8,
-                "w": 7,
+                "h": 11,
+                "w": 12,
                 "x": 0,
                 "y": 18
             },
@@ -581,9 +626,9 @@
                 "overrides": []
             },
             "gridPos": {
-                "h": 8,
-                "w": 8,
-                "x": 7,
+                "h": 11,
+                "w": 12,
+                "x": 12,
                 "y": 18
             },
             "id": 12,
@@ -896,7 +941,7 @@
                 "h": 4,
                 "w": 24,
                 "x": 0,
-                "y": 26
+                "y": 29
             },
             "id": 10,
             "links": [
@@ -1080,7 +1125,7 @@
                 "h": 4,
                 "w": 24,
                 "x": 0,
-                "y": 30
+                "y": 33
             },
             "id": 11,
             "links": [
@@ -1134,7 +1179,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 34
+                "y": 37
             },
             "id": 15,
             "panels": [],
@@ -1151,7 +1196,7 @@
                 "h": 3,
                 "w": 6,
                 "x": 0,
-                "y": 35
+                "y": 38
             },
             "id": 14,
             "options": {
@@ -1169,7 +1214,7 @@
             "type": "text"
         }
     ],
-    "refresh": false,
+    "refresh": "",
     "schemaVersion": 38,
     "tags": [],
     "templating": {
@@ -1219,8 +1264,8 @@
             {
                 "current": {
                     "selected": true,
-                    "text": "rocksdb-2024-07-17 11:52:22",
-                    "value": "rocksdb-2024-07-17 11:52:22"
+                    "text": "rocksdb-2024-07-17 12:11:32",
+                    "value": "rocksdb-2024-07-17 12:11:32"
                 },
                 "datasource": {
                     "type": "frser-sqlite-datasource",
@@ -1242,9 +1287,9 @@
             {
                 "allValue": "blank = auto",
                 "current": {
-                    "selected": false,
-                    "text": "'rocksdb-xyjiang-Intel SPR 4510-1721188342.66236'",
-                    "value": "'rocksdb-xyjiang-Intel SPR 4510-1721188342.66236'"
+                    "selected": true,
+                    "text": "'rocksdb-xyjiang-Intel SPR 4510-1721189492.07857'",
+                    "value": "'rocksdb-xyjiang-Intel SPR 4510-1721189492.07857'"
                 },
                 "datasource": {
                     "type": "frser-sqlite-datasource",
@@ -1266,13 +1311,13 @@
         ]
     },
     "time": {
-        "from": "2024-07-21T21:48:52.737Z",
-        "to": "2024-07-22T09:48:52.737Z"
+        "from": "now-6h",
+        "to": "now"
     },
     "timepicker": {},
     "timezone": "",
     "title": "ShowMeYourPIPA",
     "uid": "baa63607-6a0d-406c-a505-c4604bf8c1be",
-    "version": 78,
+    "version": 83,
     "weekStart": ""
 }
