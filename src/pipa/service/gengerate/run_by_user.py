@@ -77,6 +77,9 @@ def generate(config: dict):
         events_stat = config["events_stat"]
         count_delta_stat = config.get("count_delta_stat", 1000)
 
+    if not os.path.exists(workspace):
+        os.makedirs(workspace)
+
     with open(os.path.join(workspace, "pipa-collect.sh"), "w", opener=opener) as f:
         write_title(f)
 
