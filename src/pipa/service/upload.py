@@ -207,7 +207,7 @@ def build(config: dict):
     if data_dir:
         perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
         sar_path = os.path.join(data_dir, "sar.txt")
-        perf_script_path = os.path.exists(os.path.join(data_dir, "perf.script"))
+        perf_script_path = os.path.join(data_dir, "perf.script")
     else:
         perf_stat_path = config.get("perf_stat_path", None)
         sar_path = config.get("sar_path", None)
