@@ -51,7 +51,7 @@ class PIPAShuData:
         num_transcations: int,
         threads: list,
         run_time: int = None,
-        dev: str = None,
+        dev: str | None = None,
         freq_MHz: int = None,
     ):
         """
@@ -62,7 +62,7 @@ class PIPAShuData:
             threads (list): The list of threads.
             run_time (int): The run time.
             dev (str): The device name.
-            freq_MHz (int): The frequency in MHz.
+            freq_MHz (int): The CPU frequency in MHz.
 
         Returns:
             dict: The performance statistics metrics.
