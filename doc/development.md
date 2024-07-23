@@ -61,6 +61,12 @@
 * [x] Improve Grafana table format
 * [x] Integrate the automated documentation generation process into CI
 * [x] Implement dumping PIPASHU overview data to a file
-* [ ] Fix PIPA-upload with perf-record data
-* [ ] Improve unit tests
+* [x] Fix PIPA-upload with perf-record data
+* [x] Improve unit tests
+* [x] Implement PIPA-dump
+
+### Version 0.0.11
+
+* [x] Improve comments
+* [ ] Improve unit tests coverage
 * [ ] Improve documentation
