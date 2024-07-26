@@ -4,6 +4,15 @@ from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 
 
 class PerfScriptCall:
+    """
+    Represents a single performance script call.
+
+    Attributes:
+        addr (str): The address of the call.
+        symbol (str): The symbol associated with the call.
+        caller (str): The caller of the call.
+    """
+
     def __init__(self, addr, symbol, caller):
         self.addr: str = addr
         self.symbol: str = symbol
@@ -14,6 +23,15 @@ class PerfScriptCall:
 
     @staticmethod
     def parse_one_call(line: str):
+        """
+        Parses a single line of a performance script call and returns the parsed values.
+
+        Args:
+            line (str): The line to parse.
+
+        Returns:
+            list: A list containing the parsed values [addr, symbol, caller], or None if parsing fails.
+        """
         try:
             addr, symbol, caller = re.match(r"(\S+)\s+(.*?)\s+\((\S+)\)", line).groups()
         except Exception as e:
@@ -23,10 +41,31 @@ class PerfScriptCall:
 
     @classmethod
     def from_line(cls, line: str):
+        """
+        Creates a PerfScriptCall instance from a single line of a performance script call.
+
+        Args:
+            line (str): The line to create the instance from.
+
+        Returns:
+            PerfScriptCall: The created PerfScriptCall instance.
+        """
         return cls(*cls.parse_one_call(line))
 
 
 class PerfScriptHeader:
+    """
+    Represents a header in a perf script block.
+
+    Attributes:
+        command (str): The command associated with the record.
+        pid (int): The process ID associated with the record.
+        cpu (int): The CPU number associated with the record.
+        time (str): The time associated with the record.
+        value (int): The value associated with the record.
+        event (str): The event associated with the record.
+    """
+
     def __init__(self, command, pid, cpu, time, value, event):
         self.command: str = command
         self.pid: int = pid
@@ -40,6 +79,16 @@ class PerfScriptHeader:
 
     @staticmethod
     def parse_one_header(line: str):
+        """
+        Parses a single header line from a perf script block.
+
+        Args:
+            line (str): The header line to parse.
+
+        Returns:
+            list: A list containing the parsed values [command, pid, cpu, time, value, event].
+                  Returns None if the line cannot be parsed.
+        """
         try:
             try:
                 pattern = r"(\S+|\:-\d+)\s+(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
@@ -70,10 +119,32 @@ class PerfScriptHeader:
 
     @classmethod
     def from_line(cls, line):
+        """
+        Creates a PerfScriptHeader object from a header line.
+
+        Args:
+            line (str): The header line.
+
+        Returns:
+            PerfScriptHeader: The created PerfScriptHeader object.
+        """
         return cls(*cls.parse_one_header(line))
 
 
 class PerfScriptBlock:
+    """
+    Represents a block of performance script.
+
+    Attributes:
+        header (PerfScriptHeader): The header of the performance script block.
+        calls (list[PerfScriptCall]): The list of performance script calls.
+
+    Methods:
+        __str__(): Returns a string representation of the PerfScriptBlock object.
+        parse_block(lines: list): Parses the lines of the performance script block.
+        from_lines(lines: list): Creates a PerfScriptBlock object from the lines of the performance script block.
+    """
+
     def __init__(self, header: PerfScriptHeader, calls: list[PerfScriptCall]):
         self.header: PerfScriptHeader = header
         self.calls: list[PerfScriptCall] = calls
@@ -83,16 +154,54 @@ class PerfScriptBlock:
 
     @staticmethod
     def parse_block(lines: list):
+        """
+        Parses the lines of the performance script block.
+
+        Args:
+            lines (list): The lines of the performance script block.
+
+        Returns:
+            tuple: A tuple containing the parsed header and calls.
+        """
         header = PerfScriptHeader.from_line(lines[0])
         calls = [PerfScriptCall.from_line(line) for line in lines[1:]]
         return header, calls
 
     @classmethod
     def from_lines(cls, lines: list):
+        """
+        Creates a PerfScriptBlock object from the lines of the performance script block.
+
+        Args:
+            lines (list): The lines of the performance script block.
+
+        Returns:
+            PerfScriptBlock: The created PerfScriptBlock object.
+        """
         return cls(*cls.parse_block(lines))
 
 
 class PerfScriptData:
+    """
+    Represents a collection of performance script blocks.
+
+    Args:
+        blocks (list[PerfScriptBlock]): The list of PerfScriptBlock objects.
+
+    Attributes:
+        blocks (list[PerfScriptBlock]): The list of PerfScriptBlock objects.
+
+    Methods:
+        __str__(): Returns a string representation of the PerfScriptData object.
+        __iter__(): Returns an iterator for iterating over the PerfScriptData object.
+        __getitem__(index): Returns the PerfScriptBlock object at the specified index.
+        __len__(): Returns the number of PerfScriptBlock objects in the PerfScriptData object.
+        filter_by_pid(pid, cpu=None): Filters the PerfScriptData object by process ID and CPU.
+        divid_into_blocks(lines): Divides the lines into blocks based on empty lines.
+        from_file(file_path, processes_num=NUM_CORES_PHYSICAL): Creates a PerfScriptData object from a file.
+
+    """
+
     def __init__(self, blocks: list[PerfScriptBlock]):
         self.blocks: PerfScriptBlock = blocks
 
@@ -109,6 +218,17 @@ class PerfScriptData:
         return len(self.blocks)
 
     def filter_by_pid(self, pid: int, cpu: int | None = None):
+        """
+        Filters the PerfScriptData object by process ID and CPU.
+
+        Args:
+            pid (int): The process ID to filter by.
+            cpu (int | None, optional): The CPU number to filter by. Defaults to None.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing the filtered blocks.
+
+        """
         if cpu:
             return PerfScriptData(
                 [b for b in self.blocks if b.header.pid == pid and b.header.cpu == cpu]
@@ -117,6 +237,16 @@ class PerfScriptData:
 
     @staticmethod
     def divid_into_blocks(lines: list):
+        """
+        Divides the lines into blocks based on empty lines.
+
+        Args:
+            lines (list): The list of lines to divide into blocks.
+
+        Returns:
+            list: A list of blocks, where each block is a list of lines.
+
+        """
         blocks, cur = [], []
         for l in lines:
             if l:
@@ -130,6 +260,17 @@ class PerfScriptData:
 
     @classmethod
     def from_file(cls, file_path: str, processes_num=NUM_CORES_PHYSICAL):
+        """
+        Creates a PerfScriptData object from a file.
+
+        Args:
+            file_path (str): The path to the file.
+            processes_num (int, optional): The number of processes to use for parallel processing. Defaults to NUM_CORES_PHYSICAL.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object created from the file.
+
+        """
         with open(file_path, "r") as f:
             lines = [l.strip() for l in f.readlines() if not l.startswith("#")]
 
