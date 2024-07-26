@@ -1,4 +1,5 @@
 import networkx as nx
+import matplotlib.pyplot as plt
 from pipa.parser.perf_script_call import PerfScriptData
 
 
@@ -275,3 +276,25 @@ class CallGraph:
                 )
 
         return cls(directed_graph=directed_graph, node_table=node_table)
+
+    def show(self):
+        """
+        Displays the call graph.
+
+        Returns:
+            None
+        """
+        nx.draw(self.directed_graph, with_labels=True)
+        plt.show()
+
+    def save(self, file_path: str):
+        """
+        Saves the call graph to a file.
+
+        Args:
+            file_path (str): The path to save the call graph.
+
+        Returns:
+            None
+        """
+        nx.write_gexf(self.directed_graph, file_path)
