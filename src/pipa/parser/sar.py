@@ -156,8 +156,6 @@ class SarData:
         else:
             sns.lineplot(data=df, x="timestamp", y=r"%util")
 
-    # TODO add barplot to plot
-
     def get_CPU_frequency(self, data_type: str = "detail"):
         """
         Returns the CPU frequency data.
