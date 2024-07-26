@@ -99,7 +99,7 @@ class PerfScriptData:
 
     @staticmethod
     def divid_into_blocks(lines: list):
-        blocks = []
+        blocks, cur = [], []
         for l in lines:
             if l:
                 cur.append(l)
