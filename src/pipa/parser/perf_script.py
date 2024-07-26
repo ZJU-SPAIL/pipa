@@ -227,10 +227,8 @@ def parse_perf_script_file(parsed_script_path: str, processes_num=NUM_CORES_PHYS
     else:
         table = content
 
-    pool = multiprocessing.Pool(processes=processes_num)
-    data = pool.map(parse_one_line, table)
-    pool.close()
-    pool.join()
+    with multiprocessing.Pool(processes=processes_num) as pool:
+        data = pool.map(parse_one_line, table)
 
     data = [d for d in data if d is not None]
 
