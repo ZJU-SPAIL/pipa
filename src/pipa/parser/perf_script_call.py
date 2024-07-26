@@ -93,8 +93,8 @@ class PerfScriptBlock:
 
 
 class PerfScriptData:
-    def __init__(self, blocks: list):
-        self.blocks = blocks
+    def __init__(self, blocks: list[PerfScriptBlock]):
+        self.blocks: PerfScriptBlock = blocks
 
     def __str__(self):
         return f"{self.blocks}"
@@ -107,6 +107,13 @@ class PerfScriptData:
 
     def __len__(self):
         return len(self.blocks)
+
+    def filter_by_pid(self, pid: int, cpu: int | None = None):
+        if cpu:
+            return PerfScriptData(
+                [b for b in self.blocks if b.header.pid == pid and b.header.cpu == cpu]
+            )
+        return PerfScriptData([b for b in self.blocks if b.header.pid == pid])
 
     @staticmethod
     def divid_into_blocks(lines: list):
