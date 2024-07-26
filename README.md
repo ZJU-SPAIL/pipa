@@ -45,15 +45,7 @@ pipa generate
 ```
 Then you can complete the interaction through the CLI to provide the necessary parameters. You can choose to start the workload with perf, or you can choose to observe the system directly.
 
-Or you can use python interface:
-
-```py
-from pipa.service.run import run_and_collect_all
-
-sar_df_list, perf_stat_df, perf_script_df = run_and_collect_all(
-        "perf bench futex hash"
-)
-```
+For the detailed usage, please check [user guide](doc/User-guide.md).
 
 ## Build
 
