@@ -217,23 +217,31 @@ class PerfScriptData:
     def __len__(self):
         return len(self.blocks)
 
-    def filter_by_pid(self, pid: int, cpu: int | None = None):
+    def filter_by_pid(self, pid: int):
         """
-        Filters the PerfScriptData object by process ID and CPU.
+        Filters the PerfScriptData object by process ID.
 
         Args:
             pid (int): The process ID to filter by.
-            cpu (int | None, optional): The CPU number to filter by. Defaults to None.
 
         Returns:
             PerfScriptData: A new PerfScriptData object containing the filtered blocks.
 
         """
-        if cpu:
-            return PerfScriptData(
-                [b for b in self.blocks if b.header.pid == pid and b.header.cpu == cpu]
-            )
         return PerfScriptData([b for b in self.blocks if b.header.pid == pid])
+
+    def filter_by_cpu(self, cpu: int):
+        """
+        Filters the PerfScriptData object by CPU.
+
+        Args:
+            cpu (int): The CPU to filter by.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing the filtered blocks.
+
+        """
+        return PerfScriptData([b for b in self.blocks if b.header.cpu == cpu])
 
     @staticmethod
     def divid_into_blocks(lines: list):
