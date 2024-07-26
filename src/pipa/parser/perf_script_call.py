@@ -1,4 +1,6 @@
 import re
+from multiprocessing import Pool
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 
 
 class PerfScriptCall:
@@ -111,11 +113,11 @@ class PerfScriptData:
         return blocks
 
     @classmethod
-    def from_file(cls, file_path: str):
+    def from_file(cls, file_path: str, processes_num=NUM_CORES_PHYSICAL):
         with open(file_path, "r") as f:
             lines = [l.strip() for l in f.readlines() if not l.startswith("#")]
 
-        blocks = []
-        for block in cls.divid_into_blocks(lines):
-            blocks.append(PerfScriptBlock.from_lines(block))
+        with Pool(processes=processes_num) as pool:
+            blocks = pool.map(PerfScriptBlock.from_lines, cls.divid_into_blocks(lines))
+
         return cls(blocks)
