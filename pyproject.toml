@@ -42,6 +42,8 @@ dependencies = [
     "psutil",
     "grpcio",
     "requests",
+    "scipy",
+    "networkx",
 ]
 
 [project.optional-dependencies]
