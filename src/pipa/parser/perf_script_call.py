@@ -99,6 +99,15 @@ class PerfScriptData:
     def __str__(self):
         return f"{self.blocks}"
 
+    def __iter__(self):
+        return iter(self.blocks)
+
+    def __getitem__(self, index):
+        return self.blocks[index]
+
+    def __len__(self):
+        return len(self.blocks)
+
     @staticmethod
     def divid_into_blocks(lines: list):
         blocks, cur = [], []
