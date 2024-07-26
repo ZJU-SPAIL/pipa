@@ -68,5 +68,7 @@
 ### Version 0.0.11
 
 * [x] Improve comments
+* [x] Support perf-script with call trace
+* [x] Build call graph based on perf-script data
 * [ ] Improve unit tests coverage
 * [ ] Improve documentation
