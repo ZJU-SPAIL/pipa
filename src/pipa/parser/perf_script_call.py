@@ -5,9 +5,9 @@ from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 
 class PerfScriptCall:
     def __init__(self, addr, symbol, caller):
-        self.addr = addr
-        self.symbol = symbol
-        self.caller = caller
+        self.addr: str = addr
+        self.symbol: str = symbol
+        self.caller: str = caller
 
     def __str__(self):
         return f"{self.addr} {self.symbol} ({self.caller})"
@@ -28,12 +28,12 @@ class PerfScriptCall:
 
 class PerfScriptHeader:
     def __init__(self, command, pid, cpu, time, value, event):
-        self.command = command
-        self.pid = pid
-        self.cpu = cpu
-        self.time = time
-        self.value = value
-        self.event = event
+        self.command: str = command
+        self.pid: int = pid
+        self.cpu: int = cpu
+        self.time: str = time
+        self.value: int = value
+        self.event: str = event
 
     def __str__(self):
         return f"{self.command} {self.pid} {self.cpu} {self.time} {self.value} {self.event}"
@@ -74,9 +74,9 @@ class PerfScriptHeader:
 
 
 class PerfScriptBlock:
-    def __init__(self, header: PerfScriptHeader, calls: list):
-        self.header = header
-        self.calls = calls
+    def __init__(self, header: PerfScriptHeader, calls: list[PerfScriptCall]):
+        self.header: PerfScriptHeader = header
+        self.calls: list[PerfScriptCall] = calls
 
     def __str__(self):
         return f"{self.header}\n{self.calls}"
