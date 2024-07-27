@@ -278,7 +278,7 @@ class CallGraph:
         if cpu is not None:
             perf_script = perf_script.filter_by_cpu(cpu=cpu)
 
-        node_table = NodeTable.from_perf_script_data(perf_script, pid=pid, cpu=cpu)
+        node_table = NodeTable.from_perf_script_data(perf_script)
         directed_graph = nx.DiGraph()
 
         for block in perf_script.blocks:
