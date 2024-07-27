@@ -169,7 +169,10 @@ class NodeTable:
             cls: An instance of the class with the call graph created from the PerfScriptData.
 
         """
-        perf_script = perf_script.filter_by_pid(pid=pid).filter_by_cpu(cpu=cpu)
+        if pid is not None:
+            perf_script = perf_script.filter_by_pid(pid=pid)
+        if cpu is not None:
+            perf_script = perf_script.filter_by_cpu(cpu=cpu)
 
         res = {}
         for block in perf_script.blocks:
