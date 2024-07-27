@@ -43,6 +43,12 @@ class Node:
         self.cycles = cycles
         self.instructions = instructions
 
+    def get_function_name(self):
+        return self.symbol.split("+")[0]
+
+    def get_offset(self):
+        return self.symbol.split("+")[1]
+
 
 class NodeTable:
     """
@@ -223,40 +229,147 @@ class NodeTable:
         )
 
 
+class FunctionNode:
+    def __init__(self, func_name: str, module_name: str, nodes: list[Node] | None):
+        self.func_name = func_name
+        self.module_name = module_name
+        self.nodes = nodes
+
+    def __str__(self):
+        return f"{self.func_name} {self.module_name}"
+
+
+class FunctionNodeTable:
+    def __init__(self, function_nodes: dict[str, FunctionNode] | None = None):
+        self.function_nodes = function_nodes if function_nodes else {}
+
+    def __getitem__(self, key: str) -> FunctionNode:
+        return self.function_nodes[key]
+
+    def __setitem__(self, key: str, value: FunctionNode):
+        self.function_nodes[key] = value
+
+    def __iter__(self):
+        return iter(self.function_nodes)
+
+    def __len__(self):
+        return len(self.function_nodes)
+
+    def __str__(self):
+        return str(self.function_nodes)
+
+    def __repr__(self):
+        return repr(self.function_nodes)
+
+    def __contains__(self, key):
+        return key in self.function_nodes
+
+    def __delitem__(self, key):
+        del self.function_nodes[key]
+
+    def __add__(self, other):
+        return FunctionNodeTable({**self.function_nodes, **other.function_nodes})
+
+    def __sub__(self, other):
+        return FunctionNodeTable(
+            {
+                k: v
+                for k, v in self.function_nodes.items()
+                if k not in other.function_nodes
+            }
+        )
+
+    def __and__(self, other):
+        return FunctionNodeTable(
+            {k: v for k, v in self.function_nodes.items() if k in other.function_nodes}
+        )
+
+    def __or__(self, other):
+        return FunctionNodeTable({**self.function_nodes, **other.function_nodes})
+
+    def __xor__(self, other):
+        return FunctionNodeTable(
+            {
+                k: v
+                for k, v in self.function_nodes.items()
+                if k not in other.function_nodes
+            }
+            | {
+                k: v
+                for k, v in other.function_nodes.items()
+                if k not in self.function_nodes
+            }
+        )
+
+    def __eq__(self, other):
+        return self.function_nodes == other.function_nodes
+
+    def __ne__(self, other):
+        return self.function_nodes != other.function_nodes
+
+    def __lt__(self, other):
+        return self.function_nodes < other.function_nodes
+
+    def __le__(self, other):
+        return self.function_nodes <= other.function_nodes
+
+    def __gt__(self, other):
+        return self.function_nodes > other.function_nodes
+
+    def __ge__(self, other):
+        return self.function_nodes >= other.function_nodes
+
+    @classmethod
+    def from_node_table(cls, node_table: NodeTable):
+        res = {}
+        for node in node_table._nodes.values():
+            method_name = node.get_function_name()
+            module_name = node.caller()
+            k = f"{method_name} {module_name}"
+            if k not in res:
+                res[k] = FunctionNode(
+                    func_name=method_name, module_name=module_name, nodes=[node]
+                )
+            else:
+                res[k].nodes.append(node)
+        return cls(function_nodes=res)
+
+
 class CallGraph:
     """
     Represents a call graph.
 
     Attributes:
-        block_graph (nx.DiGraph): The directed graph representing the call relationships.
+        block_graph (nx.DiGraph): The directed graph representing the call relationships at the block level.
         node_table (NodeTable): The table mapping node addresses to node objects.
+        func_graph (nx.DiGraph): The directed graph representing the call relationships at the function level.
+        function_node_table (FunctionNodeTable): The table mapping function names to function nodes.
     """
 
     def __init__(
         self,
         block_graph: nx.DiGraph | None = None,
         node_table: NodeTable | None = None,
+        func_graph: nx.DiGraph | None = None,
+        function_node_table: FunctionNodeTable | None = None,
     ):
         """
         Initializes a CallGraph object.
 
         Args:
-            block_graph (nx.DiGraph, optional): The directed graph representing the call relationships in blocks level.
+            block_graph (nx.DiGraph, optional): The directed graph representing the call relationships at blocks level.
                 Defaults to None.
             node_table (NodeTable, optional): The table mapping node addresses to node objects.
+                Defaults to None.
+            func_graph (nx.DiGraph, optional): The directed graph representing the call relationships at function level.
+                Defaults to None.
+            function_node_table (FunctionNodeTable, optional): The table mapping function names to function nodes.
                 Defaults to None.
         """
         self.block_graph = nx.DiGraph() if block_graph is None else block_graph
         self.node_table = NodeTable() if node_table is None else node_table
-
-    def __str__(self):
-        """
-        Returns a string representation of the call graph.
-
-        Returns:
-            str: The string representation of the call graph.
-        """
-        return str(self.block_graph)
+        self.func_graph = nx.DiGraph() if func_graph is None else func_graph
+        self.function_node_table = FunctionNodeTable.from_node_table(self.node_table)
 
     @classmethod
     def from_perf_script_data(
@@ -281,14 +394,29 @@ class CallGraph:
         node_table = NodeTable.from_perf_script_data(perf_script)
         block_graph = nx.DiGraph()
 
+        func_table = FunctionNodeTable.from_node_table(node_table)
+        func_graph = nx.DiGraph()
+
         for block in perf_script.blocks:
             calls = block.calls
             for i in range(1, len(calls)):
                 caller = calls[i - 1].addr
                 callee = calls[i].addr
                 block_graph.add_edge(node_table[callee], node_table[caller], weight=1)
+                k_caller = f"{node_table[caller].get_function_name()} {node_table[caller].caller}"
+                k_callee = f"{node_table[callee].get_function_name()} {node_table[callee].caller}"
+                func_graph.add_edge(
+                    node_table[k_callee].get_function_name(),
+                    node_table[k_caller].get_function_name(),
+                    weight=1,
+                )
 
-        return cls(block_graph=block_graph, node_table=node_table)
+        return cls(
+            block_graph=block_graph,
+            node_table=node_table,
+            func_graph=func_graph,
+            function_node_table=func_table,
+        )
 
     def show(self):
         """
