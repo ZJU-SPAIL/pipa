@@ -228,25 +228,25 @@ class CallGraph:
     Represents a call graph.
 
     Attributes:
-        directed_graph (nx.DiGraph): The directed graph representing the call relationships.
+        block_graph (nx.DiGraph): The directed graph representing the call relationships.
         node_table (NodeTable): The table mapping node addresses to node objects.
     """
 
     def __init__(
         self,
-        directed_graph: nx.DiGraph | None = None,
+        block_graph: nx.DiGraph | None = None,
         node_table: NodeTable | None = None,
     ):
         """
         Initializes a CallGraph object.
 
         Args:
-            directed_graph (nx.DiGraph, optional): The directed graph representing the call relationships.
+            block_graph (nx.DiGraph, optional): The directed graph representing the call relationships in blocks level.
                 Defaults to None.
             node_table (NodeTable, optional): The table mapping node addresses to node objects.
                 Defaults to None.
         """
-        self.directed_graph = nx.DiGraph() if directed_graph is None else directed_graph
+        self.block_graph = nx.DiGraph() if block_graph is None else block_graph
         self.node_table = NodeTable() if node_table is None else node_table
 
     def __str__(self):
@@ -256,7 +256,7 @@ class CallGraph:
         Returns:
             str: The string representation of the call graph.
         """
-        return str(self.directed_graph)
+        return str(self.block_graph)
 
     @classmethod
     def from_perf_script_data(
@@ -279,18 +279,16 @@ class CallGraph:
             perf_script = perf_script.filter_by_cpu(cpu=cpu)
 
         node_table = NodeTable.from_perf_script_data(perf_script)
-        directed_graph = nx.DiGraph()
+        block_graph = nx.DiGraph()
 
         for block in perf_script.blocks:
             calls = block.calls
             for i in range(1, len(calls)):
                 caller = calls[i - 1].addr
                 callee = calls[i].addr
-                directed_graph.add_edge(
-                    node_table[callee], node_table[caller], weight=1
-                )
+                block_graph.add_edge(node_table[callee], node_table[caller], weight=1)
 
-        return cls(directed_graph=directed_graph, node_table=node_table)
+        return cls(block_graph=block_graph, node_table=node_table)
 
     def show(self):
         """
@@ -299,7 +297,7 @@ class CallGraph:
         Returns:
             None
         """
-        nx.draw(self.directed_graph, with_labels=True)
+        nx.draw(self.block_graph, with_labels=True)
         plt.show()
 
     def save(self, file_path: str):
@@ -312,4 +310,4 @@ class CallGraph:
         Returns:
             None
         """
-        nx.write_gexf(self.directed_graph, file_path)
+        nx.write_gexf(self.block_graph, file_path)
