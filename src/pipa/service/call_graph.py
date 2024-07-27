@@ -528,11 +528,13 @@ class CallGraph:
     def show(
         self,
         graph: Literal["block_graph", "func_graph"] = "func_graph",
+        layout_scale: int = 3,
         fig_path: Optional[str] = None,
         node_color: str | list = "skyblue",
         fig_size: tuple[int, int] = (100, 100),
         node_size: int = 700,
-        font_size: int = 15,
+        font_size: int = 12,
+        font_weight: Literal["normal", "bold"] = "normal",
     ):
         """
         Displays the call graph.
@@ -544,7 +546,7 @@ class CallGraph:
             None
         """
         G = self.__getattribute__(graph)
-        pos = nx.spectral_layout(G)
+        pos = nx.spring_layout(G, scale=layout_scale)
         plt.figure(figsize=fig_size)
         nx.draw(
             G,
@@ -553,7 +555,7 @@ class CallGraph:
             node_size=node_size,
             node_color=node_color,
             font_size=font_size,
-            font_weight="bold",
+            font_weight=font_weight,
         )
         edge_labels = nx.get_edge_attributes(G, "weight")
         nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
