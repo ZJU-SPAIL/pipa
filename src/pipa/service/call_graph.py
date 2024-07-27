@@ -471,11 +471,16 @@ class CallGraph:
                 block_graph.add_edge(node_table[callee], node_table[caller], weight=1)
                 k_caller = f"{node_table[caller].get_function_name()} {node_table[caller].caller}"
                 k_callee = f"{node_table[callee].get_function_name()} {node_table[callee].caller}"
-                func_graph.add_edge(
-                    func_table[k_callee],
-                    func_table[k_caller],
-                    weight=1,
-                )
+                func_caller = func_table[k_caller]
+                func_callee = func_table[k_callee]
+                if func_graph.has_edge(func_callee, func_caller):
+                    func_graph[func_callee][func_caller]["weight"] += 1
+                else:
+                    func_graph.add_edge(
+                        func_callee,
+                        func_caller,
+                        weight=1,
+                    )
 
         return cls(
             block_graph=block_graph,
