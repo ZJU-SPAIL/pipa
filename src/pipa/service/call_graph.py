@@ -383,7 +383,7 @@ class FunctionNodeTable:
         res = {}
         for node in node_table._nodes.values():
             method_name = node.get_function_name()
-            module_name = node.caller()
+            module_name = node.caller
             k = f"{method_name} {module_name}"
             if k not in res:
                 res[k] = FunctionNode(
