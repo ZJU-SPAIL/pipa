@@ -1,8 +1,11 @@
 from typing import Optional
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import graphviz_layout, write_dot
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
 
 
 class Node:
@@ -50,6 +53,13 @@ class Node:
 
     def get_offset(self):
         return self.symbol.split("+")[1]
+
+    def __str__(self) -> str:
+        sym = self.symbol.split("+")[0]
+        sym = sym.replace("[", "")
+        sym = sym.replace("]", "")
+        sym = sym.replace(".", "_")
+        return f"{sym}"
 
 
 class NodeTable:
@@ -482,6 +492,65 @@ class CallGraph:
             func_graph=func_graph,
             function_node_table=func_table,
         )
+
+    def simple_group_mark(self):
+        nodes = self.node_table._nodes.values()
+        attrs_groups = {}
+        for node in nodes:
+            attr = node.caller
+            if attr not in attrs_groups:
+                attrs_groups[attr] = []
+            attrs_groups[attr].append(node)
+        attrs_to_cluster = {attr: idx for idx, attr in enumerate(attrs_groups.keys())}
+        G = self.directed_graph
+        for node in nodes:
+            G.nodes[node]["cluster"] = attrs_to_cluster[node.caller]
+        color_map = plt.cm.get_cmap("viridis", len(attrs_groups))  # 使用viridis颜色映射
+
+        # 根据聚类结果设置节点颜色
+        node_colors = [color_map(G.nodes[node]["cluster"]) for node in G.nodes]
+
+        # 绘制图形
+        pos = graphviz_layout(G, prog="dot")
+        plt.figure(figsize=(100, 100))
+        nx.draw(
+            G,
+            pos,
+            with_labels=True,
+            node_size=700,
+            node_color=node_colors,
+            font_size=15,
+            font_weight="bold",
+        )
+        labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+        plt.show()
+
+    def kmeans_mark(self):
+        nodes = self.node_table._nodes.values()
+        caller_attrs = [node.caller for node in nodes]
+        command_attrs = [node.command for node in nodes]
+        caller_x = TfidfVectorizer().fit_transform(caller_attrs)
+        command_x = TfidfVectorizer().fit_transform(command_attrs)
+        X_combined = np.hstack([caller_x.toarray(), command_x.toarrary()])
+        sse = []
+        ks: list[KMeans] = []
+        for k in range(1, len(nodes) + 1):
+            kmeans = KMeans(n_clusters=k, random_state=0).fit(X_combined)
+            ks.append(kmeans)
+            if len(sse) != 0 and abs(kmeans.inertia_ - sse[-1]) < 3:
+                break
+            sse.append(kmeans.inertia_)
+        labels = ks[-1].labels_
+
+        G = self.directed_graph
+        for i, node in enumerate(nodes):
+            G.nodes[node]["cluster"] = labels[i]
+
+        # 设置颜色映射
+        color_map = plt.cm.get_cmap(
+            "viridis",
+        )  # 使用viridis颜色映射，有3个不同的颜色
 
     def show(self, fig_path: Optional[str] = None):
         """
