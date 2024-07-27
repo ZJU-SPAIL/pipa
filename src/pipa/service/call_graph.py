@@ -1,5 +1,6 @@
 from typing import Literal, Optional
 import networkx as nx
+import json
 import matplotlib.pyplot as plt
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import write_dot
@@ -51,6 +52,20 @@ class Node:
 
     def get_offset(self):
         return self.symbol.split("+")[1]
+
+
+class NodeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Node):
+            return {
+                "addr": obj.addr,
+                "symbol": obj.symbol,
+                "caller": obj.caller,
+                "command": obj.command,
+                "cycles": obj.cycles,
+                "instructions": obj.instructions,
+            }
+        return super().default(obj)
 
 
 class NodeTable:
@@ -397,6 +412,13 @@ class FunctionNodeTable:
         return cls(function_nodes=res)
 
 
+class ClusterEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Node):
+            return NodeEncoder().default(obj)
+        return super().default(obj)
+
+
 class CallGraph:
     """
     Represents a call graph.
@@ -492,6 +514,7 @@ class CallGraph:
     def simple_groups(
         self,
         fig_path: str = "simple_groups.png",
+        cluster_info_path: str = "simple_groups_cluster.txt",
     ):
         G = self.func_graph
         nodes = G.nodes
@@ -515,6 +538,8 @@ class CallGraph:
                 _clusters[_cluster]["cycles"] += sub_node.cycles
                 _clusters[_cluster]["insts"] += sub_node.instructions
                 _clusters[_cluster]["funcs"].append(sub_node)
+        with open(cluster_info_path, "w") as file:
+            json.dump(_clusters, file, cls=ClusterEncoder, indent=4)
 
         # Use viridis colors for mapping
         color_map = plt.cm.get_cmap("viridis", len(attrs_groups))
