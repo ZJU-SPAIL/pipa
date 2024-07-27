@@ -193,6 +193,13 @@ class NodeTable:
                     cycles=header.value if header.event == "cycles" else 0,
                     instructions=header.value if header.event == "instructions" else 0,
                 )
+            for i in range(1, len(calls)):
+                if calls[i].addr not in res:
+                    res[calls[i].addr] = Node(
+                        addr=calls[i].addr,
+                        symbol=calls[i].symbol,
+                        caller=calls[i].caller,
+                    )
 
         return cls(nodes=res)
 
