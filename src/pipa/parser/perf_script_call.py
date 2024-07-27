@@ -33,10 +33,9 @@ class PerfScriptCall:
             list: A list containing the parsed values [addr, symbol, caller], or None if parsing fails.
         """
         try:
-            t = line.split()
-            addr = t[0]
-            symbol = t[1]
-            caller = " ".join(t[2:])
+            pattern = re.compile(r"([0-9a-f]+)\s+(.+?)\s+\((.+)\)")
+            matches = pattern.findall(line)
+            addr, symbol, caller = matches[0]
         except Exception as e:
             print(e)
             return None
