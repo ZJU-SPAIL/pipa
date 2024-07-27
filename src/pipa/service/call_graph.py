@@ -230,7 +230,25 @@ class NodeTable:
 
 
 class FunctionNode:
+    """
+    Represents a function node in the call graph.
+
+    Attributes:
+        func_name (str): The name of the function.
+        module_name (str): The name of the module containing the function.
+        nodes (list[Node] | None): A list of child nodes, if any.
+    """
+
     def __init__(self, func_name: str, module_name: str, nodes: list[Node] | None):
+        """
+        Initialize a CallGraph object.
+
+        Args:
+            func_name (str): The name of the function.
+            module_name (str): The name of the module.
+            nodes (list[Node] | None): A list of Node objects representing the nodes in the call graph.
+                If None, the call graph is empty.
+        """
         self.func_name = func_name
         self.module_name = module_name
         self.nodes = nodes
@@ -240,6 +258,38 @@ class FunctionNode:
 
 
 class FunctionNodeTable:
+    """
+    A class representing a table of function nodes.
+
+    This class provides a dictionary-like interface to store and manipulate function nodes.
+
+    Attributes:
+        function_nodes (dict[str, FunctionNode]): A dictionary that stores function nodes.
+
+    Methods:
+        __getitem__(self, key: str) -> FunctionNode: Returns the function node associated with the given key.
+        __setitem__(self, key: str, value: FunctionNode): Sets the function node associated with the given key.
+        __iter__(self): Returns an iterator over the function nodes.
+        __len__(self): Returns the number of function nodes in the table.
+        __str__(self): Returns a string representation of the function node table.
+        __repr__(self): Returns a string representation of the function node table.
+        __contains__(self, key): Checks if the table contains a function node with the given key.
+        __delitem__(self, key): Deletes the function node associated with the given key.
+        __add__(self, other): Returns a new function node table that is the union of this table and another table.
+        __sub__(self, other): Returns a new function node table that contains the function nodes in this table but not in another table.
+        __and__(self, other): Returns a new function node table that contains the function nodes that are common to both this table and another table.
+        __or__(self, other): Returns a new function node table that is the union of this table and another table.
+        __xor__(self, other): Returns a new function node table that contains the function nodes that are in either this table or another table, but not in both.
+        __eq__(self, other): Checks if this function node table is equal to another function node table.
+        __ne__(self, other): Checks if this function node table is not equal to another function node table.
+        __lt__(self, other): Checks if this function node table is less than another function node table.
+        __le__(self, other): Checks if this function node table is less than or equal to another function node table.
+        __gt__(self, other): Checks if this function node table is greater than another function node table.
+        __ge__(self, other): Checks if this function node table is greater than or equal to another function node table.
+        from_node_table(cls, node_table: NodeTable): Creates a new function node table from a node table.
+
+    """
+
     def __init__(self, function_nodes: dict[str, FunctionNode] | None = None):
         self.function_nodes = function_nodes if function_nodes else {}
 
@@ -321,6 +371,15 @@ class FunctionNodeTable:
 
     @classmethod
     def from_node_table(cls, node_table: NodeTable):
+        """
+        Create a CallGraph object from a NodeTable.
+
+        Args:
+            node_table (NodeTable): The NodeTable object containing the nodes.
+
+        Returns:
+            CallGraph: The CallGraph object created from the NodeTable.
+        """
         res = {}
         for node in node_table._nodes.values():
             method_name = node.get_function_name()
