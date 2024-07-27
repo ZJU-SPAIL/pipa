@@ -428,7 +428,11 @@ class CallGraph:
         self.block_graph = nx.DiGraph() if block_graph is None else block_graph
         self.node_table = NodeTable() if node_table is None else node_table
         self.func_graph = nx.DiGraph() if func_graph is None else func_graph
-        self.function_node_table = FunctionNodeTable.from_node_table(self.node_table)
+        self.function_node_table = (
+            FunctionNodeTable.from_node_table(self.node_table)
+            if function_node_table is None
+            else function_node_table
+        )
 
     @classmethod
     def from_perf_script_data(
