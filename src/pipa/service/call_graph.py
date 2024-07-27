@@ -273,6 +273,11 @@ class CallGraph:
         Returns:
             CallGraph: The CallGraph object created from the performance script data.
         """
+        if pid is not None:
+            perf_script = perf_script.filter_by_pid(pid=pid)
+        if cpu is not None:
+            perf_script = perf_script.filter_by_cpu(cpu=cpu)
+
         node_table = NodeTable.from_perf_script_data(perf_script, pid=pid, cpu=cpu)
         directed_graph = nx.DiGraph()
 
