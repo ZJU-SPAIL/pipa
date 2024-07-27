@@ -1,11 +1,9 @@
-from typing import Optional
+from typing import Literal, Optional
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy as np
 from pipa.parser.perf_script_call import PerfScriptData
-from networkx.drawing.nx_pydot import graphviz_layout, write_dot
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
+from networkx.drawing.nx_pydot import write_dot
+from collections import defaultdict
 
 
 class Node:
@@ -53,13 +51,6 @@ class Node:
 
     def get_offset(self):
         return self.symbol.split("+")[1]
-
-    def __str__(self) -> str:
-        sym = self.symbol.split("+")[0]
-        sym = sym.replace("[", "")
-        sym = sym.replace("]", "")
-        sym = sym.replace(".", "_")
-        return f"{sym}"
 
 
 class NodeTable:
@@ -493,66 +484,51 @@ class CallGraph:
             function_node_table=func_table,
         )
 
-    def simple_group_mark(self):
-        nodes = self.node_table._nodes.values()
+    def simple_groups(
+        self,
+        fig_path: str = "simple_groups.png",
+    ):
+        G = self.func_graph
+        nodes = G.nodes
+
+        # Create groups
         attrs_groups = {}
         for node in nodes:
-            attr = node.caller
+            attr = f"{node.func_name} {node.module_name}"
             if attr not in attrs_groups:
                 attrs_groups[attr] = []
             attrs_groups[attr].append(node)
         attrs_to_cluster = {attr: idx for idx, attr in enumerate(attrs_groups.keys())}
-        G = self.directed_graph
+
+        # Assign cluster & Combine Data
+        _clusters = defaultdict(lambda: {"cycles": 0, "insts": 0, "funcs": []})
         for node in nodes:
-            G.nodes[node]["cluster"] = attrs_to_cluster[node.caller]
-        color_map = plt.cm.get_cmap("viridis", len(attrs_groups))  # 使用viridis颜色映射
+            attr = f"{node.func_name} {node.module_name}"
+            _cluster = attrs_to_cluster[attr]
+            nodes[node]["cluster"] = _cluster
+            for sub_node in node.nodes:
+                _clusters[_cluster]["cycles"] += sub_node.cycles
+                _clusters[_cluster]["insts"] += sub_node.instructions
+                _clusters[_cluster]["funcs"].append(sub_node)
 
-        # 根据聚类结果设置节点颜色
-        node_colors = [color_map(G.nodes[node]["cluster"]) for node in G.nodes]
+        # Use viridis colors for mapping
+        color_map = plt.cm.get_cmap("viridis", len(attrs_groups))
 
-        # 绘制图形
-        pos = graphviz_layout(G, prog="dot")
-        plt.figure(figsize=(100, 100))
-        nx.draw(
-            G,
-            pos,
-            with_labels=True,
-            node_size=700,
-            node_color=node_colors,
-            font_size=15,
-            font_weight="bold",
-        )
-        labels = nx.get_edge_attributes(G, "weight")
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
-        plt.show()
+        # Set color for the group results
+        node_colors = [color_map(nodes[node]["cluster"]) for node in nodes]
 
-    def kmeans_mark(self):
-        nodes = self.node_table._nodes.values()
-        caller_attrs = [node.caller for node in nodes]
-        command_attrs = [node.command for node in nodes]
-        caller_x = TfidfVectorizer().fit_transform(caller_attrs)
-        command_x = TfidfVectorizer().fit_transform(command_attrs)
-        X_combined = np.hstack([caller_x.toarray(), command_x.toarrary()])
-        sse = []
-        ks: list[KMeans] = []
-        for k in range(1, len(nodes) + 1):
-            kmeans = KMeans(n_clusters=k, random_state=0).fit(X_combined)
-            ks.append(kmeans)
-            if len(sse) != 0 and abs(kmeans.inertia_ - sse[-1]) < 3:
-                break
-            sse.append(kmeans.inertia_)
-        labels = ks[-1].labels_
+        # Print fig
+        self.show(graph="func_graph", fig_path=fig_path, node_color=node_colors)
 
-        G = self.directed_graph
-        for i, node in enumerate(nodes):
-            G.nodes[node]["cluster"] = labels[i]
-
-        # 设置颜色映射
-        color_map = plt.cm.get_cmap(
-            "viridis",
-        )  # 使用viridis颜色映射，有3个不同的颜色
-
-    def show(self, fig_path: Optional[str] = None):
+    def show(
+        self,
+        graph: Literal["block_graph", "func_graph"] = "func_graph",
+        fig_path: Optional[str] = None,
+        node_color: str | list = "skyblue",
+        fig_size: tuple[int, int] = (100, 100),
+        node_size: int = 700,
+        font_size: int = 15,
+    ):
         """
         Displays the call graph.
 
@@ -562,26 +538,20 @@ class CallGraph:
         Returns:
             None
         """
-        G = self.block_graph
-        try:
-            pos = graphviz_layout(G, prog="dot")
-        except IndexError as e:
-            print("Error generating graphviz layout:", e)
-            print(
-                "This is likely due to an issue with node references or graph structure."
-            )
-        plt.figure(figsize=(100, 100))
+        G = self.__getattribute__(graph)
+        pos = nx.spectral_layout(G)
+        plt.figure(figsize=fig_size)
         nx.draw(
             G,
             pos,
             with_labels=True,
-            node_size=700,
-            node_color="skyblue",
-            font_size=15,
+            node_size=node_size,
+            node_color=node_color,
+            font_size=font_size,
             font_weight="bold",
         )
-        labels = nx.get_edge_attributes(G, "weight")
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+        edge_labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
         if fig_path:
             plt.savefig(fig_path)
         plt.show()
