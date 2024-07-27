@@ -38,6 +38,7 @@ dependencies = [
     "questionary>=2.0.1",
     "rich>=13.7.1",
     "pandarallel",
+    "pydot",
     "seaborn",
     "psutil",
     "protobuf",
@@ -45,6 +46,7 @@ dependencies = [
     "requests",
     "scipy",
     "networkx",
+    "matplotlib"
 ]
 
 [project.optional-dependencies]
