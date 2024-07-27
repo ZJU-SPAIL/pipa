@@ -184,6 +184,7 @@ class PerfScriptBlock:
 class PerfScriptData:
     """
     Represents a collection of performance script blocks.
+    It represents the data obtained from a perf script file.
 
     Args:
         blocks (list[PerfScriptBlock]): The list of PerfScriptBlock objects.
