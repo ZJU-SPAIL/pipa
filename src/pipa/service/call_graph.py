@@ -465,8 +465,8 @@ class CallGraph:
                 k_caller = f"{node_table[caller].get_function_name()} {node_table[caller].caller}"
                 k_callee = f"{node_table[callee].get_function_name()} {node_table[callee].caller}"
                 func_graph.add_edge(
-                    node_table[k_callee].get_function_name(),
-                    node_table[k_caller].get_function_name(),
+                    func_table[k_callee].get_function_name(),
+                    func_table[k_caller].get_function_name(),
                     weight=1,
                 )
 
