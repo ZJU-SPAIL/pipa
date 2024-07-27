@@ -1,6 +1,8 @@
+from typing import Optional
 import networkx as nx
 import matplotlib.pyplot as plt
 from pipa.parser.perf_script_call import PerfScriptData
+from networkx.drawing.nx_pydot import graphviz_layout, write_dot
 
 
 class Node:
@@ -481,24 +483,48 @@ class CallGraph:
             function_node_table=func_table,
         )
 
-    def show(self):
+    def show(self, fig_path: Optional[str] = None):
         """
         Displays the call graph.
 
+        Args:
+            fig_path (str, optional): The path to save the call graph figure.
+
         Returns:
             None
         """
-        nx.draw(self.block_graph, with_labels=True)
+        G = self.block_graph
+        try:
+            pos = graphviz_layout(G, prog="dot")
+        except IndexError as e:
+            print("Error generating graphviz layout:", e)
+            print(
+                "This is likely due to an issue with node references or graph structure."
+            )
+        plt.figure(figsize=(100, 100))
+        nx.draw(
+            G,
+            pos,
+            with_labels=True,
+            node_size=700,
+            node_color="skyblue",
+            font_size=15,
+            font_weight="bold",
+        )
+        labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+        if fig_path:
+            plt.savefig(fig_path)
         plt.show()
 
-    def save(self, file_path: str):
+    def save_dot(self, dot_path: str):
         """
-        Saves the call graph to a file.
+        Saves the call graph dot file.
 
         Args:
-            file_path (str): The path to save the call graph.
+            dot_path (str): The path to save the call graph.
 
         Returns:
             None
         """
-        nx.write_gexf(self.block_graph, file_path)
+        write_dot(self.block_graph, dot_path)
