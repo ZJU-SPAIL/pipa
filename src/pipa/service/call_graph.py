@@ -177,9 +177,9 @@ class NodeTable:
             calls = block.calls
             addr = calls[0].addr
             if addr in res:
-                if header.events == "cycles":
+                if header.event == "cycles":
                     res[addr].cycles += header.value
-                elif header.events == "instructions":
+                elif header.event == "instructions":
                     res[addr].instructions += header.value
             else:
                 res[addr] = Node(
