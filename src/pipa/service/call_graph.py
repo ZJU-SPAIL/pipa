@@ -1,6 +1,7 @@
-from typing import Literal, Optional
+from typing import Literal, Mapping, Optional
 import networkx as nx
 import json
+import numpy as np
 import matplotlib.pyplot as plt
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import write_dot
@@ -532,6 +533,9 @@ class CallGraph:
         self,
         fig_path: str = "simple_groups.png",
         cluster_info_path: str = "simple_groups_cluster.txt",
+        layout_k: int = 0.2,
+        layout_iters: int = 100,
+        closer_factor: int = 0.6,
     ):
         G = self.func_graph
         nodes = G.nodes
@@ -563,12 +567,42 @@ class CallGraph:
 
         # Set color for the group results
         node_colors = [color_map(nodes[node]["cluster"]) for node in nodes]
+        for i, node in enumerate(nodes):
+            nodes[node]["color"] = node_colors[i]
+
+        # fetch each node's position (an array)
+        pos = nx.spring_layout(G, k=layout_k, iterations=layout_iters)
+
+        Inodes = [node for node in nodes]
+        for i in range(len(Inodes)):
+            for j in range(i + 1, len(Inodes)):
+                node_i = Inodes[i]
+                node_j = Inodes[j]
+                if nodes[node_i]["color"] == nodes[node_j]["color"]:
+                    pos[node_i] += closer_factor * (
+                        np.array(pos[node_j]) - np.array(pos[node_i])
+                    )
+
+        # specify node's name
+        node_names = {}
+        for node in nodes:
+            node_names[node] = (
+                f"{node}\ncycles: {node.get_cycles()}\ninsts: {node.get_instructions()}"
+            )
 
         # Print fig
-        self.show(graph="func_graph", fig_path=fig_path, node_color=node_colors)
+        self.show(
+            graph="func_graph",
+            node_names=node_names,
+            pos=pos,
+            fig_path=fig_path,
+            node_color=node_colors,
+        )
 
     def show(
         self,
+        pos: Optional[Mapping],
+        node_names: Optional[Mapping] = None,
         graph: Literal["block_graph", "func_graph"] = "func_graph",
         layout_scale: int = 3,
         fig_path: Optional[str] = None,
@@ -588,19 +622,21 @@ class CallGraph:
             None
         """
         G = self.__getattribute__(graph)
-        pos = nx.spring_layout(G, scale=layout_scale)
+        if not pos:
+            pos = nx.spring_layout(G, scale=layout_scale)
         plt.figure(figsize=fig_size)
+        edge_labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
         nx.draw(
             G,
             pos,
+            labels=node_names,
             with_labels=True,
             node_size=node_size,
             node_color=node_color,
             font_size=font_size,
             font_weight=font_weight,
         )
-        edge_labels = nx.get_edge_attributes(G, "weight")
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
         if fig_path:
             plt.savefig(fig_path)
         plt.show()
