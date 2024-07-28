@@ -6,7 +6,7 @@ import seaborn as sns
 
 class PerfStatData:
     def __init__(self, perf_stat_csv_path: str):
-        self.data = parse_perf_stat_file(perf_stat_csv_path)
+        self.data = self.parse_perf_stat_file(perf_stat_csv_path)
         self._df_wider = None
 
     def get_CPI(self):
@@ -336,56 +336,56 @@ class PerfStatData:
         df_t.rename(columns={"timestamp_": "timestamp"}, inplace=True)
         return df_t
 
+    @staticmethod
+    def parse_perf_stat_file(stat_output_path: str):
+        """
+        Parse the perf stat output file and return a pandas DataFrame.
 
-def parse_perf_stat_file(stat_output_path: str):
-    """
-    Parse the perf stat output file and return a pandas DataFrame.
+        Args:
+            stat_output_path (str): The path to the perf stat output file.
 
-    Args:
-        stat_output_path (str): The path to the perf stat output file.
+        Returns:
+            pandas.DataFrame: The parsed data as a DataFrame.
 
-    Returns:
-        pandas.DataFrame: The parsed data as a DataFrame.
-
-    The fields are in this order:
-    -   optional usec time stamp in fractions of second (with -I xxx)
-    -   optional CPU, core, or socket identifier
-    -   optional number of logical CPUs aggregated
-    -   counter value
-    -   unit of the counter value or empty
-    -   event name
-    -   run time of counter
-    -   percentage of measurement time the counter was running
-    -   optional metric value
-    -   optional unit of metric
-    """
-    pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
-    df = pd.read_csv(
-        stat_output_path,
-        skiprows=1,
-        names=[
-            "timestamp",
-            "cpu_id",
-            "value",
-            "unit",
-            "metric_type",
-            "run_time(ns)",
-            "run_percentage",
-            "opt_value",
-            "opt_unit_metric",
-        ],
-    ).astype(
-        {
-            "timestamp": "float64",
-            "cpu_id": str,
-            "value": "int64",
-            "unit": str,
-            "metric_type": str,
-            "run_time(ns)": "int64",
-            "run_percentage": "float64",
-            "opt_value": "float64",
-            "opt_unit_metric": str,
-        }
-    )
-    df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
-    return df
+        The fields are in this order:
+        -   optional usec time stamp in fractions of second (with -I xxx)
+        -   optional CPU, core, or socket identifier
+        -   optional number of logical CPUs aggregated
+        -   counter value
+        -   unit of the counter value or empty
+        -   event name
+        -   run time of counter
+        -   percentage of measurement time the counter was running
+        -   optional metric value
+        -   optional unit of metric
+        """
+        pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
+        df = pd.read_csv(
+            stat_output_path,
+            skiprows=1,
+            names=[
+                "timestamp",
+                "cpu_id",
+                "value",
+                "unit",
+                "metric_type",
+                "run_time(ns)",
+                "run_percentage",
+                "opt_value",
+                "opt_unit_metric",
+            ],
+        ).astype(
+            {
+                "timestamp": "float64",
+                "cpu_id": str,
+                "value": "int64",
+                "unit": str,
+                "metric_type": str,
+                "run_time(ns)": "int64",
+                "run_percentage": "float64",
+                "opt_value": "float64",
+                "opt_unit_metric": str,
+            }
+        )
+        df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
+        return df
