@@ -3,7 +3,7 @@ from unittest.mock import mock_open, patch
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from io import StringIO
-from pipa.parser.perf_stat import parse_perf_stat_file
+from pipa.parser.perf_stat import PerfStatData
 
 
 # Fixture for sample data
@@ -68,7 +68,7 @@ def expected_df():
 def test_parse_perf_stat_file(mock_file, sample_data, expected_df):
     mock_file.return_value = StringIO(sample_data.strip())
 
-    result_df = parse_perf_stat_file("dummy_path")
+    result_df = PerfStatData.parse_perf_stat_file("dummy_path")
 
     result_df.replace("", float("nan"), inplace=True)
 
