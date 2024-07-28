@@ -80,7 +80,22 @@ class PerfStatData:
 
     def get_CPI_by_thread(self, threads: list):
         """
-        Returns the CPI (Cycles Per Instruction) for the specified threads.
+        Returns the weighted CPI (Cycles Per Instruction) for the specified threads.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            float: The weighted CPI value for the specified threads.
+        """
+        df = self.get_CPI_overall("thread")
+        cycles_sum = df["value_cycles"].sum()
+        instructions_sum = df["value_instructions"].sum()
+        return cycles_sum / instructions_sum
+
+    def get_CPI_average_by_thread(self, threads: list):
+        """
+        Returns the average CPI (Cycles Per Instruction) for the specified threads.
 
         Args:
             threads (list): A list of thread IDs.
