@@ -99,8 +99,8 @@ class NodeTable:
         __le__(self, other): Checks if one NodeTable is less than or equal to the other.
         __gt__(self, other): Checks if one NodeTable is greater than the other.
         __ge__(self, other): Checks if one NodeTable is greater than or equal to the other.
-        from_perf_script_data(cls, perf_script: PerfScriptData, pid: int | None = None, cpu: int | None = None): Creates a NodeTable from PerfScriptData.
-        from_perf_script_file(cls, perf_script_file: str, pid: int | None = None, cpu: int | None = None): Creates a NodeTable from a perf script file.
+        from_perf_script_data(cls, perf_script: PerfScriptData, pids: list | None = None, cpus: list | None = None): Creates a NodeTable from a PerfScriptData object.
+        from_perf_script_file(cls, perf_script_file: str, pids: list | None = None, cpus: list | None = None): Creates a NodeTable from a perf script file.
     """
 
     def __init__(self, nodes: dict | None = None):
@@ -180,24 +180,27 @@ class NodeTable:
 
     @classmethod
     def from_perf_script_data(
-        cls, perf_script: PerfScriptData, pid: int | None = None, cpu: int | None = None
+        cls,
+        perf_script: PerfScriptData,
+        pids: list | None = None,
+        cpus: list | None = None,
     ):
         """
         Create a node table from PerfScriptData.
 
         Args:
             perf_script (PerfScriptData): The PerfScriptData object containing the performance script data.
-            pid (int | None, optional): The process ID to filter the data by. Defaults to None.
-            cpu (int | None, optional): The CPU ID to filter the data by. Defaults to None.
+            pids (list | None, optional): The PIDs to filter the data by. Defaults to None.
+            cpus (list | None, optional): The CPUs to filter the data by. Defaults to None.
 
         Returns:
             cls: An instance of the class with the call graph created from the PerfScriptData.
 
         """
-        if pid is not None:
-            perf_script = perf_script.filter_by_pid(pid=pid)
-        if cpu is not None:
-            perf_script = perf_script.filter_by_cpu(cpu=cpu)
+        if pids is not None:
+            perf_script = perf_script.filter_by_pids(pids=pids)
+        if cpus is not None:
+            perf_script = perf_script.filter_by_cpus(cpus=cpus)
 
         res = {}
         for block in perf_script.blocks:
@@ -230,21 +233,19 @@ class NodeTable:
 
     @classmethod
     def from_perf_script_file(
-        cls, perf_script_file: str, pid: int | None = None, cpu: int | None = None
+        cls, perf_script_file: str, pids: list | None = None, cpus: list | None = None
     ):
         """
         Create a CallGraph instance from a perf script file.
 
         Args:
             perf_script_file (str): The path to the perf script file.
-            pid (int | None, optional): The process ID to filter the call graph for. Defaults to None.
-            cpu (int | None, optional): The CPU to filter the call graph for. Defaults to None.
 
         Returns:
             CallGraph: The CallGraph instance created from the perf script file.
         """
         return cls.from_perf_script_data(
-            PerfScriptData.from_file(perf_script_file), pid=pid, cpu=cpu
+            PerfScriptData.from_file(perf_script_file), pids=pids, cpus=cpus
         )
 
 
@@ -479,7 +480,10 @@ class CallGraph:
 
     @classmethod
     def from_perf_script_data(
-        cls, perf_script: PerfScriptData, pid: int | None = None, cpu: int | None = None
+        cls,
+        perf_script: PerfScriptData,
+        pids: list | None = None,
+        cpus: list | None = None,
     ):
         """
         Creates a CallGraph object from performance script data.
@@ -492,10 +496,10 @@ class CallGraph:
         Returns:
             CallGraph: The CallGraph object created from the performance script data.
         """
-        if pid is not None:
-            perf_script = perf_script.filter_by_pid(pid=pid)
-        if cpu is not None:
-            perf_script = perf_script.filter_by_cpu(cpu=cpu)
+        if pids is not None:
+            perf_script = perf_script.filter_by_pids(pids=pids)
+        if cpus is not None:
+            perf_script = perf_script.filter_by_cpus(cpus=cpus)
 
         node_table = NodeTable.from_perf_script_data(perf_script)
         block_graph = nx.DiGraph()

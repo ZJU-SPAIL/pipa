@@ -233,6 +233,9 @@ class PerfScriptData:
         """
         return PerfScriptData([b for b in self.blocks if b.header.pid == pid])
 
+    def filter_by_pids(self, pids: list[int]):
+        return PerfScriptData([b for b in self.blocks if b.header.pid in pids])
+
     def filter_by_cpu(self, cpu: int):
         """
         Filters the PerfScriptData object by CPU.
@@ -245,6 +248,9 @@ class PerfScriptData:
 
         """
         return PerfScriptData([b for b in self.blocks if b.header.cpu == cpu])
+
+    def filter_by_cpus(self, cpus: list[int]):
+        return PerfScriptData([b for b in self.blocks if b.header.cpu in cpus])
 
     @staticmethod
     def divid_into_blocks(lines: list):
