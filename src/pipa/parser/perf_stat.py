@@ -27,7 +27,7 @@ class PerfStatData:
             .drop(columns=["metric_type_cycles", "metric_type_instructions"])
         )
 
-    def get_CPI_time(self, threads: list = None):
+    def get_CPI_time(self, threads: list | None = None):
         """
         Returns the CPI (Cycles Per Instruction) over time for the specified threads.
 
