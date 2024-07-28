@@ -234,6 +234,15 @@ class PerfScriptData:
         return PerfScriptData([b for b in self.blocks if b.header.pid == pid])
 
     def filter_by_pids(self, pids: list[int]):
+        """
+        Filters the PerfScriptData object by a list of process IDs (pids).
+
+        Args:
+            pids (list[int]): A list of process IDs to filter by.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing only the blocks with matching pids.
+        """
         return PerfScriptData([b for b in self.blocks if b.header.pid in pids])
 
     def filter_by_cpu(self, cpu: int):
@@ -250,6 +259,16 @@ class PerfScriptData:
         return PerfScriptData([b for b in self.blocks if b.header.cpu == cpu])
 
     def filter_by_cpus(self, cpus: list[int]):
+        """
+        Filters the PerfScriptData object by the given list of CPUs.
+
+        Args:
+            cpus (list[int]): A list of CPUs to filter by.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing only the blocks
+            that match the specified CPUs.
+        """
         return PerfScriptData([b for b in self.blocks if b.header.cpu in cpus])
 
     @staticmethod
