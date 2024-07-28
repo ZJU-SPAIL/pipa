@@ -270,9 +270,26 @@ class FunctionNode:
         self.func_name = func_name
         self.module_name = module_name
         self.nodes = nodes
+        self._cycles = sum([node.cycles for node in nodes]) if nodes else 0
+        self._instructions = sum([node.instructions for node in nodes]) if nodes else 0
 
     def __str__(self):
         return f"{self.func_name} {self.module_name}"
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def get_cycles(self):
+        cycles_cur = sum([node.cycles for node in self.nodes]) if self.nodes else 0
+        self._cycles = cycles_cur
+        return cycles_cur
+
+    def get_instructions(self):
+        instructions_cur = (
+            sum([node.instructions for node in self.nodes]) if self.nodes else 0
+        )
+        self._instructions = instructions_cur
+        return instructions_cur
 
 
 class FunctionNodeTable:
