@@ -551,10 +551,10 @@ class CallGraph:
             attr = f"{node.module_name}"
             _cluster = attrs_to_cluster[attr]
             nodes[node]["cluster"] = _cluster
-            for sub_node in node.nodes:
-                _clusters[_cluster]["cycles"] += sub_node.cycles
-                _clusters[_cluster]["insts"] += sub_node.instructions
-                _clusters[_cluster]["funcs"].append(sub_node)
+            _clusters[_cluster]["cycles"] += node.get_cycles()
+            _clusters[_cluster]["insts"] += node.get_instructions()
+            _clusters[_cluster]["funcs"].extend(node.nodes)
+            # for sub_node in node.nodes:
         with open(cluster_info_path, "w") as file:
             json.dump(_clusters, file, cls=ClusterEncoder, indent=4)
 
