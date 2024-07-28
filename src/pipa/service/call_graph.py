@@ -539,7 +539,7 @@ class CallGraph:
         # Create groups
         attrs_groups = {}
         for node in nodes:
-            attr = f"{node.func_name} {node.module_name}"
+            attr = f"{node.module_name}"
             if attr not in attrs_groups:
                 attrs_groups[attr] = []
             attrs_groups[attr].append(node)
@@ -548,7 +548,7 @@ class CallGraph:
         # Assign cluster & Combine Data
         _clusters = defaultdict(lambda: {"cycles": 0, "insts": 0, "funcs": []})
         for node in nodes:
-            attr = f"{node.func_name} {node.module_name}"
+            attr = f"{node.module_name}"
             _cluster = attrs_to_cluster[attr]
             nodes[node]["cluster"] = _cluster
             for sub_node in node.nodes:
