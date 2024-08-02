@@ -18,7 +18,7 @@ uninstall:
 
 .PHONY: test
 test:
-	pytest
+	pytest --ignore=data
 
 lint:
 	flake8 ./src --count --show-source --statistics
