@@ -18,8 +18,10 @@ uninstall:
 
 .PHONY: test
 test:
+	pip install pytest
 	pytest --ignore=data
 
 lint:
+	pip install flake8 black
 	flake8 ./src --count --show-source --statistics
 	black ./src --check --verbose
