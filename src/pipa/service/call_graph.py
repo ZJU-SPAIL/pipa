@@ -206,6 +206,10 @@ class NodeTable:
         for block in perf_script.blocks:
             header = block.header
             calls = block.calls
+
+            if not calls:
+                continue
+
             addr = calls[0].addr
             if addr in res:
                 if header.event == "cycles":
