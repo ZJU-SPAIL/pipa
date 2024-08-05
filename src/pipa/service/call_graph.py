@@ -609,7 +609,7 @@ class CallGraph:
 
     def show(
         self,
-        pos: Optional[Mapping],
+        pos: Optional[Mapping] = None,
         node_names: Optional[Mapping] = None,
         graph: Literal["block_graph", "func_graph"] = "func_graph",
         layout_scale: int = 3,
