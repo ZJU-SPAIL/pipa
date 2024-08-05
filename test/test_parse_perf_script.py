@@ -104,31 +104,5 @@ def test_parse_one_line_invalid_format(monkeypatch):
     assert result is None
 
 
-@pytest.fixture
-def expected_output():
-    return [
-        "perf",
-        3732494,
-        0,
-        "954453.309835",
-        2715,
-        "cycles",
-        "ffffffff8ae9ceb6",
-        "native_write_msr+0x6",
-        "[kernel.kallsyms]",
-    ]
-
-
-def test_parse_one_line(monkeypatch, test_line, expected_output):
-    monkeypatch.setattr(logger, "warning", lambda msg: None)  # Mocking logger.warning
-    result = parse_one_line(test_line)
-    assert result == expected_output
-
-
-def test_parse_one_line_invalid_format(monkeypatch):
-    invalid_line = "invalid format line"
-    result = parse_one_line(invalid_line)
-    assert result is None
-
 if __name__ == "__main__":
     pytest.main([__file__])
