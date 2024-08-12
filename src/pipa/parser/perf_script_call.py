@@ -1,4 +1,5 @@
 import re
+import pandas as pd
 from multiprocessing import Pool
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 
@@ -182,6 +183,23 @@ class PerfScriptBlock:
         """
         return cls(*cls.parse_block(lines))
 
+    def to_record(self):
+        """
+        Converts the PerfScriptBlock object to a record.
+
+        Returns:
+            dict: A dictionary containing the record data.
+        """
+        return {
+            "command": self.header.command,
+            "pid": self.header.pid,
+            "cpu": self.header.cpu,
+            "time": self.header.time,
+            "value": self.header.value,
+            "event": self.header.event,
+            "calls": [str(c) for c in self.calls],
+        }
+
 
 class PerfScriptData:
     """
@@ -314,3 +332,12 @@ class PerfScriptData:
             blocks = pool.map(PerfScriptBlock.from_lines, cls.divid_into_blocks(lines))
 
         return cls(blocks)
+
+    def to_raw_dataframe(self):
+        """
+        Converts the blocks to a raw dataframe.
+        Returns:
+            pd.DataFrame: A pandas DataFrame containing the records from the blocks.
+        """
+
+        return pd.DataFrame([self.blocks.to_record()])
