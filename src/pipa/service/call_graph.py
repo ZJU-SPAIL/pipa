@@ -236,6 +236,9 @@ class NodeTable:
 
         return cls(nodes=res)
 
+    def copy(self):
+        return NodeTable({k: v for k, v in self._nodes.items()})
+
     @classmethod
     def from_perf_script_file(
         cls, perf_script_file: str, pids: list | None = None, cpus: list | None = None
@@ -460,6 +463,9 @@ class FunctionNodeTable:
             for v in self.function_nodes.values()
         ]
         return pd.DataFrame(data)
+
+    def copy(self):
+        return FunctionNodeTable({k: v for k, v in self.function_nodes.items()})
 
 
 class ClusterEncoder(json.JSONEncoder):
