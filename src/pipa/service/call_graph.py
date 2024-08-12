@@ -3,6 +3,7 @@ import networkx as nx
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import write_dot
 from collections import defaultdict
@@ -252,6 +253,20 @@ class NodeTable:
             PerfScriptData.from_file(perf_script_file), pids=pids, cpus=cpus
         )
 
+    def to_dataframe(self):
+        data = [
+            {
+                "addr": v.addr,
+                "symbol": v.symbol,
+                "caller": v.caller,
+                "command": v.command,
+                "cycles": v.cycles,
+                "instructions": v.instructions,
+            }
+            for v in self._nodes.values()
+        ]
+        return pd.DataFrame(data)
+
 
 class FunctionNode:
     """
@@ -433,6 +448,18 @@ class FunctionNodeTable:
             else:
                 res[k].nodes.append(node)
         return cls(function_nodes=res)
+
+    def to_dataframe(self):
+        data = [
+            {
+                "function_name": v.func_name,
+                "module_name": v.module_name,
+                "cycles": v.get_cycles(),
+                "instructions": v.get_instructions(),
+            }
+            for v in self.function_nodes.values()
+        ]
+        return pd.DataFrame(data)
 
 
 class ClusterEncoder(json.JSONEncoder):
