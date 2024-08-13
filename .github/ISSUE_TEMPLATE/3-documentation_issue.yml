@@ -1,0 +1,37 @@
+name: 📚 Documentation issue
+description: Report a problem with the documentation or suggest improvements.
+title: "[Docs] "
+labels: "documentation"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Documentation Issue for Pipa
+
+        Please provide details about the documentation issue or the improvement suggestion.
+
+  - type: input
+    attributes:
+      label: Documentation Section
+      description: Specify the section of the documentation where the issue or suggestion applies.
+      placeholder: "e.g., docs, User-guide, Generating pipa-upload Configuration Template"
+
+  - type: textarea
+    attributes:
+      label: Issue or Suggestion
+      description: Describe the issue with the current documentation or suggest the improvement.
+      placeholder: "e.g., The 'Generate pipa-upload Configuration Template' section does not clearly explain the settings for the parameters, such as `OUTPUT_PATH` and `config_path`."
+
+  - type: textarea
+    attributes:
+      label: Expected Content
+      description: Provide details on what you expected to see in the documentation.
+      placeholder: "e.g., The documentation should provide clear explanations and examples for each parameter, including `OUTPUT_PATH`, `config_path`, and `--verbose`, to ensure users understand how to correctly configure the template."
+
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: Add any other relevant information, links, or references.
+      placeholder: "e.g., Links to relevant sections, related issues, screenshots, etc."

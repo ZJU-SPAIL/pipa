@@ -1,0 +1,43 @@
+name: 🚀 Feature request
+description: Suggest a new feature or improvement for Pipa.
+title: "[Feature] "
+labels: "enhancement"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request for Pipa
+
+        Please provide the details below to help us understand and implement the feature.
+
+  - type: input
+    attributes:
+      label: Feature Summary
+      description: Briefly describe the new feature or enhancement.
+      placeholder: "e.g., Use fixed-width fonts for numbers to improve readability"
+
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Explain why this feature is important or how it will improve Pipa.
+      placeholder: "e.g., This feature will help users quickly compare numerical values by ensuring digits align properly, making it easier to spot large or small numbers at a glance."
+
+  - type: textarea
+    attributes:
+      label: Detailed Description
+      description: Provide a detailed explanation of the feature or enhancement.
+      placeholder: "e.g., The feature should implement fixed-width fonts for all numeric displays in reports and analytics dashboards to ensure consistent alignment across all numerical data."
+
+  - type: textarea
+    attributes:
+      label: Possible Alternatives
+      description: Describe any alternative approaches or features you considered.
+      placeholder: "e.g., I also considered adjusting the spacing dynamically, but fixed-width fonts are more reliable for consistent alignment."
+
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: Add any other relevant information, screenshots, or mockups.
+      placeholder: "e.g., Related issues, design mockups, examples from other tools, etc."
