@@ -1,0 +1,55 @@
+name: 🐛 Bug report
+description: Report an issue or inconsistency found in Pipa.
+title: "[BUG] "
+labels: "bug"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report for Pipa
+
+        Please fill in the following details to help us investigate and address the issue efficiently.
+
+  - type: input
+    attributes:
+      label: Pipa Version
+      description: Please specify the version of Pipa you are using.
+      placeholder: "e.g., 1.2.3"
+
+  - type: textarea
+    attributes:
+      label: File and Code Reference
+      description: Specify the file and the relevant code section where the issue occurs.
+      placeholder: "e.g., In the file perf_stat.py, in the function calculate_cpi()"
+
+  - type: textarea
+    attributes:
+      label: What is the expected behavior?
+      description: Describe the expected behavior or outcome.
+      placeholder: "e.g., The CPI should be calculated using the formula `totalCycles / totalInstructions`."
+
+  - type: textarea
+    attributes:
+      label: What is the actual behavior?
+      description: Describe the behavior you are currently seeing.
+      placeholder: "e.g., The current implementation averages the CPIs of the participating cores, leading to different results."
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Provide detailed steps to reproduce the issue.
+      placeholder: "1. Open the file perf_stat.py.\n2. Review the CPI calculation method.\n3. Compare results using different methods."
+
+  - type: textarea
+    attributes:
+      label: Environment Details
+      description: Provide details about the environment where the issue occurred (OS, Python version, etc.).
+      placeholder: "e.g., OS: Windows 10, Python: 3.8.10"
+
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: Add any other relevant information, such as logs, screenshots, or your own insights.
+      placeholder: "e.g., Attach logs, screenshots, or any other relevant files..."
