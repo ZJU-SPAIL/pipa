@@ -6,6 +6,8 @@ build:
 clean:
 	rm -rf dist
 	rm -rf htmlcov
+	rm -f .coverage
+	rm -f asset/coverage.svg
 
 install:
 	pip install dist/*.whl
@@ -22,7 +24,6 @@ test:
 	pip install pytest coverage coverage-badge
 	coverage run -m pytest --ignore=data
 	coverage report
-	coverage html
 	coverage-badge -o ./asset/coverage.svg
 
 lint:
