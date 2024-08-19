@@ -4,7 +4,9 @@
 
 .vscode
 .idea
+.coverage
 
 data
 log
 dist
+htmlcov

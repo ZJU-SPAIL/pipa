@@ -15,6 +15,7 @@ PIPA is still in the active development process, and the current development foc
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ZJU-SPAIL/pipa/main.yml)
 ![GitHub top language](https://img.shields.io/github/languages/top/ZJU-SPAIL/pipa)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![Coverage](asset/coverage.svg)
 
 
 ## Features
