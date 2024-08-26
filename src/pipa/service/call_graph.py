@@ -604,7 +604,7 @@ class CallGraph:
             json.dump(_clusters, file, cls=ClusterEncoder, indent=4)
 
         # Use viridis colors for mapping
-        color_map = plt.cm.get_cmap("viridis", len(attrs_groups))
+        color_map = plt.get_cmap("viridis", len(attrs_groups))
 
         # Set color for the group results
         node_colors = [color_map(nodes[node]["cluster"]) for node in nodes]
