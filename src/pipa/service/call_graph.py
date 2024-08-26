@@ -1,7 +1,6 @@
 from typing import Literal, Mapping, Optional
 import networkx as nx
 import json
-import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from pipa.parser.perf_script_call import PerfScriptData
@@ -574,14 +573,41 @@ class CallGraph:
         self,
         fig_path: str = "simple_groups.png",
         cluster_info_path: str = "simple_groups_cluster.txt",
-        layout_k: int = 0.2,
-        layout_iters: int = 100,
-        closer_factor: int = 0.6,
+        supergraph_layout_scale: int = 50,
+        supergraph_layout_seed: int = 429,
+        supergraph_layout_k: Optional[float] = None,
+        supergraph_layout_iters: int = 50,
+        nodegroup_layout_scale: int = 1,
+        nodegroup_layout_seed: int = 1430,
+        nodegroup_layout_k: Optional[float] = None,
+        nodegroup_layout_iters: int = 50,
     ):
+        """
+        Simply group graph with its module name
+
+        Args:
+            fig_path (str, optional): Save figure to file. Defaults to "simple_groups.png".
+            cluster_info_path (str, optional): Save raw cluster data to file. Defaults to "simple_groups_cluster.txt".
+            supergraph_layout_scale (int, optional): The whole graph's layout scale param. Defaults to 50.
+            supergraph_layout_seed (int, optional): The whole graph's layout seed param. Defaults to 429.
+            supergraph_layout_k (Optional[float], optional): The whole graph's layout k param. Defaults to None.
+            supergraph_layout_iters (int, optional): The whole graph's layout iters param. Defaults to 100.
+            nodegroup_layout_scale (int, optional): Each node group graph's layout scale param. Defaults to 20.
+            nodegroup_layout_seed (int, optional): The node group graph's layout seed param. Defaults to 1430.
+            nodegroup_layout_k (Optional[float], optional): The node group graph's layout k param. Defaults to None.
+            nodegroup_layout_iters (int, optional): The node group graph's layout iters param. Defaults to 100.
+
+        Examples:
+        >>> from pipa.service.call_graph import CallGraph
+        >>> from pipa.parser.perf_script_call import PerfScriptData
+        >>> data = PerfScriptData.from_file("perf.script")
+        >>> cfg = CallGraph.from_perf_script_data(data)
+        >>> cfg.simple_groups()
+        """
         G = self.func_graph
         nodes = G.nodes
 
-        # Create groups
+        # create groups
         attrs_groups = {}
         for node in nodes:
             attr = f"{node.module_name}"
@@ -590,7 +616,7 @@ class CallGraph:
             attrs_groups[attr].append(node)
         attrs_to_cluster = {attr: idx for idx, attr in enumerate(attrs_groups.keys())}
 
-        # Assign cluster & Combine Data
+        # assign cluster & Combine Data
         _clusters = defaultdict(lambda: {"cycles": 0, "insts": 0, "funcs": []})
         for node in nodes:
             attr = f"{node.module_name}"
@@ -598,31 +624,42 @@ class CallGraph:
             nodes[node]["cluster"] = _cluster
             _clusters[_cluster]["cycles"] += node.get_cycles()
             _clusters[_cluster]["insts"] += node.get_instructions()
-            _clusters[_cluster]["funcs"].extend(node.nodes)
+            _clusters[_cluster]["funcs"].extend(node.nodes)  # type: ignore
             # for sub_node in node.nodes:
         with open(cluster_info_path, "w") as file:
             json.dump(_clusters, file, cls=ClusterEncoder, indent=4)
 
-        # Use viridis colors for mapping
+        # use viridis colors for mapping
         color_map = plt.get_cmap("viridis", len(attrs_groups))
 
-        # Set color for the group results
+        # set color for the group results
         node_colors = [color_map(nodes[node]["cluster"]) for node in nodes]
         for i, node in enumerate(nodes):
             nodes[node]["color"] = node_colors[i]
 
-        # fetch each node's position (an array)
-        pos = nx.spring_layout(G, k=layout_k, iterations=layout_iters)
-
-        Inodes = [node for node in nodes]
-        for i in range(len(Inodes)):
-            for j in range(i + 1, len(Inodes)):
-                node_i = Inodes[i]
-                node_j = Inodes[j]
-                if nodes[node_i]["color"] == nodes[node_j]["color"]:
-                    pos[node_i] += closer_factor * (
-                        np.array(pos[node_j]) - np.array(pos[node_i])
-                    )
+        # fetch each node's position
+        # group nodes
+        pos = {}
+        node_groups = [frozenset(nodes) for nodes in attrs_groups.values()]
+        superpos = nx.spring_layout(
+            G,
+            scale=supergraph_layout_scale,
+            seed=supergraph_layout_seed,
+            k=supergraph_layout_k,
+            iterations=supergraph_layout_iters,
+        )
+        centers = list(superpos.values())
+        for center, comm in zip(centers, node_groups):
+            pos.update(
+                nx.spring_layout(
+                    nx.subgraph(G, comm),
+                    center=center,
+                    scale=nodegroup_layout_scale,
+                    seed=nodegroup_layout_seed,
+                    k=nodegroup_layout_k,
+                    iterations=nodegroup_layout_iters,
+                )
+            )
 
         # specify node's name
         node_names = {}
@@ -631,13 +668,14 @@ class CallGraph:
                 f"{node}\ncycles: {node.get_cycles()}\ninsts: {node.get_instructions()}"
             )
 
-        # Print fig
+        # print fig
         self.show(
             graph="func_graph",
             node_names=node_names,
             pos=pos,
             fig_path=fig_path,
             node_color=node_colors,
+            node_groups=node_groups,
         )
 
     def show(
@@ -652,22 +690,41 @@ class CallGraph:
         node_size: int = 700,
         font_size: int = 12,
         font_weight: Literal["normal", "bold"] = "normal",
+        node_groups: Optional[list] = None,
     ):
         """
         Displays the call graph.
 
         Args:
-            fig_path (str, optional): The path to save the call graph figure.
-
-        Returns:
-            None
+            pos (Optional[Mapping], optional): The graph nodes' position data, if None is passed will calculated using default spring_layout. Defaults to None.
+            node_names (Optional[Mapping], optional): The graph nodes' name. Defaults to None.
+            graph (Literal[&quot;block_graph&quot;, &quot;func_graph&quot;], optional): Which type of graph to show. Defaults to "func_graph".
+            layout_scale (int, optional): default spring_layout's scale param. Defaults to 3.
+            fig_path (Optional[str], optional): The path to save the call graph figure. Defaults to None.
+            node_color (str | list, optional): The graph nodes' color. Defaults to "skyblue". Can be a list
+            fig_size (tuple[int, int], optional): The figure size. Defaults to (100, 100).
+            node_size (int, optional): The graph nodes' size. Defaults to 700.
+            font_size (int, optional): The font size in figure. Defaults to 12.
+            font_weight (Literal[&quot;normal&quot;, &quot;bold&quot;], optional): The font weight in figure. Defaults to "normal".
+            node_groups (Optional[list], optional): Use node groups to draw nodes separately. Defaults to None.
         """
         G = self.__getattribute__(graph)
+        plt.figure(figsize=fig_size)
+
+        # require node positions
         if not pos:
             pos = nx.spring_layout(G, scale=layout_scale)
-        plt.figure(figsize=fig_size)
+
+        # draw edges' label
         edge_labels = nx.get_edge_attributes(G, "weight")
         nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+
+        # draw nodes
+        if node_groups:
+            for nodes in node_groups:
+                nx.draw_networkx_nodes(G, pos=pos, nodelist=nodes)
+
+        # draw graph with additional information
         nx.draw(
             G,
             pos,
@@ -678,6 +735,9 @@ class CallGraph:
             font_size=font_size,
             font_weight=font_weight,
         )
+
+        # print figure
+        plt.tight_layout()
         if fig_path:
             plt.savefig(fig_path)
         plt.show()
