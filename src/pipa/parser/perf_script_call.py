@@ -224,7 +224,7 @@ class PerfScriptData:
     """
 
     def __init__(self, blocks: list[PerfScriptBlock]):
-        self.blocks: PerfScriptBlock = blocks
+        self.blocks: list[PerfScriptBlock] = blocks
 
     def __str__(self):
         return f"{self.blocks}"
@@ -340,4 +340,4 @@ class PerfScriptData:
             pd.DataFrame: A pandas DataFrame containing the records from the blocks.
         """
 
-        return pd.DataFrame([self.blocks.to_record()])
+        return pd.DataFrame([b.to_record() for b in self.blocks])
