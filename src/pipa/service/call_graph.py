@@ -608,20 +608,18 @@ class CallGraph:
         nodes = G.nodes
 
         # create groups
-        attrs_groups = {}
+        attrs_groups = defaultdict(lambda: [])
         for node in nodes:
             attr = f"{node.module_name}"
-            if attr not in attrs_groups:
-                attrs_groups[attr] = []
             attrs_groups[attr].append(node)
         attrs_to_cluster = {attr: idx for idx, attr in enumerate(attrs_groups.keys())}
 
         # assign cluster & Combine Data
         _clusters = defaultdict(lambda: {"cycles": 0, "insts": 0, "funcs": []})
-        for node in nodes:
+        for node, node_v in nodes.items():
             attr = f"{node.module_name}"
             _cluster = attrs_to_cluster[attr]
-            nodes[node]["cluster"] = _cluster
+            node_v["cluster"] = _cluster
             _clusters[_cluster]["cycles"] += node.get_cycles()
             _clusters[_cluster]["insts"] += node.get_instructions()
             _clusters[_cluster]["funcs"].extend(node.nodes)  # type: ignore
@@ -633,9 +631,9 @@ class CallGraph:
         color_map = plt.get_cmap("viridis", len(attrs_groups))
 
         # set color for the group results
-        node_colors = [color_map(nodes[node]["cluster"]) for node in nodes]
-        for i, node in enumerate(nodes):
-            nodes[node]["color"] = node_colors[i]
+        node_colors = [color_map(node_v["cluster"]) for node_v in nodes.values()]
+        for i, node_v in enumerate(nodes.values()):
+            node_v["color"] = node_colors[i]
 
         # fetch each node's position
         # group nodes
