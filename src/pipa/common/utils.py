@@ -1,6 +1,24 @@
 import datetime
+from math import sqrt
 import sys
+from typing import Tuple
 from rich import print
+
+
+def find_closet_factor_pair(n: int) -> Tuple[int, int]:
+    """
+    Find closet fator pair of n
+
+    Args:
+        n (int): number to find
+
+    Returns:
+        Tuple[int, int]: (small factor A, large factor B), A * B = n
+    """
+    m = int(sqrt(n))
+    while n % m != 0:
+        m -= 1
+    return (m, int(n / m))
 
 
 def get_timestamp():
