@@ -42,7 +42,9 @@ dependencies = [
     "requests",
     "scipy",
     "networkx",
-    "matplotlib"
+    "matplotlib",
+    "pyelftools",
+    "capstone",
 ]
 
 [project.optional-dependencies]
