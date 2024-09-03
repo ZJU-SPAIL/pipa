@@ -1,11 +1,257 @@
-from typing import Literal, Mapping, Optional
+from typing import Dict, List, Literal, Mapping, Optional, Tuple
 import networkx as nx
 import json
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
+import time
+from pipa.common.logger import logger
+from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pipa.common.utils import find_closet_factor_pair
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import write_dot
 from collections import defaultdict
+
+# multi processing
+from multiprocessing import Pool
+from multiprocessing.pool import Pool as PoolCls
+
+# pyelftools
+from elftools.elf.elffile import ELFFile
+from elftools.dwarf.dwarfinfo import DWARFInfo
+from elftools.dwarf.lineprogram import LineState, LineProgram
+
+# capstone
+from capstone import (
+    CS_ARCH_ARM,
+    CS_ARCH_ARM64,
+    CS_MODE_32,
+    CS_MODE_ARM,
+    CS_MODE_V8,
+    Cs,
+    CS_ARCH_X86,
+    CS_MODE_64,
+)
+
+
+NUM_ADDR2LINE_PROCESS = NUM_CORES_PHYSICAL
+"""Process number addr2line uses"""
+
+ADDR2LINE_OPT_STRENGTH = 1e9
+"""Operation strength to indicate when to parallelize in addr2line"""
+
+
+def find_addr_by_func_name(symtab, func_name: str) -> Optional[tuple[int, int]]:
+    """Find address by function name
+
+    Args:
+        symtab : symbol table in elf
+        func_name (str): the function name
+
+    Returns:
+        Optional[tuple[int, int]]: (start_addr, size)
+    """
+    symbols = symtab.get_symbol_by_name(func_name)
+    if symbols is None:
+        return None
+    if type(symbols) is list and len(symbols) >= 1:
+        sym = symbols[0]
+        return (int(sym["st_value"]), sym["st_size"])
+    else:
+        return None
+
+
+def disassemble_func(
+    elfcodes: bytes, start_addr: int, arch: int, mode: int
+) -> Dict[int, Tuple[str, str]]:
+    """Disassemble function
+
+    Args:
+        elfcodes (bytes): The elf codes
+        start_addr (int): Start address of assemble codes
+        arch (int): The elf arch
+        mode (int): The elf mode
+
+    Returns:
+        Dict[int, Tuple[str, str]]: The disassembled function, key is address, value is (mnemonic, op_str)
+    """
+    md = Cs(arch, mode)
+    disa = md.disasm(elfcodes, start_addr)
+    func_asm = {}
+    for i in disa:
+        func_asm[i.address] = (i.mnemonic, i.op_str)
+    return func_asm
+
+
+def addr2lines(
+    dwarfinfo: DWARFInfo,
+    addresses: List[int],
+    pool: PoolCls,
+) -> List[Tuple[str, int, int, int, str]]:
+    """Address to source line mapping
+
+    Args:
+        dwarfinfo (DWARFInfo): DWARFInfo
+        addresses (List[int]): addresses to map
+        pool (PoolCls): multiprocessing pool
+
+    Returns:
+        List[Tuple[str, int, int, int]]: The source line mapping, list of (file_name, address, line, column)
+
+    Example:
+    >>> import pipa.service.call_graph as pipa_cfg
+    >>> pipa_cfg.NUM_ADDR2LINE_PROCESS = 160
+    >>> pipa_cfg.ADDR2LINE_OPT_STRENGTH = 2e8
+    >>> dwarfinfo = DWARFInfo(elf)
+    >>> addr2lines(dwarfinfo, [0x400000, 0x400001], pool)
+    [('main.c', 0x400000, 1, 1), ('main.c', 0x400001, 1, 2)]
+    """
+    global NUM_ADDR2LINE_PROCESS, ADDR2LINE_OPT_STRENGTH
+    parallel = NUM_ADDR2LINE_PROCESS
+    operations_strength = ADDR2LINE_OPT_STRENGTH
+    if pool._processes < parallel:  # type: ignore
+        logger.warning(
+            "The pool given to addr2line's processes are small than global setting NUM_ADDR2LINE_PROCESS"
+        )
+    sourcelines: List[Tuple[str, int, int, int, str]] = []
+    state_list: List[Tuple[int, LineState, LineState]] = []
+    lineprog_list: List[Tuple[LineProgram, int, str]] = []
+    # Iter all Compile Units, may be a source file or part of it.
+    for i, CU in enumerate(dwarfinfo.iter_CUs()):
+        # get the compile unit's line program (includes mapping from machine codes to souce codes)
+        lineprog = dwarfinfo.line_program_for_CU(CU)
+        if lineprog is None:
+            continue
+        top_die = CU.get_top_DIE()
+        comp_dir = top_die.attributes.get("DW_AT_comp_dir")
+        relative_dir: str = ""
+        if comp_dir:
+            if type(comp_dir) is str:
+                relative_dir = comp_dir
+            else:
+                relative_dir = comp_dir.value.decode("utf-8")  # type: ignore
+        delta = 1 if lineprog.header.version < 5 else 0
+        lineprog_list.append((lineprog, delta, relative_dir))
+        prevstate = None
+
+        # Iter all entries in the line program
+        entries = lineprog.get_entries()
+        for entry in entries:
+            state = entry.state
+            if state is None:
+                continue
+            if prevstate is not None and prevstate.address < state.address:
+                state_list.append((i, prevstate, state))
+            if state.end_sequence:
+                prevstate = None
+            else:
+                prevstate = state
+    address_len = len(addresses)
+    state_len = len(state_list)
+    operations_len = address_len * state_len
+    logger.debug(f"\t addresses len: {address_len}")
+    logger.debug(f"\t state tuple len: {state_len}")
+    if operations_len < operations_strength:
+        # sequential addr2line
+        for state_tuple in state_list:
+            for address in addresses:
+                # Found address
+                lineprog_index, prevstate, state = state_tuple
+                lineprog, delta, relative_dir = lineprog_list[lineprog_index]
+                if prevstate.address <= address < state.address:
+                    file_entry = lineprog["file_entry"][prevstate.file - delta]
+                    file_name = file_entry.name.decode("utf-8")
+                    dir_index = file_entry.dir_index
+                    dir_name = lineprog["include_directory"][dir_index - delta].decode(
+                        "utf-8"
+                    )
+                    file_name = f"{dir_name}/{file_name}"
+                    sourcelines.append(
+                        (
+                            file_name,
+                            address,
+                            prevstate.line,
+                            prevstate.column,
+                            relative_dir,
+                        )
+                    )
+                    address_len -= 1
+                if address_len <= 0:
+                    return sourcelines
+    else:
+        logger.debug(
+            f"\t {operations_len} >= {operations_strength}, will use parallel {parallel} processes to addr2line"
+        )
+
+        # allocate tasks
+        stime = time.perf_counter()
+        m, n = find_closet_factor_pair(parallel)
+        state_p = [int(state_len / m)] * m
+        for i in range(0, state_len % m):
+            state_p[i] += 1
+        address_p = [int(address_len / n)] * n
+        for i in range(0, address_len % n):
+            address_p[i] += 1
+        allocate_task = []
+        spi = 0
+        for sp in state_p:
+            api = 0
+            for ap in address_p:
+                allocate_task.append(
+                    (state_list[spi : spi + sp], addresses[api : api + ap])
+                )
+                api += ap
+            spi += sp
+        assert len(allocate_task) == parallel
+        etime = time.perf_counter()
+        logger.debug(f"\t allocate tasks within {etime - stime} seconds")
+
+        # process
+        stime = time.perf_counter()
+        results = pool.map(addr2l, allocate_task)
+        etime = time.perf_counter()
+        logger.debug(f"\t perform tasks within {etime - stime} seconds")
+
+        # parse results
+        for r in results:
+            for rs in r:
+                lp_index, addr, pvstate = rs
+                lineprog, delta, relative_dir = lineprog_list[lp_index]
+                file_entry = lineprog["file_entry"][pvstate.file - delta]
+                file_name = file_entry.name.decode("utf-8")
+                dir_index = file_entry.dir_index
+                dir_name = lineprog["include_directory"][dir_index - delta].decode(
+                    "utf-8"
+                )
+                file_name = f"{dir_name}/{file_name}"
+                sourcelines.append(
+                    (file_name, addr, pvstate.line, pvstate.column, relative_dir)
+                )
+                address_len -= 1
+                if address_len <= 0:
+                    return sourcelines
+    logger.warning("\t Not all address found sourcelines mapped")
+    return sourcelines
+
+
+def addr2l(task: Tuple[List[Tuple[int, LineState, LineState]], List[int]]):
+    """addr2line parallel worker
+
+    Args:
+        task (Tuple[List[Tuple[int, LineState, LineState]], List[int]]): the task to be processed, (state_list, addresses)
+
+    Returns:
+        result (List[Tuple[int, int, LineState]]): the result of addr2line
+    """
+    state_list, addresses = task
+    result: List[Tuple[int, int, LineState]] = []
+    for state_tuple in state_list:
+        for address in addresses:
+            # Found address
+            lineprog_index, prevstate, state = state_tuple
+            if prevstate.address <= address < state.address:
+                result.append((lineprog_index, address, prevstate))
+    return result
 
 
 class Node:
@@ -41,18 +287,27 @@ class Node:
             cycles (int, optional): The number of cycles in the call graph node. Defaults to 0.
             instructions (int, optional): The number of instructions in the call graph node. Defaults to 0.
         """
+        # Instruction Pointer
         self.addr = addr
+
+        # function symbol
         self.symbol = symbol
+        _symbol_split = self.symbol.split("+", maxsplit=1)
+        self.function_name = _symbol_split[0]
+        self.function_offset = (
+            int(_symbol_split[1], 16) if len(_symbol_split) == 2 else None
+        )
+
         self.caller = caller
         self.command = command
         self.cycles = cycles
         self.instructions = instructions
 
     def get_function_name(self):
-        return self.symbol.split("+")[0]
+        return self.function_name
 
-    def get_offset(self):
-        return self.symbol.split("+")[1]
+    def get_offset(self) -> Optional[int]:
+        return self.function_offset
 
 
 class NodeEncoder(json.JSONEncoder):
@@ -280,7 +535,13 @@ class FunctionNode:
         nodes (list[Node] | None): A list of child nodes, if any.
     """
 
-    def __init__(self, func_name: str, module_name: str, nodes: list[Node] | None):
+    def __init__(
+        self,
+        func_name: str,
+        module_name: str,
+        nodes: list[Node] | None,
+        node_infos: Optional[List[Tuple]] = None,
+    ):
         """
         Initialize a CallGraph object.
 
@@ -293,6 +554,7 @@ class FunctionNode:
         self.func_name = func_name
         self.module_name = module_name
         self.nodes = nodes
+        self.node_infos = node_infos
         self._cycles = sum([node.cycles for node in nodes]) if nodes else 0
         self._instructions = sum([node.instructions for node in nodes]) if nodes else 0
 
@@ -301,6 +563,9 @@ class FunctionNode:
 
     def __hash__(self) -> int:
         return hash(str(self))
+
+    def set_node_infos(self, node_infos: List[Tuple]):
+        self.node_infos = node_infos
 
     def get_cycles(self):
         cycles_cur = sum([node.cycles for node in self.nodes]) if self.nodes else 0
@@ -438,7 +703,7 @@ class FunctionNodeTable:
         Returns:
             CallGraph: The CallGraph object created from the NodeTable.
         """
-        res = {}
+        res: Dict[str, FunctionNode] = {}
         for node in node_table._nodes.values():
             method_name = node.get_function_name()
             module_name = node.caller
@@ -448,7 +713,180 @@ class FunctionNodeTable:
                     func_name=method_name, module_name=module_name, nodes=[node]
                 )
             else:
-                res[k].nodes.append(node)
+                res[k].nodes.append(node)  # type: ignore
+        logger.debug("Start generate Extended Performance Metrics")
+        RawESL: Dict[str, Dict[str, List[Tuple[int, str, int]]]] = defaultdict(
+            lambda: defaultdict(lambda: [])
+        )
+        for func_node in res.values():
+            module_name = func_node.module_name
+            func_name = func_node.func_name
+            for n in func_node.nodes:  # type: ignore
+                if n.function_offset is None:
+                    continue
+                RawESL[module_name][func_name].append(
+                    (n.function_offset, n.addr, n.cycles)
+                )
+        # Extended Performance Metrics
+        EPM: Dict[Tuple[str, str], Dict[str, List[Tuple]]] = defaultdict(
+            lambda: defaultdict(lambda: [])
+        )
+        global NUM_ADDR2LINE_PROCESS
+        pool = Pool(NUM_ADDR2LINE_PROCESS)
+        for module, funcs in RawESL.items():
+            if not os.path.exists(module):
+                continue
+            logger.debug(f"Start analyze ELF File {module}")
+            f = open(module, "rb")
+            # open elf file
+            elffile = ELFFile(f)
+            if not elffile.has_dwarf_info():
+                logger.warning(f"{module} has no dwarf info, please provide debuginfo")
+                f.close()
+                continue
+            elf_header = elffile["e_ident"]
+            # judge arch and mod
+            if elffile["e_machine"] == "EM_386":
+                arch = CS_ARCH_X86
+                mode = CS_MODE_32
+            elif elffile["e_machine"] == "EM_X86_64":
+                arch = CS_ARCH_X86
+                mode = CS_MODE_64
+            elif elffile["e_machine"] == "EM_ARM":
+                arch = CS_ARCH_ARM
+                if elf_header["EI_CLASS"] == "ELFCLASS32":
+                    mode = CS_MODE_ARM
+                else:
+                    mode = CS_MODE_ARM | CS_MODE_V8
+            elif elffile["e_machine"] == "EM_AARCH64":
+                arch = CS_ARCH_ARM64
+                mode = CS_MODE_ARM
+            else:
+                logger.warning(f"Unsupported architecture: {elffile['e_machine']}")
+                f.close()
+                continue
+            # get dwarf info
+            dwarfinfo = elffile.get_dwarf_info()
+            # get symbol table info
+            symtable = elffile.get_section_by_name(".symtab")
+            if symtable is None:
+                logger.warning(
+                    f"Not found symtable in elf file {module}, please provide debuginfo."
+                )
+                f.close()
+                continue
+            f.seek(0)
+            # get elfcodes
+            elfcodes = f.read()
+            # get module/function info (start addr, func size in bytes)
+            # ip_perfs: list of (address, ip, cycles) (detected performance metrics)
+            # func_asm: key: address, dict list of (mnemonic, op_str)
+            # func_sourcelines: list of (source file, address, line, column)
+            # combine info to FunctionNode
+            for func_n, ip_perfs in funcs.items():
+                # start finnd addr by function name
+                stime = time.perf_counter()
+                func_info = find_addr_by_func_name(symtable, func_n)
+                etime = time.perf_counter()
+                logger.debug(
+                    f"End find {func_n} in {module} within {etime - stime} seconds"
+                )
+
+                if func_info is None:
+                    continue
+                func_addr = func_info[0]
+                func_size = func_info[1]
+
+                # start disassemble function
+                stime = time.perf_counter()
+                func_asm = disassemble_func(
+                    elfcodes[func_addr : func_addr + func_size], func_addr, arch, mode
+                )
+                etime = time.perf_counter()
+                logger.debug(
+                    f"End disassemble func {func_n} in {module} within {etime - stime} seconds"
+                )
+
+                func_addrs = [k for k in func_asm.keys()]
+
+                # start addr2lines
+                stime = time.perf_counter()
+                func_sourcelines = addr2lines(dwarfinfo, func_addrs, pool=pool)
+                etime = time.perf_counter()
+                logger.debug(
+                    f"End symbolize {func_n} in {module} within {etime - stime} seconds"
+                )
+
+                func_node_k = f"{func_n} {module}"
+                for addr, asm in func_asm.items():
+                    addr_ips = []
+                    addr_cycles = 0
+                    addr_sourcef = ""
+                    addr_relative_dir = ""
+                    addr_line = -1
+                    addr_column = -1
+                    addr_mnemonic = asm[0]
+                    addr_op_str = asm[1]
+                    for (
+                        sourcef,
+                        lsaddr,
+                        lsline,
+                        lscolumn,
+                        lsrelative_dir,
+                    ) in func_sourcelines:
+                        if lsaddr == addr:
+                            addr_sourcef = sourcef
+                            addr_relative_dir = lsrelative_dir
+                            addr_line = lsline
+                            addr_column = lscolumn
+                            break
+                    for iperf in ip_perfs:
+                        ioffset, ip, ic = iperf
+                        if ioffset + func_addr == addr:
+                            addr_ips.append(ip)
+                            addr_cycles += ic
+                    EPM[(addr_sourcef, addr_relative_dir)][func_node_k].append(
+                        (
+                            addr,
+                            addr_ips,
+                            addr_cycles,
+                            addr_line,
+                            addr_column,
+                            addr_mnemonic,
+                            addr_op_str,
+                        )
+                    )
+            # at last close module file
+            f.close()
+        pool.close()
+        pool.join()
+        for (sourcef, relative_dir), func_nodes in EPM.items():
+            source_file = sourcef
+            if not os.path.exists(sourcef):
+                d = os.path.join(relative_dir, sourcef)
+                if not os.path.exists(d):
+                    logger.warning(f"source file {d} couldn't found, please check")
+                    continue
+                else:
+                    source_file = d
+            stime = time.perf_counter()
+            with open(source_file, "r") as f:
+                source_conts = f.readlines()
+            etime = time.perf_counter()
+            logger.debug(
+                f"End read source codes in file {source_file} within {etime - stime} seconds"
+            )
+            for func_node_k, addr_infos in func_nodes.items():
+                func_node_infos = []
+                for addr_info in addr_infos:
+                    addr_line, addr_column = addr_info[3], addr_info[4]
+                    if addr_line > 0 and addr_column > 0:
+                        addr_conts = source_conts[addr_line - 1]
+                    else:
+                        continue
+                    node_info = (*addr_info, addr_conts, source_file)
+                    func_node_infos.append(node_info)
+                res[func_node_k].set_node_infos(func_node_infos)
         return cls(function_nodes=res)
 
     def to_dataframe(self):
