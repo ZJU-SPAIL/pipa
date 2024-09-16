@@ -95,7 +95,7 @@ def generate(config):
         f.write("ps -aux -ef --forest --sort=-%cpu > $WORKSPACE/ps.txt\n")
 
         f.write(
-            f"perf record -e '{events_record}' -a -F {freq_record} -o $WORKSPACE/perf.data {command}\n"
+            f"perf record -e '{events_record}' -g -a -F {freq_record} -o $WORKSPACE/perf.data {command}\n"
         )
         f.write(
             "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"

@@ -89,7 +89,7 @@ def generate(config: dict):
         f.write("ps -aux -ef --forest > $WORKSPACE/ps.txt\n")
 
         f.write(
-            f"perf record -e '{events_record}' -a -F"
+            f"perf record -e '{events_record}' -g -a -F"
             + f" {freq_record} -o $WORKSPACE/perf.data"
             + (f" -- sleep {duration_record}\n" if duration_record else "\n")
         )

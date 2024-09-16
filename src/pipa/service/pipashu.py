@@ -1,6 +1,6 @@
 from pipa.parser.sar import SarData
 from pipa.parser.perf_stat import PerfStatData
-from pipa.parser.perf_script import parse_perf_script_file
+from pipa.parser.perf_script_call import PerfScriptData
 
 
 class PIPAShuData:
@@ -33,7 +33,7 @@ class PIPAShuData:
         self.sar_data = SarData.init_with_sar_txt(sar_path)
         self.perf_stat_data = PerfStatData(perf_stat_path)
         self.perf_record_data = (
-            parse_perf_script_file(perf_record_path) if perf_record_path else None
+            PerfScriptData.from_file(perf_record_path) if perf_record_path else None
         )
 
     @classmethod
