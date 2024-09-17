@@ -100,13 +100,21 @@ class PerfScriptHeader:
                     pattern, line.strip()
                 ).groups()
             except Exception as e:
-                pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
-                (pid, cpu, time, value, event) = re.match(
-                    pattern, line[15:].strip()
-                ).groups()
+                try:
+                    pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
+                    (pid, cpu, time, value, event) = re.match(
+                        pattern, line[15:].strip()
+                    ).groups()
 
-                command = line[:15].strip()
+                    command = line[:15].strip()
+                except Exception as e:
+                    # TODO make this more robust and less error-prone
+                    pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
+                    (pid, cpu, time, value, event) = re.match(
+                        pattern, line[10:].strip()
+                    ).groups()
 
+                    command = line[:10].strip()
         except Exception as e:
             print(e)
             return None
