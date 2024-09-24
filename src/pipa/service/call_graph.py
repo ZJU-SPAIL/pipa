@@ -958,6 +958,7 @@ class CallGraph:
         perf_script: PerfScriptData,
         pids: list | None = None,
         cpus: list | None = None,
+        filter_none: bool = False,
     ):
         """
         Creates a CallGraph object from performance script data.
@@ -984,8 +985,20 @@ class CallGraph:
         for block in perf_script.blocks:
             calls = block.calls
             for i in range(1, len(calls)):
-                caller = calls[i - 1].addr
+                if filter_none:
+                    for j in range(i - 1, -1, -1):
+                        if calls[j].addr in node_table:
+                            caller = calls[j].addr
+                            break
+                else:
+                    caller = calls[i - 1].addr
                 callee = calls[i].addr
+
+                if filter_none and (
+                    node_table[caller].get_function_name() == "[unknown]"
+                    or node_table[callee].get_function_name() == "[unknown]"
+                ):
+                    continue
                 block_graph.add_edge(node_table[callee], node_table[caller], weight=1)
                 k_caller = f"{node_table[caller].get_function_name()} {node_table[caller].caller}"
                 k_callee = f"{node_table[callee].get_function_name()} {node_table[callee].caller}"
