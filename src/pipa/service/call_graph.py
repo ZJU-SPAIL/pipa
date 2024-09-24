@@ -987,7 +987,7 @@ class CallGraph:
             for i in range(1, len(calls)):
                 if filter_none:
                     for j in range(i - 1, -1, -1):
-                        if calls[j].addr in node_table:
+                        if node_table[calls[j].addr].get_function_name() != "[unknown]":
                             caller = calls[j].addr
                             break
                 else:
