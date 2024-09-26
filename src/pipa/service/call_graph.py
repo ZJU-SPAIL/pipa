@@ -693,7 +693,7 @@ class FunctionNodeTable:
         return self.function_nodes >= other.function_nodes
 
     @classmethod
-    def from_node_table(cls, node_table: NodeTable):
+    def from_node_table(cls, node_table: NodeTable, gen_epm: bool = False):
         """
         Create a CallGraph object from a NodeTable.
 
@@ -714,179 +714,185 @@ class FunctionNodeTable:
                 )
             else:
                 res[k].nodes.append(node)  # type: ignore
-        logger.debug("Start generate Extended Performance Metrics")
-        RawESL: Dict[str, Dict[str, List[Tuple[int, str, int]]]] = defaultdict(
-            lambda: defaultdict(lambda: [])
-        )
-        for func_node in res.values():
-            module_name = func_node.module_name
-            func_name = func_node.func_name
-            for n in func_node.nodes:  # type: ignore
-                if n.function_offset is None:
+        if gen_epm:
+            logger.debug("Start generate Extended Performance Metrics")
+            RawESL: Dict[str, Dict[str, List[Tuple[int, str, int]]]] = defaultdict(
+                lambda: defaultdict(lambda: [])
+            )
+            for func_node in res.values():
+                module_name = func_node.module_name
+                func_name = func_node.func_name
+                for n in func_node.nodes:  # type: ignore
+                    if n.function_offset is None:
+                        continue
+                    RawESL[module_name][func_name].append(
+                        (n.function_offset, n.addr, n.cycles)
+                    )
+            # Extended Performance Metrics
+            EPM: Dict[Tuple[str, str], Dict[str, List[Tuple]]] = defaultdict(
+                lambda: defaultdict(lambda: [])
+            )
+            global NUM_ADDR2LINE_PROCESS
+            pool = Pool(NUM_ADDR2LINE_PROCESS)
+            for module, funcs in RawESL.items():
+                if not os.path.exists(module):
                     continue
-                RawESL[module_name][func_name].append(
-                    (n.function_offset, n.addr, n.cycles)
-                )
-        # Extended Performance Metrics
-        EPM: Dict[Tuple[str, str], Dict[str, List[Tuple]]] = defaultdict(
-            lambda: defaultdict(lambda: [])
-        )
-        global NUM_ADDR2LINE_PROCESS
-        pool = Pool(NUM_ADDR2LINE_PROCESS)
-        for module, funcs in RawESL.items():
-            if not os.path.exists(module):
-                continue
-            logger.debug(f"Start analyze ELF File {module}")
-            f = open(module, "rb")
-            # open elf file
-            elffile = ELFFile(f)
-            if not elffile.has_dwarf_info():
-                logger.warning(f"{module} has no dwarf info, please provide debuginfo")
-                f.close()
-                continue
-            elf_header = elffile["e_ident"]
-            # judge arch and mod
-            if elffile["e_machine"] == "EM_386":
-                arch = CS_ARCH_X86
-                mode = CS_MODE_32
-            elif elffile["e_machine"] == "EM_X86_64":
-                arch = CS_ARCH_X86
-                mode = CS_MODE_64
-            elif elffile["e_machine"] == "EM_ARM":
-                arch = CS_ARCH_ARM
-                if elf_header["EI_CLASS"] == "ELFCLASS32":
+                logger.debug(f"Start analyze ELF File {module}")
+                f = open(module, "rb")
+                # open elf file
+                elffile = ELFFile(f)
+                if not elffile.has_dwarf_info():
+                    logger.warning(
+                        f"{module} has no dwarf info, please provide debuginfo"
+                    )
+                    f.close()
+                    continue
+                elf_header = elffile["e_ident"]
+                # judge arch and mod
+                if elffile["e_machine"] == "EM_386":
+                    arch = CS_ARCH_X86
+                    mode = CS_MODE_32
+                elif elffile["e_machine"] == "EM_X86_64":
+                    arch = CS_ARCH_X86
+                    mode = CS_MODE_64
+                elif elffile["e_machine"] == "EM_ARM":
+                    arch = CS_ARCH_ARM
+                    if elf_header["EI_CLASS"] == "ELFCLASS32":
+                        mode = CS_MODE_ARM
+                    else:
+                        mode = CS_MODE_ARM | CS_MODE_V8
+                elif elffile["e_machine"] == "EM_AARCH64":
+                    arch = CS_ARCH_ARM64
                     mode = CS_MODE_ARM
                 else:
-                    mode = CS_MODE_ARM | CS_MODE_V8
-            elif elffile["e_machine"] == "EM_AARCH64":
-                arch = CS_ARCH_ARM64
-                mode = CS_MODE_ARM
-            else:
-                logger.warning(f"Unsupported architecture: {elffile['e_machine']}")
-                f.close()
-                continue
-            # get dwarf info
-            dwarfinfo = elffile.get_dwarf_info()
-            # get symbol table info
-            symtable = elffile.get_section_by_name(".symtab")
-            if symtable is None:
-                logger.warning(
-                    f"Not found symtable in elf file {module}, please provide debuginfo."
-                )
-                f.close()
-                continue
-            f.seek(0)
-            # get elfcodes
-            elfcodes = f.read()
-            # get module/function info (start addr, func size in bytes)
-            # ip_perfs: list of (address, ip, cycles) (detected performance metrics)
-            # func_asm: key: address, dict list of (mnemonic, op_str)
-            # func_sourcelines: list of (source file, address, line, column)
-            # combine info to FunctionNode
-            for func_n, ip_perfs in funcs.items():
-                # start finnd addr by function name
-                stime = time.perf_counter()
-                func_info = find_addr_by_func_name(symtable, func_n)
-                etime = time.perf_counter()
-                logger.debug(
-                    f"End find {func_n} in {module} within {etime - stime} seconds"
-                )
-
-                if func_info is None:
+                    logger.warning(f"Unsupported architecture: {elffile['e_machine']}")
+                    f.close()
                     continue
-                func_addr = func_info[0]
-                func_size = func_info[1]
-
-                # start disassemble function
-                stime = time.perf_counter()
-                func_asm = disassemble_func(
-                    elfcodes[func_addr : func_addr + func_size], func_addr, arch, mode
-                )
-                etime = time.perf_counter()
-                logger.debug(
-                    f"End disassemble func {func_n} in {module} within {etime - stime} seconds"
-                )
-
-                func_addrs = [k for k in func_asm.keys()]
-
-                # start addr2lines
-                stime = time.perf_counter()
-                func_sourcelines = addr2lines(dwarfinfo, func_addrs, pool=pool)
-                etime = time.perf_counter()
-                logger.debug(
-                    f"End symbolize {func_n} in {module} within {etime - stime} seconds"
-                )
-
-                func_node_k = f"{func_n} {module}"
-                for addr, asm in func_asm.items():
-                    addr_ips = []
-                    addr_cycles = 0
-                    addr_sourcef = ""
-                    addr_relative_dir = ""
-                    addr_line = -1
-                    addr_column = -1
-                    addr_mnemonic = asm[0]
-                    addr_op_str = asm[1]
-                    for (
-                        sourcef,
-                        lsaddr,
-                        lsline,
-                        lscolumn,
-                        lsrelative_dir,
-                    ) in func_sourcelines:
-                        if lsaddr == addr:
-                            addr_sourcef = sourcef
-                            addr_relative_dir = lsrelative_dir
-                            addr_line = lsline
-                            addr_column = lscolumn
-                            break
-                    for iperf in ip_perfs:
-                        ioffset, ip, ic = iperf
-                        if ioffset + func_addr == addr:
-                            addr_ips.append(ip)
-                            addr_cycles += ic
-                    EPM[(addr_sourcef, addr_relative_dir)][func_node_k].append(
-                        (
-                            addr,
-                            addr_ips,
-                            addr_cycles,
-                            addr_line,
-                            addr_column,
-                            addr_mnemonic,
-                            addr_op_str,
-                        )
+                # get dwarf info
+                dwarfinfo = elffile.get_dwarf_info()
+                # get symbol table info
+                symtable = elffile.get_section_by_name(".symtab")
+                if symtable is None:
+                    logger.warning(
+                        f"Not found symtable in elf file {module}, please provide debuginfo."
                     )
-            # at last close module file
-            f.close()
-        pool.close()
-        pool.join()
-        for (sourcef, relative_dir), func_nodes in EPM.items():
-            source_file = sourcef
-            if not os.path.exists(sourcef):
-                d = os.path.join(relative_dir, sourcef)
-                if not os.path.exists(d):
-                    logger.warning(f"source file {d} couldn't found, please check")
+                    f.close()
                     continue
-                else:
-                    source_file = d
-            stime = time.perf_counter()
-            with open(source_file, "r") as f:
-                source_conts = f.readlines()
-            etime = time.perf_counter()
-            logger.debug(
-                f"End read source codes in file {source_file} within {etime - stime} seconds"
-            )
-            for func_node_k, addr_infos in func_nodes.items():
-                func_node_infos = []
-                for addr_info in addr_infos:
-                    addr_line, addr_column = addr_info[3], addr_info[4]
-                    if addr_line > 0 and addr_column > 0:
-                        addr_conts = source_conts[addr_line - 1]
-                    else:
+                f.seek(0)
+                # get elfcodes
+                elfcodes = f.read()
+                # get module/function info (start addr, func size in bytes)
+                # ip_perfs: list of (address, ip, cycles) (detected performance metrics)
+                # func_asm: key: address, dict list of (mnemonic, op_str)
+                # func_sourcelines: list of (source file, address, line, column)
+                # combine info to FunctionNode
+                for func_n, ip_perfs in funcs.items():
+                    # start finnd addr by function name
+                    stime = time.perf_counter()
+                    func_info = find_addr_by_func_name(symtable, func_n)
+                    etime = time.perf_counter()
+                    logger.debug(
+                        f"End find {func_n} in {module} within {etime - stime} seconds"
+                    )
+
+                    if func_info is None:
                         continue
-                    node_info = (*addr_info, addr_conts, source_file)
-                    func_node_infos.append(node_info)
-                res[func_node_k].set_node_infos(func_node_infos)
+                    func_addr = func_info[0]
+                    func_size = func_info[1]
+
+                    # start disassemble function
+                    stime = time.perf_counter()
+                    func_asm = disassemble_func(
+                        elfcodes[func_addr : func_addr + func_size],
+                        func_addr,
+                        arch,
+                        mode,
+                    )
+                    etime = time.perf_counter()
+                    logger.debug(
+                        f"End disassemble func {func_n} in {module} within {etime - stime} seconds"
+                    )
+
+                    func_addrs = [k for k in func_asm.keys()]
+
+                    # start addr2lines
+                    stime = time.perf_counter()
+                    func_sourcelines = addr2lines(dwarfinfo, func_addrs, pool=pool)
+                    etime = time.perf_counter()
+                    logger.debug(
+                        f"End symbolize {func_n} in {module} within {etime - stime} seconds"
+                    )
+
+                    func_node_k = f"{func_n} {module}"
+                    for addr, asm in func_asm.items():
+                        addr_ips = []
+                        addr_cycles = 0
+                        addr_sourcef = ""
+                        addr_relative_dir = ""
+                        addr_line = -1
+                        addr_column = -1
+                        addr_mnemonic = asm[0]
+                        addr_op_str = asm[1]
+                        for (
+                            sourcef,
+                            lsaddr,
+                            lsline,
+                            lscolumn,
+                            lsrelative_dir,
+                        ) in func_sourcelines:
+                            if lsaddr == addr:
+                                addr_sourcef = sourcef
+                                addr_relative_dir = lsrelative_dir
+                                addr_line = lsline
+                                addr_column = lscolumn
+                                break
+                        for iperf in ip_perfs:
+                            ioffset, ip, ic = iperf
+                            if ioffset + func_addr == addr:
+                                addr_ips.append(ip)
+                                addr_cycles += ic
+                        EPM[(addr_sourcef, addr_relative_dir)][func_node_k].append(
+                            (
+                                addr,
+                                addr_ips,
+                                addr_cycles,
+                                addr_line,
+                                addr_column,
+                                addr_mnemonic,
+                                addr_op_str,
+                            )
+                        )
+                # at last close module file
+                f.close()
+            pool.close()
+            pool.join()
+            for (sourcef, relative_dir), func_nodes in EPM.items():
+                source_file = sourcef
+                if not os.path.exists(sourcef):
+                    d = os.path.join(relative_dir, sourcef)
+                    if not os.path.exists(d):
+                        logger.warning(f"source file {d} couldn't found, please check")
+                        continue
+                    else:
+                        source_file = d
+                stime = time.perf_counter()
+                with open(source_file, "r") as f:
+                    source_conts = f.readlines()
+                etime = time.perf_counter()
+                logger.debug(
+                    f"End read source codes in file {source_file} within {etime - stime} seconds"
+                )
+                for func_node_k, addr_infos in func_nodes.items():
+                    func_node_infos = []
+                    for addr_info in addr_infos:
+                        addr_line, addr_column = addr_info[3], addr_info[4]
+                        if addr_line > 0 and addr_column > 0:
+                            addr_conts = source_conts[addr_line - 1]
+                        else:
+                            continue
+                        node_info = (*addr_info, addr_conts, source_file)
+                        func_node_infos.append(node_info)
+                    res[func_node_k].set_node_infos(func_node_infos)
         return cls(function_nodes=res)
 
     def to_dataframe(self):
