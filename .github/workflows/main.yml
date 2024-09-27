@@ -76,8 +76,11 @@ jobs:
       - name: Install package
         run: pip install dist/*.whl
 
-      - name: Install pytest
-        run: pip install pytest
+      - name: Install pytest and coverage
+        run: pip install pytest coverage
 
       - name: Run tests
-        run: pytest
+        run: coverage run -m pytest
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
