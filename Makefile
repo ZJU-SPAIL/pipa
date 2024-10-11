@@ -5,7 +5,6 @@ build:
 
 clean:
 	rm -rf dist
-	rm -f .coverage
 
 install:
 	pip install dist/*.whl
@@ -19,9 +18,8 @@ uninstall:
 
 .PHONY: test
 test:
-	pip install pytest coverage
-	coverage run -m pytest --ignore=data
-	coverage report
+	pip install pytest
+	pytest --ignore=data
 
 lint:
 	pip install flake8 black
