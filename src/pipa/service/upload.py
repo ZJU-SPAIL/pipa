@@ -236,7 +236,7 @@ def build(config: dict):
     elif not os.path.exists(sar_path):
         logger.error("sar.txt does not exist.")
         raise Exception("sar.txt does not exist.")
-    elif not perf_script_path and not os.path.exists(perf_script_path):
+    elif not perf_script_path or not os.path.exists(perf_script_path):
         logger.warning("perf.script does not exist.")
         perf_script_path = None
 
