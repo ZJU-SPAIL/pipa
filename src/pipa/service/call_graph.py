@@ -965,6 +965,7 @@ class CallGraph:
         pids: list | None = None,
         cpus: list | None = None,
         filter_none: bool = False,
+        gen_epm: bool = False,
     ):
         """
         Creates a CallGraph object from performance script data.
@@ -973,6 +974,8 @@ class CallGraph:
             perf_script (PerfScriptData): The performance script data.
             pid (int, optional): The process ID. Defaults to None.
             cpu (int, optional): The CPU ID. Defaults to None.
+            filter_none (bool): Whether to filter out unknown functions. Defaults to False.
+            gen_epm (bool): Whether to generate EPM. Defaults to False
 
         Returns:
             CallGraph: The CallGraph object created from the performance script data.
@@ -985,7 +988,7 @@ class CallGraph:
         node_table = NodeTable.from_perf_script_data(perf_script)
         block_graph = nx.DiGraph()
 
-        func_table = FunctionNodeTable.from_node_table(node_table)
+        func_table = FunctionNodeTable.from_node_table(node_table, gen_epm=gen_epm)
         func_graph = nx.DiGraph()
 
         for block in perf_script.blocks:
