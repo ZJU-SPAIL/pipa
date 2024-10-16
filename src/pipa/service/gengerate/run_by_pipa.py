@@ -103,6 +103,9 @@ def generate(config):
         f.write(
             "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
         )
+        f.write(
+            "perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"
+        )
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")

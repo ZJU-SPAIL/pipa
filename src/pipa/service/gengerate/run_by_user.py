@@ -119,6 +119,9 @@ def generate(config: dict):
         f.write(
             "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
         )
+        f.write(
+            "perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"
+        )
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
         if use_emon:

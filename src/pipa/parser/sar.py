@@ -231,6 +231,54 @@ class SarData:
         )
         return pd.merge(util, freq, on=["timestamp", "CPU"])
 
+    def get_network_statistics(
+        self, data_type: str = "detail", on_failures: bool = False
+    ):
+        """Get
+
+        Args:
+            data_type (str, optional): _description_. Defaults to "detail".
+            on_failures (bool, optional): _description_. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
+        sar_loc = 13 if on_failures else 12
+        astype_t = (
+            {
+                "IFACE": str,
+                "rxerr/s": float,
+                "txerr/s": float,
+                "coll/s": float,
+                "rxdrop/s": float,
+                "rxdrop/s": float,
+                "txcarr/s": float,
+                "rxfram/s": float,
+                "rxfifo/s": float,
+                "txfifo/s": float,
+            }
+            if on_failures
+            else {
+                "IFACE": str,
+                "rxpck/s": float,
+                "txpck/s": float,
+                "rxkB/s": float,
+                "txkB/s": float,
+                "rxcmp/s": float,
+                "txcmp/s": float,
+                "rxmcst/s": float,
+                r"%ifutil": float,
+            }
+        )
+        return self.filter_dataframe(self.sar_data[sar_loc], data_type).astype(astype_t)
+
+    def get_network_statistics_avg(self, on_failures: bool = False):
+        return (
+            self.get_network_statistics(data_type="average", on_failures=on_failures)
+            .drop(columns=["timestamp"])
+            .to_dict(orient="records")
+        )
+
     def get_memory_usage(self, data_type: str = "detail"):
         """
         Returns the memory usage data.
