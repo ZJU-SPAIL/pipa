@@ -292,7 +292,10 @@ class Node:
 
         # function symbol
         self.symbol = symbol
-        _symbol_split = self.symbol.split("+", maxsplit=1)
+        # example:
+        # 1. Foam::DimensionedField<double, Foam::surfaceMesh>::operator+=+0xf4
+        #   split from end to start
+        _symbol_split = self.symbol.rsplit("+", maxsplit=1)
         self.function_name = _symbol_split[0]
         self.function_offset = (
             int(_symbol_split[1], 16) if len(_symbol_split) == 2 else None
