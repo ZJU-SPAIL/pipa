@@ -6,6 +6,7 @@ from pipa.service.gengerate.common import (
     write_title,
     opener,
     parse_perf_data,
+    move_old_file,
 )
 from pipa.service.export_sys_config import write_export_config_script
 import os
@@ -90,6 +91,7 @@ def generate(config: dict):
         write_title(f)
 
         f.write("WORKSPACE=" + workspace + "\n")
+        move_old_file(f)
         f.write("mkdir -p $WORKSPACE\n\n")
 
         f.write("ps -aux -ef --forest > $WORKSPACE/ps.txt\n")

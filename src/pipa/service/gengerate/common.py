@@ -137,6 +137,19 @@ fi\n\n"""
     )
 
 
+def move_old_file(file: TextIOWrapper):
+    return file.write(
+        """# Check if $workspace exists
+if [ -d "$workspace" ]; then
+  # Check if perf-stat.csv or sar.dat exists in $workspace
+  if [ -f "$workspace/perf-stat.csv" ] || [ -f "$workspace/sar.dat" ]; then
+    # Move $workspace to $workspace_old
+    mv "$workspace" "${workspace}_old"
+  fi
+fi\n"""
+    )
+
+
 def parse_perf_data(file: TextIOWrapper):
     """
     Parses the performance data and writes it to the given file.
