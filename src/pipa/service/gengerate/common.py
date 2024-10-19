@@ -137,6 +137,20 @@ fi\n\n"""
     )
 
 
+def parse_perf_data(file: TextIOWrapper):
+    """
+    Parses the performance data and writes it to the given file.
+
+    Args:
+        file (TextIOWrapper): The file object to write the performance data to.
+    """
+    return file.write(
+        """perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n
+            perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n
+            perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"""
+    )
+
+
 def load_yaml_config(file_path: str = "config-pipa-shu.yaml") -> dict:
     """
     Parses a YAML file and returns the contents as a dictionary.

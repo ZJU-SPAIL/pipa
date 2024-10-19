@@ -1,6 +1,12 @@
 import questionary
 from rich import print
-from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title, opener
+from pipa.service.gengerate.common import (
+    quest_basic,
+    CORES_ALL,
+    write_title,
+    opener,
+    parse_perf_data,
+)
 from pipa.service.export_sys_config import write_export_config_script
 import os
 
@@ -113,15 +119,9 @@ def generate(config: dict):
     with open(os.path.join(workspace, "pipa-parse.sh"), "w", opener=opener) as f:
         write_title(f)
         f.write("WORKSPACE=" + workspace + "\n")
-        f.write(
-            "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"
-        )
-        f.write(
-            "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
-        )
-        f.write(
-            "perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"
-        )
+
+        parse_perf_data(f)
+
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")
 
         if use_emon:

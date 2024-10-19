@@ -1,6 +1,12 @@
 import questionary
 from rich import print
-from pipa.service.gengerate.common import quest_basic, CORES_ALL, write_title, opener
+from pipa.service.gengerate.common import (
+    quest_basic,
+    CORES_ALL,
+    write_title,
+    opener,
+    parse_perf_data,
+)
 from pipa.service.export_sys_config import write_export_config_script
 import os
 
@@ -97,15 +103,7 @@ def generate(config):
         f.write(
             f"perf record -e '{events_record}' -g -a -F {freq_record} -o $WORKSPACE/perf.data {command}\n"
         )
-        f.write(
-            "perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n"
-        )
-        f.write(
-            "perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n\n"
-        )
-        f.write(
-            "perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"
-        )
+        parse_perf_data(f)
 
         f.write("sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &\n")
         f.write("sar_pid=$!\n")
