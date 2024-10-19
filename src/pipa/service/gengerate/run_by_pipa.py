@@ -39,7 +39,7 @@ def quest():
 
         if cores_input.isdigit():
             core_list = cores_input.strip()
-        elif cores_input.split("-").__len__() != 2:
+        elif len(cores_input.split("-")) != 2:
             raise ("Please input cores as a valid range, split by '-'.")
         else:
             left, right = cores_input.split("-")
@@ -50,7 +50,7 @@ def quest():
             left, right = int(left), int(right)
             if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
                 raise ("Please input cores as a valid range.")
-            core_list = ",".join([str(i) for i in list(range(left, right + 1))])
+            core_list = f"{left}-{right}"
 
     command = questionary.text("What's the command of workload?\n").ask()
 
