@@ -48,7 +48,7 @@ class PIPAShuData:
 
     def get_metrics(
         self,
-        num_transcations: int,
+        num_transactions: int,
         threads: list,
         run_time: int = None,
         dev: str | None = None,
@@ -58,7 +58,7 @@ class PIPAShuData:
         Get the performance statistics metrics.
 
         Args:
-            num_transcations (int): The number of transactions.
+            num_transactions (int): The number of transactions.
             threads (list): The list of threads.
             run_time (int): The run time.
             dev (str): The device name.
@@ -75,13 +75,13 @@ class PIPAShuData:
         instructions_per_second = self.perf_stat_data.get_instructions_per_second(
             run_time, threads
         )
-        path_length = self.perf_stat_data.get_pathlength(num_transcations, threads)
+        path_length = self.perf_stat_data.get_pathlength(num_transactions, threads)
         CPI = self.perf_stat_data.get_CPI_by_thread(threads)
-        cycles_per_requests = cycles / num_transcations
+        cycles_per_requests = cycles / num_transactions
 
         perf_stat_metrics = {
-            "transactions": num_transcations,
-            "throughput": num_transcations / run_time,
+            "transactions": num_transactions,
+            "throughput": num_transactions / run_time,
             "used_threads": threads,
             "run_time": run_time,
             "cycles": cycles,
