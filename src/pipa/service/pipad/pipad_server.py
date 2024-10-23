@@ -28,6 +28,7 @@ import logging
 import sqlite3
 import grpc
 import argparse
+import uuid
 from . import pipad_pb2 as pipadlib
 from . import pipad_pb2_grpc as pipadgrpc
 
@@ -104,6 +105,7 @@ class PIPADServer:
                 pipadlib.DeployResp: Response to client
             """
             upload_time = time.time()
+            uid = uuid.uuid4()
             kvpairs = []
             logger.debug(f"Received request: {request}")
             params = []
@@ -131,9 +133,9 @@ class PIPADServer:
             kvpairs.append(f"upload_time{upload_time}")
             hasht = f"'{hash(tuple(kvpairs))}'"
             upload_datetime = datetime.fromtimestamp(upload_time).strftime(
-                r"%Y-%m-%d %H:%M:%S"
+                r"%Y-%m-%d %H:%M:%S.%f"
             )
-            record = f"{record_prefix}-{upload_datetime}"
+            record = f"{record_prefix} {upload_datetime} {uid}"
             kvs = ",".join(params)
             kss = ",".join(ks)
             vss = ",".join(vs)
