@@ -3,7 +3,396 @@ import seaborn as sns
 import re
 from pipa.common.cmd import run_command
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pipa.common.logger import logger
+from enum import Enum, unique
+from typing import Optional, Dict
 import multiprocessing
+
+
+@unique
+class SarDataIndex(Enum):
+    CPUUtils = [
+        "timestamp",
+        "CPU",
+        r"%usr",
+        r"%nice",
+        r"%sys",
+        r"%iowait",
+        r"%steal",
+        r"%irq",
+        r"%soft",
+        r"%guest",
+        r"%gnice",
+        r"%idle",
+    ]
+    ProcessStats = [
+        "timestamp",
+        "proc/s",
+        "cswch/s",
+    ]
+    InterruptStats = [
+        "timestamp",
+        "INTR",
+        "intr/s",
+    ]
+    SwapStats = [
+        "timestamp",
+        "pswpin/s",
+        "pswpout/s",
+    ]
+    PagingStats = [
+        "timestamp",
+        "pgpgin/s",
+        "pgpgout/s",
+        "fault/s",
+        "majflt/s",
+        "pgfree/s",
+        "pgscank/s",
+        "pgscand/s",
+        "pgsteal/s",
+        r"%vmeff",
+    ]
+    DiskIOStats = [
+        "timestamp",
+        "tps",
+        "rtps",
+        "wtps",
+        "dtps",
+        "bread/s",
+        "bwrtn/s",
+        "bdscd/s",
+    ]
+    MemoryStats = [
+        "timestamp",
+        "kbmemfree",
+        "kbavail",
+        "kbmemused",
+        r"%memused",
+        "kbbuffers",
+        "kbcached",
+        "kbcommit",
+        r"%commit",
+        "kbactive",
+        "kbinact",
+        "kbdirty",
+        "kbanonpg",
+        "kbslab",
+        "kbkstack",
+        "kbpgtbl",
+        "kbvmused",
+    ]
+    SwapMemoryStats = [
+        "timestamp",
+        "kbswpfree",
+        "kbswpused",
+        r"%swpused",
+        "kbswpcad",
+        r"%swpcad",
+    ]
+    HugePagesStats = [
+        "timestamp",
+        "kbhugfree",
+        "kbhugused",
+        r"%hugused",
+        "kbhugrsvd",
+        "kbhugsurp",
+    ]
+    FileSystemStats = [
+        "timestamp",
+        "dentunusd",
+        "file-nr",
+        "inode-nr",
+        "pty-nr",
+    ]
+    LoadStats = [
+        "timestamp",
+        "runq-sz",
+        "plist-sz",
+        "ldavg-1",
+        "ldavg-5",
+        "ldavg-15",
+        "blocked",
+    ]
+    TTYStats = [
+        "timestamp",
+        "TTY",
+        "rcvin/s",
+        "xmtin/s",
+        "framerr/s",
+        "prtyerr/s",
+        "brk/s",
+        "ovrun/s",
+    ]
+    DeviceIOStats = [
+        "timestamp",
+        "DEV",
+        "tps",
+        "rkB/s",
+        "wkB/s",
+        "dkB/s",
+        "areq-sz",
+        "aqu-sz",
+        "await",
+        r"%util",
+    ]
+    NetUtils = [
+        "timestamp",
+        "IFACE",
+        "rxpck/s",
+        "txpck/s",
+        "rxkB/s",
+        "txkB/s",
+        "rxcmp/s",
+        "txcmp/s",
+        "rxmcst/s",
+        r"%ifutil",
+    ]
+    NetError = [
+        "timestamp",
+        "IFACE",
+        "rxerr/s",
+        "txerr/s",
+        "coll/s",
+        "rxdrop/s",
+        "txdrop/s",
+        "txcarr/s",
+        "rxfram/s",
+        "rxfifo/s",
+        "txfifo/s",
+    ]
+    NFSClientStats = [
+        "timestamp",
+        "call/s",
+        "retrans/s",
+        "read/s",
+        "write/s",
+        "access/s",
+        "getatt/s",
+    ]
+    NFSServerStats = [
+        "timestamp",
+        "scall/s",
+        "badcall/s",
+        "packet/s",
+        "udp/s",
+        "tcp/s",
+        "hit/s",
+        "miss/s",
+        "sread/s",
+        "swrite/s",
+        "saccess/s",
+        "sgetatt/s",
+    ]
+    SocketStats = [
+        "timestamp",
+        "totsck",
+        "tcpsck",
+        "udpsck",
+        "rawsck",
+        "ip-frag",
+        "tcp-tw",
+    ]
+    IPStats = [
+        "timestamp",
+        "irec/s",
+        "fwddgm/s",
+        "idel/s",
+        "orq/s",
+        "asmrq/s",
+        "asmok/s",
+        "fragok/s",
+        "fragcrt/s",
+    ]
+    IPErrorStats = [
+        "timestamp",
+        "ihdrerr/s",
+        "iadrerr/s",
+        "iukwnpr/s",
+        "idisc/s",
+        "odisc/s",
+        "onort/s",
+        "asmf/s",
+        "fragf/s",
+    ]
+    ICMPStats = [
+        "timestamp",
+        "imsg/s",
+        "omsg/s",
+        "iech/s",
+        "iechr/s",
+        "oech/s",
+        "oechr/s",
+        "itm/s",
+        "itmr/s",
+        "otm/s",
+        "otmr/s",
+        "iadrmk/s",
+        "iadrmkr/s",
+        "oadrmk/s",
+        "oadrmkr/s",
+    ]
+    ICMPErrorStats = [
+        "timestamp",
+        "ierr/s",
+        "oerr/s",
+        "idstunr/s",
+        "odstunr/s",
+        "itmex/s",
+        "otmex/s",
+        "iparmpb/s",
+        "oparmpb/s",
+        "isrcq/s",
+        "osrcq/s",
+        "iredir/s",
+        "oredir/s",
+    ]
+    TCPStats = [
+        "timestamp",
+        "active/s",
+        "passive/s",
+        "iseg/s",
+        "oseg/s",
+    ]
+    TCPExtStats = [
+        "timestamp",
+        "atmptf/s",
+        "estres/s",
+        "retrans/s",
+        "isegerr/s",
+        "orsts/s",
+    ]
+    UDPStats = [
+        "timestamp",
+        "idgm/s",
+        "odgm/s",
+        "noport/s",
+        "idgmerr/s",
+    ]
+    IPv6SocketStats = [
+        "timestamp",
+        "tcp6sck",
+        "udp6sck",
+        "raw6sck",
+        "ip6-frag",
+    ]
+    IPv6Stats = [
+        "timestamp",
+        "irec6/s",
+        "fwddgm6/s",
+        "idel6/s",
+        "orq6/s",
+        "asmrq6/s",
+        "asmok6/s",
+        "imcpck6/s",
+        "omcpck6/s",
+        "fragok6/s",
+        "fragcr6/s",
+    ]
+    IPv6ErrorStats = [
+        "timestamp",
+        "ihdrer6/s",
+        "iadrer6/s",
+        "iukwnp6/s",
+        "i2big6/s",
+        "idisc6/s",
+        "odisc6/s",
+        "inort6/s",
+        "onort6/s",
+        "asmf6/s",
+        "fragf6/s",
+        "itrpck6/s",
+    ]
+    ICMPv6Stats = [
+        "timestamp",
+        "imsg6/s",
+        "omsg6/s",
+        "iech6/s",
+        "iechr6/s",
+        "oechr6/s",
+        "igmbq6/s",
+        "igmbr6/s",
+        "ogmbr6/s",
+        "igmbrd6/s",
+        "ogmbrd6/s",
+        "irtsol6/s",
+        "ortsol6/s",
+        "irtad6/s",
+        "inbsol6/s",
+        "onbsol6/s",
+        "inbad6/s",
+        "onbad6/s",
+    ]
+    ICMPv6ErrorStats = [
+        "timestamp",
+        "ierr6/s",
+        "idtunr6/s",
+        "odtunr6/s",
+        "itmex6/s",
+        "otmex6/s",
+        "iprmpb6/s",
+        "oprmpb6/s",
+        "iredir6/s",
+        "oredir6/s",
+        "ipck2b6/s",
+        "opck2b6/s",
+    ]
+    UDPv6Stats = [
+        "timestamp",
+        "idgm6/s",
+        "odgm6/s",
+        "noport6/s",
+        "idgmer6/s",
+    ]
+    SoftNetStats = [
+        "timestamp",
+        "CPU",
+        "total/s",
+        "dropd/s",
+        "squeezd/s",
+        "rx_rps/s",
+        "flw_lim/s",
+    ]
+    CPUFreq = ["timestamp", "CPU", "MHz"]
+    TemperatureStats = [
+        "timestamp",
+        "TEMP",
+        "degC",
+        r"%temp",
+        "DEVICE",
+    ]
+    BusStats = [
+        "timestamp",
+        "BUS",
+        "idvendor",
+        "idprod",
+        "maxpower",
+        "manufact",
+        "product",
+    ]
+    FileSystemSpaceStats = [
+        "timestamp",
+        "MBfsfree",
+        "MBfsused",
+        r"%fsused",
+        r"%ufsused",
+        "Ifree",
+        "Iused",
+        r"%Iused",
+        "FILESYSTEM",
+    ]
+
+    @classmethod
+    def contains(cls, item) -> Optional[Enum]:
+        for k in cls:
+            if item == k.value:
+                return k
+        return None
+
+    def __eq__(self, value: object) -> bool:
+        return self.value == value
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 class SarData:
@@ -16,6 +405,19 @@ class SarData:
 
         """
         self.sar_data: list[pd.DataFrame] = parse_sar_string(sar_string)
+        self.saridx_2_colidx: Dict[SarDataIndex, int] = {}
+        for i, sard in enumerate(self.sar_data):
+            scolumns = sard.columns.to_list()
+            sindex = SarDataIndex.contains(scolumns)
+            if sindex:
+                self.saridx_2_colidx[sindex] = i
+            else:
+                logger.warning(
+                    f"{scolumns} not supported in pipa sar parse, please report an issue"
+                )
+
+    def get_column_index(self, sar_index: SarDataIndex) -> Optional[int]:
+        return self.saridx_2_colidx.get(sar_index)
 
     @classmethod
     def init_with_sar_txt(cls, sar_txt_path: str):
@@ -85,7 +487,10 @@ class SarData:
         Returns:
             DataFrame: The filtered DataFrame containing the CPU utilization data.
         """
-        util = self.filter_dataframe(self.sar_data[0], data_type).astype(
+        idx = self.get_column_index(SarDataIndex.CPUUtils)
+        if idx is None:
+            raise KeyError(f"{SarDataIndex.CPUUtils} not found in sar data")
+        util = self.filter_dataframe(self.sar_data[idx], data_type).astype(
             {
                 r"%usr": "float64",
                 r"%nice": "float64",
@@ -166,7 +571,10 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the CPU frequency data.
         """
-        return self.filter_dataframe(self.sar_data[31], data_type).astype(
+        idx = self.get_column_index(SarDataIndex.CPUFreq)
+        if idx is None:
+            raise KeyError(f"{SarDataIndex.CPUFreq} not found in sar data")
+        return self.filter_dataframe(self.sar_data[idx], data_type).astype(
             {"MHz": "float64"}
         )
 
@@ -234,16 +642,19 @@ class SarData:
     def get_network_statistics(
         self, data_type: str = "detail", on_failures: bool = False
     ):
-        """Get
+        """Get network statistics
 
         Args:
-            data_type (str, optional): _description_. Defaults to "detail".
-            on_failures (bool, optional): _description_. Defaults to False.
+            data_type (str, optional): detail / raw / average. Defaults to "detail".
+            on_failures (bool, optional): use NetError if true, else using NetStat. Defaults to False.
 
         Returns:
-            _type_: _description_
+            pd.DataFrame: Dataframe containing the Network Stattistics data.
         """
-        sar_loc = 13 if on_failures else 12
+        sar_loc = SarDataIndex.NetError if on_failures else SarDataIndex.NetUtils
+        idx = self.get_column_index(sar_loc)
+        if idx is None:
+            raise KeyError(f"{sar_loc} not found in sar data")
         astype_t = (
             {
                 "IFACE": str,
@@ -270,7 +681,7 @@ class SarData:
                 r"%ifutil": float,
             }
         )
-        return self.filter_dataframe(self.sar_data[sar_loc], data_type).astype(astype_t)
+        return self.filter_dataframe(self.sar_data[idx], data_type).astype(astype_t)
 
     def get_network_statistics_avg(self, on_failures: bool = False):
         return (
@@ -289,7 +700,10 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the memory usage data.
         """
-        return self.filter_dataframe(self.sar_data[6], data_type).astype(
+        idx = self.get_column_index(SarDataIndex.MemoryStats)
+        if idx is None:
+            raise KeyError(f"{SarDataIndex.MemoryStats} not found in sar data")
+        return self.filter_dataframe(self.sar_data[idx], data_type).astype(
             {
                 "kbmemfree": int,
                 "kbavail": int,
@@ -341,7 +755,10 @@ class SarData:
         Returns:
             pd.DataFrame: Dataframe containing the disk usage data.
         """
-        df = self.filter_dataframe(self.sar_data[11], data_type).astype(
+        idx = self.get_column_index(SarDataIndex.DeviceIOStats)
+        if idx is None:
+            raise KeyError(f"{SarDataIndex.DeviceIOStats} not found in sar data")
+        df = self.filter_dataframe(self.sar_data[idx], data_type).astype(
             {
                 "tps": "float64",
                 r"rkB/s": "float64",
