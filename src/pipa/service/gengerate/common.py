@@ -159,8 +159,8 @@ def parse_perf_data(file: TextIOWrapper):
     """
     return file.write(
         """perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script\n
-            perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n
-            perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"""
+perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report\n
+perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid\n\n"""
     )
 
 
