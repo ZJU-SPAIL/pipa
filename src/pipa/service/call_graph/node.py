@@ -3,6 +3,7 @@ import pandas as pd
 import json
 from pipa.parser.perf_script_call import PerfScriptData
 
+
 class Node:
     """
     Represents a node in the call graph.
