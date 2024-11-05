@@ -1663,7 +1663,7 @@ def split_sar_block(sar_lines: list):
     ]
 
 
-def trans_time_to_seconds(df):
+def trans_time_to_seconds(df: pd.DataFrame):
     """
     Transforms the timestamp column in the given DataFrame to seconds.
 
@@ -1674,8 +1674,13 @@ def trans_time_to_seconds(df):
         pandas.DataFrame: The DataFrame with the timestamp column transformed to seconds.
     """
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S")
-    df["timestamp"] -= df.loc[:, "timestamp"].iloc[0]
-    df["timestamp"] = df["timestamp"].dt.total_seconds()
+    try:
+        df["timestamp"] -= df.loc[:, "timestamp"].iloc[0]
+        df["timestamp"] = df["timestamp"].dt.total_seconds()
+    except IndexError as e:
+        logger.warning(
+            f"{df.columns.to_list()} column may has wrong format, please check the origin sar data"
+        )
     return df
 
 
