@@ -25,11 +25,27 @@ class SarDataIndex(Enum):
         r"%gnice",
         r"%idle",
     ]
+    AvgCPUUtils = [
+        "Average:",
+        "CPU",
+        r"%usr",
+        r"%nice",
+        r"%sys",
+        r"%iowait",
+        r"%steal",
+        r"%irq",
+        r"%soft",
+        r"%guest",
+        r"%gnice",
+        r"%idle",
+    ]
+    CPUPressureStats = ["timestamp", r"%scpu-10", r"%scpu-60", r"%scpu-300", r"%scpu"]
     ProcessStats = [
         "timestamp",
         "proc/s",
         "cswch/s",
     ]
+    AvgInterruptStats = ["Average:", "INTR", "intr/s"]
     InterruptStats = [
         "timestamp",
         "INTR",
@@ -61,6 +77,17 @@ class SarDataIndex(Enum):
         "bread/s",
         "bwrtn/s",
         "bdscd/s",
+    ]
+    MemPressureStats = [
+        "timestamp",
+        r"%smem-10",
+        r"%smem-60",
+        r"%smem-300",
+        r"%smem",
+        r"%fmem-10",
+        r"%fmem-60",
+        r"%fmem-300",
+        r"%fmem",
     ]
     MemoryStats = [
         "timestamp",
@@ -122,6 +149,17 @@ class SarDataIndex(Enum):
         "prtyerr/s",
         "brk/s",
         "ovrun/s",
+    ]
+    IOPressureStats = [
+        "timestamp",
+        r"%sio-10",
+        r"%sio-60",
+        r"%sio-300",
+        r"%sio",
+        r"%fio-10",
+        r"%fio-60",
+        r"%fio-300",
+        r"%fio",
     ]
     DeviceIOStats = [
         "timestamp",
@@ -343,6 +381,15 @@ class SarDataIndex(Enum):
         "noport6/s",
         "idgmer6/s",
     ]
+    AvgSoftNetStats = [
+        "Average:",
+        "CPU",
+        "total/s",
+        "dropd/s",
+        "squeezd/s",
+        "rx_rps/s",
+        "flw_lim/s",
+    ]
     SoftNetStats = [
         "timestamp",
         "CPU",
@@ -352,6 +399,7 @@ class SarDataIndex(Enum):
         "rx_rps/s",
         "flw_lim/s",
     ]
+    AvgCPUFreq = ["Average:", "CPU", "MHz"]
     CPUFreq = ["timestamp", "CPU", "MHz"]
     TemperatureStats = [
         "timestamp",
@@ -388,6 +436,20 @@ class SarDataIndex(Enum):
                 return k
         return None
 
+    @classmethod
+    def avg_metric_to_all_metric(cls, item: Enum) -> Optional[Enum]:
+        match item:
+            case cls.AvgCPUUtils:
+                return cls.CPUUtils
+            case cls.AvgInterruptStats:
+                return cls.InterruptStats
+            case cls.AvgCPUFreq:
+                return cls.CPUFreq
+            case cls.AvgSoftNetStats:
+                return cls.SoftNetStats
+            case _:
+                return None
+
     def __eq__(self, value: object) -> bool:
         return self.value == value
 
@@ -415,6 +477,19 @@ class SarData:
                 logger.warning(
                     f"{scolumns} not supported in pipa sar parse, please report an issue"
                 )
+        for sindex in self.saridx_2_colidx.keys():
+            all_m = SarDataIndex.avg_metric_to_all_metric(sindex)
+            if all_m and all_m in self.saridx_2_colidx:
+                all_m_i = self.saridx_2_colidx[all_m]
+                sindex_i = self.saridx_2_colidx[sindex]
+                avg_pd = self.sar_data[sindex_i]
+                avg_pd = avg_pd.rename(columns={"Average:": "timestamp"})
+                self.sar_data[all_m_i] = (
+                    pd.concat([self.sar_data[all_m_i], avg_pd])
+                    .drop_duplicates()
+                    .reset_index(drop=True)
+                )
+                logger.debug(f"combine avg metric {sindex} to all metric {all_m}")
 
     def get_column_index(self, sar_index: SarDataIndex) -> Optional[int]:
         return self.saridx_2_colidx.get(sar_index)
