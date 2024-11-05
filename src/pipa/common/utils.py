@@ -1,7 +1,7 @@
 import datetime
 from math import sqrt
 import sys
-from typing import Tuple
+from typing import Tuple, List
 from rich import print
 
 
@@ -54,3 +54,27 @@ def handle_user_cancelled(func):
             sys.exit(0)
 
     return wrapper
+
+
+def generate_unique_rgb_color(data: List) -> Tuple[int, int, int]:
+    """
+    Generate unique RGB color from data
+
+    Args:
+        data (Tuple): Generate rgb from hash of data
+
+    Returns:
+        Tuple[int, int, int]: rgb color, (r, g, b)
+    """
+    # generate hash
+    data_hash = hash(tuple(data))
+
+    r = (data_hash & 0xFF0000) >> 16
+    g = (data_hash & 0x00FF00) >> 8
+    b = data_hash & 0x0000FF
+
+    r = r % 256
+    g = g % 256
+    b = b % 256
+
+    return (r, g, b)

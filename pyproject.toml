@@ -45,6 +45,8 @@ dependencies = [
     "matplotlib",
     "pyelftools",
     "capstone",
+    "plotly",
+    "nbformat"
 ]
 
 [project.optional-dependencies]

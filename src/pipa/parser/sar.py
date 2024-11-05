@@ -1,12 +1,16 @@
 import pandas as pd
 import seaborn as sns
 import re
+import random
 from pipa.common.cmd import run_command
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 from pipa.common.logger import logger
+from pipa.common.utils import generate_unique_rgb_color
 from enum import Enum, unique
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Literal
 import multiprocessing
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 @unique
@@ -615,6 +619,134 @@ class SarData:
         util_threads = self.get_CPU_util_avg_by_threads(threads)
         return util_threads.drop(columns=["timestamp", "CPU"]).mean().to_dict()
 
+    def plot_interactive_CPU_metrics_time_raw(
+        self,
+        threads: Optional[list[int]] = None,
+        metrics: List[
+            Literal[
+                r"%usr",
+                r"%nice",
+                r"%sys",
+                r"%iowait",
+                r"%irq",
+                r"%soft",
+                r"%steal",
+                r"%guest",
+                r"%gnice",
+                r"%idle",
+                r"%util",
+            ]
+        ] = [r"%util"],
+    ) -> List[go.Scatter]:
+        """Plots interactive CPU metrics over time. Get raw plotly data
+
+        You can generate your own plotly pic from these scatters.
+
+        Args:
+            threads (Optional[list[int]], optional): Specify cpu threads. Defaults to None, means just select 'all' CPU thread.
+            metrics (List[ Literal[ r, optional): The CPU metrics to show. Defaults to [r"%util"].
+
+        Returns:
+            List[go.Scatter]: list of raw CPU metrics scatters.
+        """
+        df = self.get_CPU_utilization()
+        df = (
+            df[df["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else df.query("CPU=='all'")
+        )
+        df = trans_time_to_seconds(df)
+
+        scatters = []
+        if threads:
+            for t in threads:
+                cpu_data = df[df["CPU"] == str(t)]
+                for i, y in enumerate(metrics):
+                    seed = random.randint(1, 256)
+                    r, g, b = generate_unique_rgb_color([t, i, seed])
+                    scatters.append(
+                        go.Scatter(
+                            x=cpu_data["timestamp"],
+                            y=cpu_data[y],
+                            mode="lines+markers",
+                            name=f"CPU{t} {y}",
+                            # different colors
+                            line=dict(color=f"rgb({r}, {g}, {b})"),
+                        )
+                    )
+        else:
+            for i, y in enumerate(metrics):
+                seed = random.randint(1, 256)
+                r, g, b = generate_unique_rgb_color([i, seed])
+                scatters.append(
+                    go.Scatter(
+                        x=df["timestamp"],
+                        y=df[y],
+                        mode="lines+markers",
+                        name=f"CPU All {y}",
+                        # different colors
+                        line=dict(color=f"rgb({r}, {g}, {b})"),
+                    )
+                )
+        return scatters
+
+    def plot_interactive_CPU_metrics_time(
+        self,
+        threads: Optional[List[int]] = None,
+        metrics: List[
+            Literal[
+                r"%usr",
+                r"%nice",
+                r"%sys",
+                r"%iowait",
+                r"%irq",
+                r"%soft",
+                r"%steal",
+                r"%guest",
+                r"%gnice",
+                r"%idle",
+                r"%util",
+            ]
+        ] = [r"%util"],
+        write_html_name: Optional[str] = None,
+    ):
+        """
+        Plot interactive CPU metrics over time.
+
+        This function generates an interactive chart showing the trends of specified CPU metrics over time.
+        It can optionally save the chart as an HTML file.
+
+        Args:
+            threads (Optional[List[int]], optional): List of thread numbers to be displayed. Defaults to None, which means displaying all threads.
+            metrics (List[Literal[...]], optional): List of CPU metrics to be displayed. Defaults to ["%util"].
+            write_html_name (Optional[str], optional): Name of the HTML file to be saved. Defaults to None, which means not saving the file.
+        """
+        scatters = self.plot_interactive_CPU_metrics_time_raw(threads, metrics)
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title="CPU Metrics Trend",
+            xaxis_title="Timestamp",
+            yaxis_title="Percentage",
+            hovermode="closest",
+            updatemenus=[
+                {
+                    "direction": "left",
+                    "pad": {"r": 10, "t": 87},
+                    "showactive": False,
+                    "type": "buttons",
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "y": 0,
+                    "yanchor": "top",
+                }
+            ],
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
+
     def plot_CPU_util_time(self, threads: list = None):
         """
         Plots the CPU utilization over time.
@@ -652,6 +784,104 @@ class SarData:
         return self.filter_dataframe(self.sar_data[idx], data_type).astype(
             {"MHz": "float64"}
         )
+
+    def plot_interactive_CPU_freq_time_raw(
+        self,
+        threads: Optional[list[int]] = None,
+    ) -> List[go.Scatter]:
+        """
+        Plot raw scatters of CPU frequency metrics over time.
+
+        You can use these scatters to build your own fig.
+
+        Args:
+            threads (Optional[list[int]], optional): CPU threads. Defaults to None, means choose 'all' CPU thread.
+
+        Returns:
+            List[go.Scatter]: list of raw scatter plots.
+        """
+        df = self.get_CPU_frequency()
+        df = (
+            df[df["CPU"].isin([str(t) for t in threads])]
+            if threads
+            else df.query("CPU=='all'")
+        )
+        df = trans_time_to_seconds(df)
+
+        scatters = []
+        if threads:
+            for t in threads:
+                cpu_data = df[df["CPU"] == str(t)]
+                seed = random.randint(1, 256)
+                r, g, b = generate_unique_rgb_color([t, seed])
+                scatters.append(
+                    go.Scatter(
+                        x=cpu_data["timestamp"],
+                        y=cpu_data["MHz"],
+                        mode="lines+markers",
+                        name=f"CPU{t} freq",
+                        # different colors
+                        line=dict(color=f"rgb({r}, {g}, {b})"),
+                    )
+                )
+        else:
+            seed = random.randint(1, 256)
+            r, g, b = generate_unique_rgb_color([seed])
+            scatters.append(
+                go.Scatter(
+                    x=df["timestamp"],
+                    y=df["MHz"],
+                    mode="lines+markers",
+                    name="CPU All freq",
+                    # different colors
+                    line=dict(color=f"rgb({r}, {g}, {b})"),
+                )
+            )
+        return scatters
+
+    def plot_interactive_CPU_freq_time(
+        self,
+        threads: Optional[List[int]] = None,
+        write_html_name: Optional[str] = None,
+    ):
+        """
+        Generates an interactive plot of the CPU frequency trend over time.
+
+        This method calls another method to obtain raw data for the CPU frequency trend and then uses Plotly to generate
+        an interactive line chart. If a file name is specified, the chart is saved as an HTML file.
+
+        Parameters:
+        - threads: Optional[List[int]] - A list of thread numbers to specify which threads' frequency trends to plot. If None, it may default to all threads or follow the behavior defined in the called method.
+        - write_html_name: Optional[str] - The name of the file to save the generated HTML chart. If None, the chart is not saved.
+
+        Returns:
+        - None
+        """
+        scatters = self.plot_interactive_CPU_freq_time_raw(threads)
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title="CPU Freq Trend",
+            xaxis_title="Timestamp",
+            yaxis_title="MHz",
+            hovermode="closest",
+            updatemenus=[
+                {
+                    "direction": "left",
+                    "pad": {"r": 10, "t": 87},
+                    "showactive": False,
+                    "type": "buttons",
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "y": 0,
+                    "yanchor": "top",
+                }
+            ],
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
 
     def plot_CPU_freq_time(self, threads: list = None):
         """
@@ -758,6 +988,152 @@ class SarData:
         )
         return self.filter_dataframe(self.sar_data[idx], data_type).astype(astype_t)
 
+    def plot_interactive_network_stat_time_raw(
+        self,
+        devs: list[str],
+        trans_metrics: List[
+            Literal[
+                "rxpck/s",
+                "txpck/s",
+                "rxkB/s",
+                "txkB/s",
+                "rxcmp/s",
+                "txcmp/s",
+                "rxmcst/s",
+                r"%ifutil",
+            ]
+        ] = [r"%ifutil"],
+        err_metrics: List[
+            Literal[
+                "rxerr/s",
+                "txerr/s",
+                "coll/s",
+                "rxdrop/s",
+                "rxdrop/s",
+                "txcarr/s",
+                "rxfram/s",
+                "rxfifo/s",
+                "txfifo/s",
+            ]
+        ] = [r"rxerr/s"],
+        on_failures=False,
+    ) -> List[go.Scatter]:
+        """
+        Plots interactive network statistics over time.
+
+        This function generates an interactive time series plot for the specified network devices and metrics.
+        It can plot either transmission metrics or error metrics based on the `on_failures` flag.
+
+        Args:
+            devs (list[str]): A list of network device names to include in the plot.
+            trans_metrics (List[Literal], optional): A list of transmission metrics to plot. Defaults to `["%ifutil"]`.
+            err_metrics (List[Literal], optional): A list of error metrics to plot. Defaults to `["rxerr/s"]`.
+            on_failures (bool, optional): If True, plots error metrics; otherwise, plots transmission metrics. Defaults to False.
+
+        Returns:
+            List[go.Scatter]: A list of Plotly Scatter objects representing the time series data for each device and metric.
+        """
+        if len(devs) < 1:
+            return []
+        metrics = err_metrics if on_failures else trans_metrics
+        df = self.get_network_statistics(on_failures=on_failures)
+        df = df[df["IFACE"].isin(devs)]
+        df = trans_time_to_seconds(df)
+
+        scatters = []
+        for t in devs:
+            dev_data = df[df["IFACE"] == t]
+            for i, y in enumerate(metrics):
+                seed = random.randint(1, 256)
+                r, g, b = generate_unique_rgb_color([t, i, seed])
+                scatters.append(
+                    go.Scatter(
+                        x=dev_data["timestamp"],
+                        y=dev_data[y],
+                        mode="lines+markers",
+                        name=f"IFACE {t} {y}",
+                        # different colors
+                        line=dict(color=f"rgb({r}, {g}, {b})"),
+                    )
+                )
+        return scatters
+
+    def plot_interactive_network_stat_time(
+        self,
+        devs: list[str],
+        trans_metrics: List[
+            Literal[
+                "rxpck/s",
+                "txpck/s",
+                "rxkB/s",
+                "txkB/s",
+                "rxcmp/s",
+                "txcmp/s",
+                "rxmcst/s",
+                r"%ifutil",
+            ]
+        ] = [r"%ifutil"],
+        err_metrics: List[
+            Literal[
+                "rxerr/s",
+                "txerr/s",
+                "coll/s",
+                "rxdrop/s",
+                "rxdrop/s",
+                "txcarr/s",
+                "rxfram/s",
+                "rxfifo/s",
+                "txfifo/s",
+            ]
+        ] = [r"rxerr/s"],
+        on_failures: bool = False,
+        write_html_name: Optional[str] = None,
+    ):
+        """
+        Plots interactive network statistics over time and optionally writes the plot to an HTML file.
+
+        This function generates an interactive time series plot for the specified network devices and metrics.
+        It can plot either transmission metrics or error metrics based on the `on_failures` flag. The plot can be
+        displayed and optionally saved as an HTML file.
+
+        Args:
+            devs (list[str]): A list of network device names to include in the plot.
+            trans_metrics (List[Literal], optional): A list of transmission metrics to plot. Defaults to `["%ifutil"]`.
+            err_metrics (List[Literal], optional): A list of error metrics to plot. Defaults to `["rxerr/s"]`.
+            on_failures (bool, optional): If True, plots error metrics; otherwise, plots transmission metrics. Defaults to False.
+            write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
+        """
+        scatters = self.plot_interactive_network_stat_time_raw(
+            devs=devs,
+            trans_metrics=trans_metrics,
+            err_metrics=err_metrics,
+            on_failures=on_failures,
+        )
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title="Net Err Trend" if on_failures else "Net Stat Trend",
+            xaxis_title="Timestamp",
+            yaxis_title="Net Stat",
+            hovermode="closest",
+            updatemenus=[
+                {
+                    "direction": "left",
+                    "pad": {"r": 10, "t": 87},
+                    "showactive": False,
+                    "type": "buttons",
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "y": 0,
+                    "yanchor": "top",
+                }
+            ],
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
+
     def get_network_statistics_avg(self, on_failures: bool = False):
         return (
             self.get_network_statistics(data_type="average", on_failures=on_failures)
@@ -798,6 +1174,120 @@ class SarData:
                 "kbvmused": int,
             }
         )
+
+    def plot_interactive_mem_usage_time_raw(
+        self,
+        metrics: List[
+            Literal[
+                "kbmemfree",
+                "kbavail",
+                "kbmemused",
+                r"%memused",
+                "kbbuffers",
+                "kbcached",
+                "kbcommit",
+                r"%commit",
+                "kbactive",
+                "kbinact",
+                "kbdirty",
+                "kbanonpg",
+                "kbslab",
+                "kbkstack",
+                "kbpgtbl",
+                "kbvmused",
+            ]
+        ] = [r"%memused"],
+    ) -> List[go.Scatter]:
+        """
+        Generates interactive memory usage time series plots.
+
+        This function creates a list of Plotly Scatter objects representing the time series data for the specified memory metrics.
+        Each metric is plotted with a unique color.
+
+        Args:
+            metrics (List[Literal], optional): A list of memory metrics to plot. Defaults to `["%memused"]`.
+
+        Returns:
+            List[go.Scatter]: A list of Plotly Scatter objects representing the time series data for each memory metric.
+        """
+        df = self.get_memory_usage()
+        df = trans_time_to_seconds(df)
+
+        scatters = []
+        for i, y in enumerate(metrics):
+            seed = random.randint(1, 256)
+            r, g, b = generate_unique_rgb_color([i, seed])
+            scatters.append(
+                go.Scatter(
+                    x=df["timestamp"],
+                    y=df[y],
+                    mode="lines+markers",
+                    name=f"memory {y}",
+                    # different colors
+                    line=dict(color=f"rgb({r}, {g}, {b})"),
+                )
+            )
+        return scatters
+
+    def plot_interactive_mem_usage_time(
+        self,
+        metrics: List[
+            Literal[
+                "kbmemfree",
+                "kbavail",
+                "kbmemused",
+                r"%memused",
+                "kbbuffers",
+                "kbcached",
+                "kbcommit",
+                r"%commit",
+                "kbactive",
+                "kbinact",
+                "kbdirty",
+                "kbanonpg",
+                "kbslab",
+                "kbkstack",
+                "kbpgtbl",
+                "kbvmused",
+            ]
+        ] = [r"%memused"],
+        write_html_name: Optional[str] = None,
+    ):
+        """
+        Plots interactive memory usage time series and optionally writes the plot to an HTML file.
+
+        This function generates an interactive time series plot for the specified memory metrics.
+        The plot can be displayed and optionally saved as an HTML file.
+
+        Args:
+            metrics (List[Literal], optional): A list of memory metrics to plot. Defaults to `["%memused"]`.
+            write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
+        """
+        scatters = self.plot_interactive_mem_usage_time_raw(metrics)
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title="Memory Metrics Trend",
+            xaxis_title="Timestamp",
+            yaxis_title="Memory Usage",
+            hovermode="closest",
+            updatemenus=[
+                {
+                    "direction": "left",
+                    "pad": {"r": 10, "t": 87},
+                    "showactive": False,
+                    "type": "buttons",
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "y": 0,
+                    "yanchor": "top",
+                }
+            ],
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
 
     def get_memory_usage_avg(self):
         """
@@ -847,6 +1337,113 @@ class SarData:
         )
         return df[df["DEV"] == dev] if dev else df
 
+    def plot_interactive_disk_usage_time_raw(
+        self,
+        devs: list[str],
+        metrics: List[
+            Literal[
+                "tps",
+                r"rkB/s",
+                r"wkB/s",
+                r"dkB/s",
+                "areq-sz",
+                "aqu-sz",
+                "await",
+                r"%util",
+            ]
+        ] = [r"%util"],
+    ) -> List[go.Scatter]:
+        """
+        Generates interactive disk usage time series plots.
+
+        This function creates a list of Plotly Scatter objects representing the time series data for the specified disk devices and metrics.
+        Each metric for each device is plotted with a unique color.
+
+        Args:
+            devs (list[str]): A list of disk device names to include in the plot.
+            metrics (List[Literal], optional): A list of disk usage metrics to plot. Defaults to `["%util"]`.
+
+        Returns:
+            List[go.Scatter]: A list of Plotly Scatter objects representing the time series data for each disk device and metric.
+        """
+        if len(devs) < 1:
+            return []
+        df = self.get_disk_usage()
+        df = df[df["DEV"].isin(devs)]
+        df = trans_time_to_seconds(df)
+
+        scatters = []
+        for t in devs:
+            cpu_data = df[df["DEV"] == t]
+            for i, y in enumerate(metrics):
+                seed = random.randint(1, 256)
+                r, g, b = generate_unique_rgb_color([t, i, seed])
+                scatters.append(
+                    go.Scatter(
+                        x=cpu_data["timestamp"],
+                        y=cpu_data[y],
+                        mode="lines+markers",
+                        name=f"DEV {t} {y}",
+                        # different colors
+                        line=dict(color=f"rgb({r}, {g}, {b})"),
+                    )
+                )
+        return scatters
+
+    def plot_interactive_disk_usage_time(
+        self,
+        devs: list[str],
+        metrics: List[
+            Literal[
+                "tps",
+                r"rkB/s",
+                r"wkB/s",
+                r"dkB/s",
+                "areq-sz",
+                "aqu-sz",
+                "await",
+                r"%util",
+            ]
+        ] = [r"%util"],
+        write_html_name: Optional[str] = None,
+    ):
+        """
+        Plots interactive disk usage time series and optionally writes the plot to an HTML file.
+
+        This function generates an interactive time series plot for the specified disk devices and metrics.
+        The plot can be displayed and optionally saved as an HTML file.
+
+        Args:
+            devs (list[str]): A list of disk device names to include in the plot.
+            metrics (List[Literal], optional): A list of disk usage metrics to plot. Defaults to `["%util"]`.
+            write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
+        """
+        scatters = self.plot_interactive_disk_usage_time_raw(devs=devs, metrics=metrics)
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title="Disk Usage Trend",
+            xaxis_title="Timestamp",
+            yaxis_title="Disk Usage",
+            hovermode="closest",
+            updatemenus=[
+                {
+                    "direction": "left",
+                    "pad": {"r": 10, "t": 87},
+                    "showactive": False,
+                    "type": "buttons",
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "y": 0,
+                    "yanchor": "top",
+                }
+            ],
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
+
     def get_disk_usage_avg(self, dev: str = None):
         """
         Returns the average disk usage data.
@@ -876,6 +1473,164 @@ class SarData:
             sns.lineplot(data=df, x="timestamp", y=metrics)
         else:
             sns.lineplot(data=df, x="timestamp", y=metrics, hue="DEV")
+
+    def plot_all_metrics(
+        self,
+        net_devs: list[str],
+        disk_devs: list[str],
+        cpu_threads: Optional[list[int]] = None,
+        cpu_metrics: List[
+            Literal[
+                r"%usr",
+                r"%nice",
+                r"%sys",
+                r"%iowait",
+                r"%irq",
+                r"%soft",
+                r"%steal",
+                r"%guest",
+                r"%gnice",
+                r"%idle",
+                r"%util",
+            ]
+        ] = [r"%util"],
+        net_trans_metrics: List[
+            Literal[
+                "rxpck/s",
+                "txpck/s",
+                "rxkB/s",
+                "txkB/s",
+                "rxcmp/s",
+                "txcmp/s",
+                "rxmcst/s",
+                r"%ifutil",
+            ]
+        ] = [r"%ifutil"],
+        net_err_metrics: List[
+            Literal[
+                "rxerr/s",
+                "txerr/s",
+                "coll/s",
+                "rxdrop/s",
+                "rxdrop/s",
+                "txcarr/s",
+                "rxfram/s",
+                "rxfifo/s",
+                "txfifo/s",
+            ]
+        ] = [r"rxerr/s"],
+        mem_metrics: List[
+            Literal[
+                "kbmemfree",
+                "kbavail",
+                "kbmemused",
+                r"%memused",
+                "kbbuffers",
+                "kbcached",
+                "kbcommit",
+                r"%commit",
+                "kbactive",
+                "kbinact",
+                "kbdirty",
+                "kbanonpg",
+                "kbslab",
+                "kbkstack",
+                "kbpgtbl",
+                "kbvmused",
+            ]
+        ] = [r"%memused"],
+        disk_metrics: List[
+            Literal[
+                "tps",
+                r"rkB/s",
+                r"wkB/s",
+                r"dkB/s",
+                "areq-sz",
+                "aqu-sz",
+                "await",
+                r"%util",
+            ]
+        ] = [r"%util"],
+        write_html_name: Optional[str] = None,
+        height=1000,
+        shared_xaxes=True,
+        vertical_spacing=0.1,
+    ):
+        """
+        Plots comprehensive system metrics including CPU utilization, CPU frequency, network transmission, network errors, memory usage, and disk usage.
+
+        This function generates an interactive plot with multiple subplots, each representing a different system metric. The plot can be displayed and optionally saved as an HTML file.
+
+        Args:
+            net_devs (list[str]): A list of network device names to include in the plot.
+            disk_devs (list[str]): A list of disk device names to include in the plot.
+            cpu_threads (Optional[list[int]], optional): A list of CPU thread IDs to include in the CPU metrics. Defaults to None.
+            cpu_metrics (List[Literal], optional): A list of CPU metrics to plot. Defaults to `["%util"]`.
+            net_trans_metrics (List[Literal], optional): A list of network transmission metrics to plot. Defaults to `["%ifutil"]`.
+            net_err_metrics (List[Literal], optional): A list of network error metrics to plot. Defaults to `["rxerr/s"]`.
+            mem_metrics (List[Literal], optional): A list of memory metrics to plot. Defaults to `["%memused"]`.
+            disk_metrics (List[Literal], optional): A list of disk usage metrics to plot. Defaults to `["%util"]`.
+            write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
+            height (int, optional): The height of the plot in pixels. Defaults to 1000.
+            shared_xaxes (bool, optional): Whether to share the x-axis across subplots. Defaults to True.
+            vertical_spacing (float, optional): The vertical spacing between subplots. Defaults to 0.1.
+        """
+        cpu_util_scatters = self.plot_interactive_CPU_metrics_time_raw(
+            threads=cpu_threads, metrics=cpu_metrics
+        )
+        cpu_freq_scatters = self.plot_interactive_CPU_freq_time_raw(threads=cpu_threads)
+        net_trans_scatters = self.plot_interactive_network_stat_time_raw(
+            on_failures=False, devs=net_devs, trans_metrics=net_trans_metrics
+        )
+        net_err_scatters = self.plot_interactive_network_stat_time_raw(
+            on_failures=True, devs=net_devs, err_metrics=net_err_metrics
+        )
+        mem_scatters = self.plot_interactive_mem_usage_time_raw(metrics=mem_metrics)
+        disk_scatters = self.plot_interactive_disk_usage_time_raw(
+            devs=disk_devs, metrics=disk_metrics
+        )
+        # subtitle: scatters, x_title, y_title
+        all_scatters = {
+            "CPU Utilization": (cpu_util_scatters, "timestamp", "Percentage"),
+            "CPU Frequency": (cpu_freq_scatters, "timestamp", "MHz"),
+            "Network Transmission": (net_trans_scatters, "timestamp", "Net Stat"),
+            "Network Error": (net_err_scatters, "timestamp", "Net Stat"),
+            "Memory Usage": (mem_scatters, "timestamp", "Memory Usage"),
+            "Disk Usage": (disk_scatters, "timestamp", "Disk Usage"),
+        }
+        rows = 0
+        sub_titles = []
+        exist_scatters = {}
+        for k, v in all_scatters.items():
+            s, _, _ = v
+            if len(s) > 0:
+                rows += 1
+                sub_titles.append(k)
+                # scatters, x_title, y_title
+                exist_scatters[k] = v
+        fig = make_subplots(
+            rows=rows,
+            cols=1,
+            subplot_titles=sub_titles,
+            # Share same x axis since all is timestamp
+            shared_xaxes=shared_xaxes,
+            vertical_spacing=vertical_spacing,
+        )
+        for i, (_, v) in enumerate(exist_scatters.items()):
+            s, xt, yt = v
+            for scatter in s:
+                fig.add_trace(scatter, row=i + 1, col=1)
+            fig.update_xaxes(title_text=xt, row=i + 1, col=1)
+            fig.update_yaxes(title_text=yt, row=i + 1, col=1)
+        fig.update_layout(
+            title="System Metrics Trends",
+            hovermode="closest",
+            height=height,
+            showlegend=True,
+        )
+        fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
 
 
 def parse_sar_bin_to_txt(sar_bin_path: str):

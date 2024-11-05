@@ -1,6 +1,7 @@
 all: clean lint build uninstall install test
 
 build:
+	pip install build
 	python -m build
 
 clean:
