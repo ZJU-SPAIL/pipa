@@ -1,6 +1,7 @@
 import pandas as pd
 from pandarallel import pandarallel
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pipa.common.logger import logger
 import seaborn as sns
 
 
@@ -375,32 +376,63 @@ class PerfStatData:
         -   optional unit of metric
         """
         pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
-        df = pd.read_csv(
-            stat_output_path,
-            skiprows=1,
-            names=[
-                "timestamp",
-                "cpu_id",
-                "value",
-                "unit",
-                "metric_type",
-                "run_time(ns)",
-                "run_percentage",
-                "opt_value",
-                "opt_unit_metric",
-            ],
-        ).astype(
-            {
-                "timestamp": "float64",
-                "cpu_id": str,
-                "value": "int64",
-                "unit": str,
-                "metric_type": str,
-                "run_time(ns)": "int64",
-                "run_percentage": "float64",
-                "opt_value": "float64",
-                "opt_unit_metric": str,
-            }
-        )
-        df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
+        try:
+            df = pd.read_csv(
+                stat_output_path,
+                skiprows=1,
+                names=[
+                    "timestamp",
+                    "cpu_id",
+                    "value",
+                    "unit",
+                    "metric_type",
+                    "run_time(ns)",
+                    "run_percentage",
+                    "opt_value",
+                    "opt_unit_metric",
+                ],
+            ).astype(
+                {
+                    "timestamp": "float64",
+                    "cpu_id": str,
+                    "value": "int64",
+                    "unit": str,
+                    "metric_type": str,
+                    "run_time(ns)": "int64",
+                    "run_percentage": "float64",
+                    "opt_value": "float64",
+                    "opt_unit_metric": str,
+                }
+            )
+            df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
+        except pd.errors.IntCastingNaNError as e:
+            logger.warning(
+                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use use -1 as cpuid for all"
+            )
+            df = pd.read_csv(
+                stat_output_path,
+                skiprows=1,
+                names=[
+                    "timestamp",
+                    "value",
+                    "unit",
+                    "metric_type",
+                    "run_time(ns)",
+                    "run_percentage",
+                    "opt_value",
+                    "opt_unit_metric",
+                ],
+            ).astype(
+                {
+                    "timestamp": "float64",
+                    "value": "int64",
+                    "unit": str,
+                    "metric_type": str,
+                    "run_time(ns)": "int64",
+                    "run_percentage": "float64",
+                    "opt_value": "float64",
+                    "opt_unit_metric": str,
+                }
+            )
+            df["cpu_id"] = -1
         return df
