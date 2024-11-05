@@ -109,6 +109,54 @@ def quest_basic():
     raise ValueError("Invalid choice.")
 
 
+def generate_core_list(core_range: str, only_comma: bool = False) -> str:
+    """Generate right core list by core_range
+
+    The core range should be like:
+    1. a single digit like '8' means the 8 core
+    2. a range like '1-8' means the cores from 1 to 8
+    3. a range like '1-8,9-12' means the cores from 1 to 8 and from 9 to 12
+
+    Args:
+        core_range (str): the input core range
+        only_comma (bool): return only comma split core range
+
+    Raises:
+        ValueError: If get a illegal core range
+
+    Returns:
+        str: the right core range
+    """
+    core_range = core_range.split(",")
+    core_range_list: list[str] = []
+    for r in core_range:
+        if r.isdigit():
+            d = int(r)
+            if d < CORES_ALL[0] or d > CORES_ALL[-1]:
+                raise ValueError(f"Please input core in a valid range: {d}")
+            core_range_list.append(r.strip())
+        elif r.split("-").__len__() != 2:
+            raise ValueError(f"Please input cores as a valid range, split by '-': {r}")
+        else:
+            left, right = r.split("-")
+
+            left, right = left.strip(), right.strip()
+            if not left.isdigit() or not right.isdigit():
+                raise ValueError(
+                    f"Please input cores as a valid range, non-digit char detected: {r}"
+                )
+            left, right = int(left), int(right)
+            if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
+                raise ValueError(f"Please input cores as a valid range: {r}")
+            if only_comma:
+                core_range_list.append(
+                    ",".join([str(x) for x in range(left, right + 1)])
+                )
+            else:
+                core_range_list.append(f"{left}-{right}")
+    return ",".join(core_range_list)
+
+
 def write_title(file: TextIOWrapper):
     """
     Writes the title section to the given file.

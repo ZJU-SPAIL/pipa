@@ -1,12 +1,13 @@
-from pipa.service.gengerate.common import load_yaml_config
+from pipa.service.gengerate.common import (
+    load_yaml_config,
+    generate_core_list,
+)
 from pipa.service.gengerate.run_by_pipa import generate as generate_pipa
 from pipa.service.gengerate.run_by_user import generate as generate_user
-from pipa.common.hardware.cpu import get_cpu_cores
-
 import questionary
 
 
-def build_command(use_taskset: bool, core_range, command):
+def build_command(use_taskset: bool, core_range: str, command):
     """
     Builds a command with optional taskset and core range.
 
@@ -23,24 +24,7 @@ def build_command(use_taskset: bool, core_range, command):
 
     """
     if use_taskset:
-        CORES_ALL = get_cpu_cores()
-        if core_range.isdigit():
-            core_list = core_range.strip()
-        elif core_range.split("-").__len__() != 2:
-            raise ValueError("Please input cores as a valid range, split by '-'.")
-        else:
-            left, right = core_range.split("-")
-
-            left, right = left.strip(), right.strip()
-            if not left.isdigit() or not right.isdigit():
-                raise ValueError(
-                    "Please input cores as a valid range, non-digit char detected."
-                )
-            left, right = int(left), int(right)
-            if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
-                raise ValueError("Please input cores as a valid range.")
-            core_list = ",".join([str(i) for i in list(range(left, right + 1))])
-
+        core_list = generate_core_list(core_range)
         command = f"/usr/bin/taskset -c {core_list} {command}"
     return command
 

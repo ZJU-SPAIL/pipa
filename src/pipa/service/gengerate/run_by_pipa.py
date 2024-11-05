@@ -7,6 +7,7 @@ from pipa.service.gengerate.common import (
     opener,
     parse_perf_data,
     move_old_file,
+    generate_core_list,
 )
 from pipa.service.export_sys_config import write_export_config_script
 import os
@@ -33,25 +34,12 @@ def quest():
     ).ask()
 
     if use_taskset == "Yes":
-        cores_input = questionary.text(
+        cores_input: str = questionary.text(
             f"Which cores do you want to use? (Default: {CORES_ALL[0]}-{CORES_ALL[-1]})\n",
             f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
         ).ask()
 
-        if cores_input.isdigit():
-            core_list = cores_input.strip()
-        elif len(cores_input.split("-")) != 2:
-            raise ("Please input cores as a valid range, split by '-'.")
-        else:
-            left, right = cores_input.split("-")
-
-            left, right = left.strip(), right.strip()
-            if not left.isdigit() or not right.isdigit():
-                raise ("Please input cores as a valid range, non-digit char detected.")
-            left, right = int(left), int(right)
-            if left < CORES_ALL[0] or right > CORES_ALL[-1] or left > right:
-                raise ("Please input cores as a valid range.")
-            core_list = f"{left}-{right}"
+        core_list = generate_core_list(cores_input)
 
     command = questionary.text("What's the command of workload?\n").ask()
 

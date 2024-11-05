@@ -84,5 +84,27 @@ def test_opener(mock_open):
     assert descriptor == 3
 
 
+def test_generate_core_list():
+    with patch("pipa.service.gengerate.common.CORES_ALL", new=list(range(0, 5))):
+        from pipa.service.gengerate.common import generate_core_list
+
+        assert generate_core_list("1-4") == "1-4"
+        assert generate_core_list("1-4", only_comma=True) == "1,2,3,4"
+        assert generate_core_list("1,2") == "1,2"
+        assert generate_core_list("1,2", only_comma=True) == "1,2"
+        assert generate_core_list("1,2,3-4") == "1,2,3-4"
+        assert generate_core_list("1,2,3-4", only_comma=True) == "1,2,3,4"
+        assert generate_core_list("3-4,2-3,2") == "3-4,2-3,2"
+        assert generate_core_list("3-4,2-3,2", only_comma=True) == "3,4,2,3,2"
+        with pytest.raises(ValueError):
+            generate_core_list("1-5")
+        with pytest.raises(ValueError):
+            generate_core_list("1,2,6")
+        with pytest.raises(ValueError):
+            generate_core_list("1-3,2,8")
+        with pytest.raises(ValueError):
+            generate_core_list("1-3,2,0-8")
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

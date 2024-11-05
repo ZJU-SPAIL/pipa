@@ -70,13 +70,13 @@ WORKSPACE=./data
 mkdir -p $WORKSPACE
 
 ps -aux -ef --forest --sort=-%cpu > $WORKSPACE/ps.txt
-perf record -e '{cycles,instructions}:S' -g -a -F 999 -o $WORKSPACE/perf.data /usr/bin/taskset -c 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47 perf bench futex hash
+perf record -e '{cycles,instructions}:S' -g -a -F 999 -o $WORKSPACE/perf.data /usr/bin/taskset -c 0-47 perf bench futex hash
 perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script
 perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report
 
 sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &
 sar_pid=$!
-perf stat -e cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses -C 0-47 -A -x , -I 1000 -o $WORKSPACE/perf-stat.csv /usr/bin/taskset -c 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47 perf bench futex hash
+perf stat -e cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses -C 0-47 -A -x , -I 1000 -o $WORKSPACE/perf-stat.csv /usr/bin/taskset -c 0-47 perf bench futex hash
 kill -9 $sar_pid
 LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt
 
