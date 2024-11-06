@@ -637,28 +637,53 @@ class SarData:
                 r"%util",
             ]
         ] = [r"%util"],
+        aggregation: bool = False,
     ) -> List[go.Scatter]:
         """Plots interactive CPU metrics over time. Get raw plotly data
 
         You can generate your own plotly pic from these scatters.
 
         Args:
-            threads (Optional[list[int]], optional): Specify cpu threads. Defaults to None, means just select 'all' CPU thread.
+            threads (Optional[list[int]], optional): Specify cpu to show in fig. Defaults to None.
+                When in aggregation mode, none means all, otherwise aggregate select threads.
+                When in non-aggregation mode, none means display all cpu threads, otherwise display selected threads.
             metrics (List[ Literal[ r, optional): The CPU metrics to show. Defaults to [r"%util"].
+            aggregation (bool, optional): Whether to aggregate the data by CPU thread. Defaults to False.
 
         Returns:
             List[go.Scatter]: list of raw CPU metrics scatters.
         """
         df = self.get_CPU_utilization()
-        df = (
-            df[df["CPU"].isin([str(t) for t in threads])]
-            if threads
-            else df.query("CPU=='all'")
-        )
+        # minus 'all'
+        cpu_counts = df["CPU"].nunique() - 1
         df = trans_time_to_seconds(df)
-
         scatters = []
-        if threads:
+        if aggregation:
+            if threads is None:
+                df = df.query("CPU=='all'")
+                sname_cpu = "All"
+            else:
+                df = df[df["CPU"].isin([str(t) for t in threads])]
+                df = df.groupby("timestamp").mean(numeric_only=True).reset_index()
+                df["CPU"] = "all"
+                sname_cpu = f"{threads[0]}-{threads[-1]}"
+            for i, y in enumerate(metrics):
+                seed = random.randint(1, 256)
+                r, g, b = generate_unique_rgb_color([i, seed])
+                scatters.append(
+                    go.Scatter(
+                        x=df["timestamp"],
+                        y=df[y],
+                        mode="lines+markers",
+                        name=f"CPU {sname_cpu} {y}",
+                        # different colors
+                        line=dict(color=f"rgb({r}, {g}, {b})"),
+                    )
+                )
+        else:
+            if threads is None:
+                threads = list(range(0, cpu_counts))
+            df = df[df["CPU"].isin([str(t) for t in threads])]
             for t in threads:
                 cpu_data = df[df["CPU"] == str(t)]
                 for i, y in enumerate(metrics):
@@ -674,20 +699,6 @@ class SarData:
                             line=dict(color=f"rgb({r}, {g}, {b})"),
                         )
                     )
-        else:
-            for i, y in enumerate(metrics):
-                seed = random.randint(1, 256)
-                r, g, b = generate_unique_rgb_color([i, seed])
-                scatters.append(
-                    go.Scatter(
-                        x=df["timestamp"],
-                        y=df[y],
-                        mode="lines+markers",
-                        name=f"CPU All {y}",
-                        # different colors
-                        line=dict(color=f"rgb({r}, {g}, {b})"),
-                    )
-                )
         return scatters
 
     def plot_interactive_CPU_metrics_time(
@@ -708,6 +719,7 @@ class SarData:
                 r"%util",
             ]
         ] = [r"%util"],
+        aggregation: bool = False,
         write_html_name: Optional[str] = None,
     ):
         """
@@ -719,9 +731,12 @@ class SarData:
         Args:
             threads (Optional[List[int]], optional): List of thread numbers to be displayed. Defaults to None, which means displaying all threads.
             metrics (List[Literal[...]], optional): List of CPU metrics to be displayed. Defaults to ["%util"].
+            aggregation (bool, optional): Whether to aggregate the data by CPU thread. Defaults to False.
             write_html_name (Optional[str], optional): Name of the HTML file to be saved. Defaults to None, which means not saving the file.
         """
-        scatters = self.plot_interactive_CPU_metrics_time_raw(threads, metrics)
+        scatters = self.plot_interactive_CPU_metrics_time_raw(
+            threads=threads, metrics=metrics, aggregation=aggregation
+        )
         fig = go.Figure()
         for s in scatters:
             fig.add_trace(s)
@@ -1494,6 +1509,7 @@ class SarData:
                 r"%util",
             ]
         ] = [r"%util"],
+        cpu_aggregation: bool = False,
         net_trans_metrics: List[
             Literal[
                 "rxpck/s",
@@ -1566,6 +1582,7 @@ class SarData:
             disk_devs (list[str]): A list of disk device names to include in the plot.
             cpu_threads (Optional[list[int]], optional): A list of CPU thread IDs to include in the CPU metrics. Defaults to None.
             cpu_metrics (List[Literal], optional): A list of CPU metrics to plot. Defaults to `["%util"]`.
+            cpu_aggregation (bool, optional): Whether to aggregate CPU metrics across all threads. Defaults to False.
             net_trans_metrics (List[Literal], optional): A list of network transmission metrics to plot. Defaults to `["%ifutil"]`.
             net_err_metrics (List[Literal], optional): A list of network error metrics to plot. Defaults to `["rxerr/s"]`.
             mem_metrics (List[Literal], optional): A list of memory metrics to plot. Defaults to `["%memused"]`.
@@ -1576,7 +1593,7 @@ class SarData:
             vertical_spacing (float, optional): The vertical spacing between subplots. Defaults to 0.1.
         """
         cpu_util_scatters = self.plot_interactive_CPU_metrics_time_raw(
-            threads=cpu_threads, metrics=cpu_metrics
+            threads=cpu_threads, metrics=cpu_metrics, aggregation=cpu_aggregation
         )
         cpu_freq_scatters = self.plot_interactive_CPU_freq_time_raw(threads=cpu_threads)
         net_trans_scatters = self.plot_interactive_network_stat_time_raw(
