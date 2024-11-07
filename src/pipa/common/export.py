@@ -53,7 +53,7 @@ def export_dataframe_to_csv(filepath=None):
             result = func(*args, **kwargs)
             if isinstance(result, pd.DataFrame):
                 output_filepath = (
-                    filepath or f"{OUTPUT_DIR}/export_{get_timestamp()}.csv"
+                    filepath or f"{OUTPUT_DIR}/pipa_{get_timestamp()}.csv"
                 )
                 logger.info(f"Exporting DataFrame to {output_filepath}")
                 result.to_csv(output_filepath, index=False)
