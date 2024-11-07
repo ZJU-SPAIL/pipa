@@ -2,6 +2,39 @@ import pandas as pd
 from pipa.common.logger import logger
 from pipa.common.utils import get_timestamp
 from pipa.common.config import OUTPUT_DIR
+import sqlite3
+
+
+class SQLiteConnector:
+    def __init__(self, db_path):
+        self.db_path = db_path
+
+    def _connect(self):
+        return sqlite3.connect(self.db_path)
+
+    def fetch_table_as_dataframe(self, table_name):
+        df = self.execute_query(f"SELECT * FROM {table_name}")
+        logger.info(f"Table {table_name} fetched successfully.")
+        return df
+
+    def execute_query(self, query):
+        with self._connect() as conn:
+            df = pd.read_sql_query(query, conn)
+        logger.info("Query executed successfully.")
+        return df
+
+    def execute_query_and_export_to_csv(self, query, output_filepath):
+        df = self.execute_query(query)
+        logger.info(f"Exporting query result to {output_filepath}")
+        df.to_csv(output_filepath, index=False)
+        return df
+
+    def export_table_to_csv(self, table_name, output_filepath=None):
+        output_filepath = output_filepath or f"{OUTPUT_DIR}/{table_name}.csv"
+        df = self.fetch_table_as_dataframe(table_name)
+        logger.info(f"Exporting table {table_name} to {output_filepath}")
+        df.to_csv(output_filepath, index=False)
+        return df
 
 
 def export_dataframe_to_csv(filepath=None):
