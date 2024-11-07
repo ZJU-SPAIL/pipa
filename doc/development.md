@@ -70,5 +70,27 @@
 * [x] Improve comments
 * [x] Support perf-script with call trace
 * [x] Build call graph based on perf-script data
+
+### Version 0.0.12
+
+* [x] Implement EPM for Call Graph
+* [x] Rewrite quick-start.md
+* [x] No longer support py3.9 and older
+* [x] Fixed bugs
+
+### Version 0.0.13
+
+* [x] Add buildid debug dir support
+* [x] Add network statistics parse in sar
+* [x] Correct the checking when perf.script does not exist
+* [x] Add coverage tests and deploy in CI
+
+### Version 0.0.14
+
+* [x] Add perf stat parse for aggregation mode
+* [x] Decoupled Call Graph
+* [x] Implement PIPAD download
+* [x] Improve documentation
+* [x] Enhance each sar columns' indexing
+* [x] Use range instead of core numbers
 * [ ] Improve unit tests coverage
-* [ ] Improve documentation
