@@ -36,6 +36,13 @@ class SQLiteConnector:
         df.to_csv(output_filepath, index=False)
         return df
 
+    def export_table_to_excel(self, table_name, output_filepath=None):
+        output_filepath = output_filepath or f"{OUTPUT_DIR}/{table_name}.xlsx"
+        df = self.fetch_table_as_dataframe(table_name)
+        logger.info(f"Exporting table {table_name} to {output_filepath}")
+        df.to_excel(output_filepath, index=False)
+        return df
+
 
 def export_dataframe_to_csv(filepath=None):
     """
@@ -52,9 +59,7 @@ def export_dataframe_to_csv(filepath=None):
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
             if isinstance(result, pd.DataFrame):
-                output_filepath = (
-                    filepath or f"{OUTPUT_DIR}/pipa_{get_timestamp()}.csv"
-                )
+                output_filepath = filepath or f"{OUTPUT_DIR}/pipa_{get_timestamp()}.csv"
                 logger.info(f"Exporting DataFrame to {output_filepath}")
                 result.to_csv(output_filepath, index=False)
             return result
