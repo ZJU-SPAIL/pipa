@@ -255,16 +255,6 @@ def get_metrics(
     pass
 ```
 
-## Dump
-Before formally uploading PIPASHU data, you can use PIPA dump to dump overview data to a file.
-
-```shell
-pipa dump -o <output_file> -c <config_file> -v
-```
-`-c <config_file>`: PIPA provides a template config file [config-upload.yaml](https://github.com/ZJU_SPAIL/pipa/blob/main/asset/config-upload.yaml).If this parameter is missed, you can dump data in a cmd interaction manner. 
-
-`-v`: If this parameter is used, output file will be printed to the screen.
-
 ## Upload
 PIPA provides two ways to upload your performance data with detailed information. One is to upload in command line interation, and the other is to upload with YAML.
 
@@ -338,7 +328,10 @@ data/
 └── sar.txt
 ```
 
-Cores list is the cores you want to focus on. To get the list quickly, you can use python list.
+So far, pipa's grafana panel has only been calculated based on data from perf-stat and sar. If perf.script is particularly large, you might consider not importing a perf.script file to speed things up. You just need to replace the `data_location` field with the `perf_stat_path`, `sar_path` field.
+
+BTW, cores list is the cores you want to focus on. To get the list quickly, you can use python list.
+
 ```shell
 $ python
 Python 3.11.5 (main, Sep 11 2023, 13:54:46) [GCC 11.2.0] on linux
@@ -346,3 +339,15 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> list(range(32,64))
 [32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
 ```
+
+
+## Dump
+
+Before formally uploading PIPASHU data, you can use PIPA dump to dump overview data to a file for double check.
+
+```shell
+pipa dump -o <output_file> -c <config_file> -v
+```
+`-c <config_file>`: PIPA provides a template config file [config-upload.yaml](https://github.com/ZJU_SPAIL/pipa/blob/main/asset/config-upload.yaml).If this parameter is missed, you can dump data in a cmd interaction manner. 
+
+`-v`: If this parameter is used, output file will be printed to the screen.
