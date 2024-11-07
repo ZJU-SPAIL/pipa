@@ -171,8 +171,8 @@ class PIPADServer:
         data_location: Optional[str] = "./",
         port: Optional[int] = 5051,
         address: Optional[str] = "[::]",
-        database: str = "example.db",
-        table: str = "example",
+        database_name: str = "example.db",
+        table_name: str = "example",
         grafana_api_k: Optional[str] = None,
         grafana_url: Optional[str] = None,
         grafana_path: Optional[str] = None,
@@ -193,9 +193,9 @@ class PIPADServer:
         self._dlocation = data_location
         self._port = port
         self._address = address
-        self._database = database
-        self._table = table
-        self._database_loc = os.path.join(data_location, database)
+        self._database = database_name
+        self._table = table_name
+        self._database_loc = os.path.join(data_location, database_name)
         try:
             with sqlite3.connect(self._database_loc) as conn:
                 logger.info(f"Use SQLite3: {sqlite3.sqlite_version}")
@@ -206,12 +206,12 @@ class PIPADServer:
             return
         if grafana_api_k is not None and grafana_url is not None:
             if grafana_path is not None:
-                exact_path = f"{grafana_path}/{database}"
+                exact_path = f"{grafana_path}/{database_name}"
             else:
                 exact_path = self._database_loc
             self._grafana = {"api_key": grafana_api_k, "url": grafana_url}
             new_conn = {
-                "name": database,
+                "name": database_name,
                 "type": "frser-sqlite-datasource",
                 "access": "proxy",
                 "jsonData": {"path": exact_path},
@@ -305,8 +305,8 @@ def main():
         data_location=dlocation,
         port=port,
         address=address,
-        database=database,
-        table=table,
+        database_name=database,
+        table_name=table,
         grafana_api_k=gkey,
         grafana_url=gurl,
         grafana_path=gpath,
