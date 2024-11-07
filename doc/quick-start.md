@@ -255,3 +255,94 @@ def get_metrics(
     pass
 ```
 
+## Dump
+Before formally uploading PIPASHU data, you can use PIPA dump to dump overview data to a file.
+
+```shell
+pipa dump -o <output_file> -c <config_file> -v
+```
+`-c <config_file>`: PIPA provides a template config file [config-upload.yaml](https://github.com/ZJU_SPAIL/pipa/blob/main/asset/config-upload.yaml).If this parameter is missed, you can dump data in a cmd interaction manner. 
+
+`-v`: If this parameter is used, output file will be printed to the screen.
+
+## Upload
+PIPA provides two ways to upload your performance data with detailed information. One is to upload in command line interation, and the other is to upload with YAML.
+
+### Upload in cmd interaction manner
+Use the following command line to upload data in a cmd interaction manner:
+```shell
+pipa upload
+```
+Then 
+```bash
+? What's the name of workload? Kafka
+? What's the number of transaction? 10000000
+? Where's the data collected by PIPAShu? data
+? What are the threads used in the workload? Split by , 0,1,2,3
+? What's the used disk device name? dm-2
+? What's the hardware configuration (sockets*cores*SMT)? 1*1*1
+? What's the software configuration? JDK1.8
+? What's the platform? IceLake 8383C
+? Any comments?
+? What's the PIPAD server address?
+? What's the PIPAD server port?
+```
+
+### Upload with YAML
+Use the following command line to upload data with YAML:
+```shell
+pipa upload <config_file>
+```
+PIPA provides a template configuration file [config-upload.yaml](https://github.com/ZJU_SPAIL/pipa/blob/main/asset/config-upload.yaml).
+```yaml
+# PIPA-Shu Upload Configuration
+# Use pipa upload to upload the data to PIPAD server based on this configuration.
+# Command Example: pipa upload --config_path=./data/config-upload.yaml
+workload: rocksdb
+# The name of the workload.
+transaction: 7561946
+# The number of transactions.
+data_location: /path/to/data/collected/by/pipashu
+# The location of the data collected by PIPAShu.
+
+cores: [36, 37, 38, 39]
+# The numbers of logical cores used in the workload.
+dev: sdc
+# The used disk device name.
+
+hw_info: 1*4*1
+# The hardware configuration (sockets*cores*SMT).
+sw_info: RocksDB 7.9.2 build in release mode, debug_level=0, threads_num=16, db_bench with benchmark.sh
+# The software configuration.
+
+platform: Intel SPR 4510
+# The platform user used.
+cpu_frequency_mhz: 2600
+# The CPU frequency in MHz.
+# Only needed when the platform is Huawei.
+
+comment: "This is a template for the upload configuration."
+# Any comments.
+pipad_addr: 10.82.77.113
+# The PIPAD server address.
+pipad_port: 50051
+# The PIPAD server port.
+
+```
+
+Data location is the directory of your PIPASHU data. It should at least include:
+```bash
+data/
+├── perf-stat.csv
+├── perf.script
+└── sar.txt
+```
+
+Cores list is the cores you want to focus on. To get the list quickly, you can use python list.
+```shell
+$ python
+Python 3.11.5 (main, Sep 11 2023, 13:54:46) [GCC 11.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> list(range(32,64))
+[32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
+```
