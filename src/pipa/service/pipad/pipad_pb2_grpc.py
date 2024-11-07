@@ -3,12 +3,10 @@
 import grpc
 import warnings
 
-from . import pipad_pb2 as pipad__pb2
+import pipad_pb2 as pipad__pb2
 
-GRPC_GENERATED_VERSION = "1.64.1"
+GRPC_GENERATED_VERSION = "1.67.1"
 GRPC_VERSION = grpc.__version__
-EXPECTED_ERROR_RELEASE = "1.65.0"
-SCHEDULED_RELEASE_DATE = "June 25, 2024"
 _version_not_supported = False
 
 try:
@@ -21,15 +19,12 @@ except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
-    warnings.warn(
+    raise RuntimeError(
         f"The grpc package installed is at version {GRPC_VERSION},"
         + f" but the generated code in pipad_pb2_grpc.py depends on"
         + f" grpcio>={GRPC_GENERATED_VERSION}."
         + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
         + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
-        + f" This warning will become an error in {EXPECTED_ERROR_RELEASE},"
-        + f" scheduled for release on {SCHEDULED_RELEASE_DATE}.",
-        RuntimeWarning,
     )
 
 
@@ -60,6 +55,12 @@ class PIPADStub(object):
             response_deserializer=pipad__pb2.DeployResp.FromString,
             _registered_method=True,
         )
+        self.DownloadFullTable = channel.unary_unary(
+            "/pipa.PIPAD/DownloadFullTable",
+            request_serializer=pipad__pb2.DownloadFullTableRequest.SerializeToString,
+            response_deserializer=pipad__pb2.DownloadFullTableResp.FromString,
+            _registered_method=True,
+        )
 
 
 class PIPADServicer(object):
@@ -83,6 +84,12 @@ class PIPADServicer(object):
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
+    def DownloadFullTable(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
 
 def add_PIPADServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -100,6 +107,11 @@ def add_PIPADServicer_to_server(servicer, server):
             servicer.DeployBidiStream,
             request_deserializer=pipad__pb2.DeployRequest.FromString,
             response_serializer=pipad__pb2.DeployResp.SerializeToString,
+        ),
+        "DownloadFullTable": grpc.unary_unary_rpc_method_handler(
+            servicer.DownloadFullTable,
+            request_deserializer=pipad__pb2.DownloadFullTableRequest.FromString,
+            response_serializer=pipad__pb2.DownloadFullTableResp.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -192,6 +204,36 @@ class PIPAD(object):
             "/pipa.PIPAD/DeployBidiStream",
             pipad__pb2.DeployRequest.SerializeToString,
             pipad__pb2.DeployResp.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True,
+        )
+
+    @staticmethod
+    def DownloadFullTable(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            "/pipa.PIPAD/DownloadFullTable",
+            pipad__pb2.DownloadFullTableRequest.SerializeToString,
+            pipad__pb2.DownloadFullTableResp.FromString,
             options,
             channel_credentials,
             insecure,

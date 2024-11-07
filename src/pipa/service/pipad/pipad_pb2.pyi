@@ -262,3 +262,27 @@ class DeployResp(_message.Message):
         upload_datetime: _Optional[str] = ...,
         status_code: _Optional[int] = ...,
     ) -> None: ...
+
+class DownloadFullTableRequest(_message.Message):
+    __slots__ = ("pipad_ip_addr", "pipad_port", "table_name", "file_option")
+    PIPAD_IP_ADDR_FIELD_NUMBER: _ClassVar[int]
+    PIPAD_PORT_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    FILE_OPTION_FIELD_NUMBER: _ClassVar[int]
+    pipad_ip_addr: str
+    pipad_port: int
+    table_name: str
+    file_option: str
+    def __init__(
+        self,
+        pipad_ip_addr: _Optional[str] = ...,
+        pipad_port: _Optional[int] = ...,
+        table_name: _Optional[str] = ...,
+        file_option: _Optional[str] = ...,
+    ) -> None: ...
+
+class DownloadFullTableResp(_message.Message):
+    __slots__ = ("file_content",)
+    FILE_CONTENT_FIELD_NUMBER: _ClassVar[int]
+    file_content: bytes
+    def __init__(self, file_content: _Optional[bytes] = ...) -> None: ...

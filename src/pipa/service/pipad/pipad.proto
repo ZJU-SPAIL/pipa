@@ -8,6 +8,8 @@ service PIPAD {
   rpc DeployStreamReply(DeployRequest) returns (stream DeployResp) {}
 
   rpc DeployBidiStream(stream DeployRequest) returns (stream DeployResp) {}
+
+  rpc DownloadFullTable(DownloadFullTableRequest) returns (DownloadFullTableResp) {}
 }
 
 message DeployRequest {
@@ -75,4 +77,15 @@ message DeployResp {
   string hash = 4;
   string upload_datetime = 5;
   uint32 status_code = 6;
+}
+
+message DownloadFullTableRequest {
+  string pipad_ip_addr = 1;
+  uint32 pipad_port = 2;
+  string table_name = 3;
+  string file_option = 4;
+}
+
+message DownloadFullTableResp {
+  bytes file_content = 1;
 }
