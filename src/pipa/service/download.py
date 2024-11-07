@@ -17,15 +17,15 @@ def download(ip, port, table_name: str, file_format: str, dirs: str = "."):
         logger.error(f"Failed to download table {table_name}: {e}")
 
 
-def quest():
+def prompt_user_for_details():
     ip = questionary.text("What's PIPAD IP address?").ask()
     port = questionary.text("What's PIPAD port?").ask()
-    tb_name = questionary.text("What's table name?").ask()
-    f = questionary.select(
+    table_name = questionary.text("What's table name?").ask()
+    file_format = questionary.select(
         "Which file format do you want to download?",
         choices=["xlsx", "csv"],
     ).ask()
-    return ip, port, tb_name, f
+    return ip, port, table_name, file_format
 
 
 def main():
@@ -39,8 +39,12 @@ def main():
     args = parser.parse_args()
 
     if args.ip and args.port and args.table and args.format:
-        ip, port, tb_name, f = args.ip, args.port, args.table, args.format
+        ip, port, table_name, file_format = (
+            args.ip,
+            args.port,
+            args.table,
+            args.format,
+        )
     else:
-        ip, port, tb_name, f = quest()
-    ip, port, tb_name, f = quest()
-    PIPADClient.download_full_table(ip, port, tb_name, f)
+        ip, port, table_name, file_format = prompt_user_for_details()
+    download(ip, port, table_name, file_format)
