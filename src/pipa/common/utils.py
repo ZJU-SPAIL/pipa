@@ -15,10 +15,9 @@ def find_closet_factor_pair(n: int) -> Tuple[int, int]:
     Returns:
         Tuple[int, int]: (small factor A, large factor B), A * B = n
     """
-    m = int(sqrt(n))
-    while n % m != 0:
-        m -= 1
-    return (m, int(n / m))
+    for i in range(int(sqrt(n)), 0, -1):
+        if n % i == 0:
+            return (i, n // i)
 
 
 def get_timestamp():
