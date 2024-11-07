@@ -104,6 +104,39 @@ class PIPADClient:
             logger.error(f"Client deploy received error: {e}")
             return None
 
+    def download_full_table(
+        self, pipad_ip_addr, pipad_port, table_name, file_option="xlsx"
+    ):
+        """
+        Download the full table from the server.
+
+        Args:
+            pipad_ip_addr (str): The IP address of the PIPAD server.
+            pipad_port (int): The port of the PIPAD server.
+            table_name (str): The name of the table to download.
+            file_option (str): The file option. Default is "xlsx".
+
+        Returns:
+            Optional[bytes]
+        """
+        server = f"{pipad_ip_addr}:{pipad_port}"
+        logger.info("try to download full table ...")
+        try:
+            with grpc.insecure_channel(server) as channel:
+                stub = pipadgrpc.PIPADStub(channel)
+                response = stub.DownloadFullTable(
+                    pipadlib.DownloadFullTableRequest(
+                        pipad_ip_addr=pipad_ip_addr,
+                        pipad_port=pipad_port,
+                        table_name=table_name,
+                        file_option=file_option,
+                    )
+                )
+            return response.file_content
+        except Exception as e:
+            logger.error(f"Client download full table received error: {e}")
+            return None
+
 
 if __name__ == "__main__":
     logger.setLevel(level=logging.DEBUG)

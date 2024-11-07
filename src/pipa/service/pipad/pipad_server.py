@@ -19,6 +19,8 @@ server = PIPADServer(data_location=dlocation, port=port, address=address, databa
 from concurrent import futures
 from typing import Optional, Any
 from pipa.common.logger import logger, stream_handler
+from pipa.common.export import SQLiteConnector
+from pipa.common.utils import get_timestamp
 from datetime import datetime
 import time
 import os
@@ -165,6 +167,46 @@ class PIPADServer:
                 upload_datetime=upload_datetime,
                 status_code=200,
             )
+
+        def DownloadFullTable(
+            self, request: pipadlib.DownloadFullTableRequest, context
+        ) -> pipadlib.DownloadFullTableResp:
+            """
+            Download the full table from the SQLite database.
+
+            Args:
+                request (pipadlib.DownloadFullTableRequest): The request containing the table name and file options.
+
+            Returns:
+                pipadlib.DownloadFullTableResp: The response containing the file content.
+            """
+            table_name = request.table_name
+            file_option = request.file_option
+            try:
+                if file_option == "csv":
+                    dst = f"/tmp/{table_name}_{get_timestamp()}.csv"
+                    SQLiteConnector(self._outer._database_loc).export_table_to_csv(
+                        table_name, dst
+                    )
+                elif file_option == "xlsx":
+                    dst = f"/tmp/{table_name}_{get_timestamp()}.xlsx"
+                    SQLiteConnector(self._outer._database_loc).export_table_to_excel(
+                        table_name, dst
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"File option {file_option} not supported"
+                    )
+                with open(dst, "rb") as f:
+                    file_content = f.read()
+                logger.info(f"Downloaded table {table_name} to {dst}")
+            except sqlite3.Error as e:
+                logger.error(f"Database Error: {e}")
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details(f"Database error: {e}")
+                return pipadlib.DownloadFullTableResp(file_content=b"")
+
+            return pipadlib.DownloadFullTableResp(file_content=file_content)
 
     def __init__(
         self,
