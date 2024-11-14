@@ -15,421 +15,393 @@ from plotly.subplots import make_subplots
 
 @unique
 class SarDataIndex(Enum):
-    CPUUtils = [
-        "timestamp",
-        "CPU",
-        r"%usr",
-        r"%nice",
-        r"%sys",
-        r"%iowait",
-        r"%steal",
-        r"%irq",
-        r"%soft",
-        r"%guest",
-        r"%gnice",
-        r"%idle",
-    ]
-    AvgCPUUtils = [
-        "Average:",
-        "CPU",
-        r"%usr",
-        r"%nice",
-        r"%sys",
-        r"%iowait",
-        r"%steal",
-        r"%irq",
-        r"%soft",
-        r"%guest",
-        r"%gnice",
-        r"%idle",
-    ]
-    CPUPressureStats = ["timestamp", r"%scpu-10", r"%scpu-60", r"%scpu-300", r"%scpu"]
-    ProcessStats = [
-        "timestamp",
-        "proc/s",
-        "cswch/s",
-    ]
-    AvgInterruptStats = ["Average:", "INTR", "intr/s"]
-    InterruptStats = [
-        "timestamp",
-        "INTR",
-        "intr/s",
-    ]
-    SwapStats = [
-        "timestamp",
-        "pswpin/s",
-        "pswpout/s",
-    ]
-    PagingStats = [
-        "timestamp",
-        "pgpgin/s",
-        "pgpgout/s",
-        "fault/s",
-        "majflt/s",
-        "pgfree/s",
-        "pgscank/s",
-        "pgscand/s",
-        "pgsteal/s",
-        r"%vmeff",
-    ]
-    DiskIOStats = [
-        "timestamp",
-        "tps",
-        "rtps",
-        "wtps",
-        "dtps",
-        "bread/s",
-        "bwrtn/s",
-        "bdscd/s",
-    ]
-    MemPressureStats = [
-        "timestamp",
-        r"%smem-10",
-        r"%smem-60",
-        r"%smem-300",
-        r"%smem",
-        r"%fmem-10",
-        r"%fmem-60",
-        r"%fmem-300",
-        r"%fmem",
-    ]
-    MemoryStats = [
-        "timestamp",
-        "kbmemfree",
-        "kbavail",
-        "kbmemused",
-        r"%memused",
-        "kbbuffers",
-        "kbcached",
-        "kbcommit",
-        r"%commit",
-        "kbactive",
-        "kbinact",
-        "kbdirty",
-        "kbanonpg",
-        "kbslab",
-        "kbkstack",
-        "kbpgtbl",
-        "kbvmused",
-    ]
-    SwapMemoryStats = [
-        "timestamp",
-        "kbswpfree",
-        "kbswpused",
-        r"%swpused",
-        "kbswpcad",
-        r"%swpcad",
-    ]
-    HugePagesStats = [
-        "timestamp",
-        "kbhugfree",
-        "kbhugused",
-        r"%hugused",
-        "kbhugrsvd",
-        "kbhugsurp",
-    ]
-    FileSystemStats = [
-        "timestamp",
-        "dentunusd",
-        "file-nr",
-        "inode-nr",
-        "pty-nr",
-    ]
-    LoadStats = [
-        "timestamp",
-        "runq-sz",
-        "plist-sz",
-        "ldavg-1",
-        "ldavg-5",
-        "ldavg-15",
-        "blocked",
-    ]
-    TTYStats = [
-        "timestamp",
-        "TTY",
-        "rcvin/s",
-        "xmtin/s",
-        "framerr/s",
-        "prtyerr/s",
-        "brk/s",
-        "ovrun/s",
-    ]
-    IOPressureStats = [
-        "timestamp",
-        r"%sio-10",
-        r"%sio-60",
-        r"%sio-300",
-        r"%sio",
-        r"%fio-10",
-        r"%fio-60",
-        r"%fio-300",
-        r"%fio",
-    ]
-    DeviceIOStats = [
-        "timestamp",
-        "DEV",
-        "tps",
-        "rkB/s",
-        "wkB/s",
-        "dkB/s",
-        "areq-sz",
-        "aqu-sz",
-        "await",
-        r"%util",
-    ]
-    NetUtils = [
-        "timestamp",
-        "IFACE",
-        "rxpck/s",
-        "txpck/s",
-        "rxkB/s",
-        "txkB/s",
-        "rxcmp/s",
-        "txcmp/s",
-        "rxmcst/s",
-        r"%ifutil",
-    ]
-    NetError = [
-        "timestamp",
-        "IFACE",
-        "rxerr/s",
-        "txerr/s",
-        "coll/s",
-        "rxdrop/s",
-        "txdrop/s",
-        "txcarr/s",
-        "rxfram/s",
-        "rxfifo/s",
-        "txfifo/s",
-    ]
-    NFSClientStats = [
-        "timestamp",
-        "call/s",
-        "retrans/s",
-        "read/s",
-        "write/s",
-        "access/s",
-        "getatt/s",
-    ]
-    NFSServerStats = [
-        "timestamp",
-        "scall/s",
-        "badcall/s",
-        "packet/s",
-        "udp/s",
-        "tcp/s",
-        "hit/s",
-        "miss/s",
-        "sread/s",
-        "swrite/s",
-        "saccess/s",
-        "sgetatt/s",
-    ]
-    SocketStats = [
-        "timestamp",
-        "totsck",
-        "tcpsck",
-        "udpsck",
-        "rawsck",
-        "ip-frag",
-        "tcp-tw",
-    ]
-    IPStats = [
-        "timestamp",
-        "irec/s",
-        "fwddgm/s",
-        "idel/s",
-        "orq/s",
-        "asmrq/s",
-        "asmok/s",
-        "fragok/s",
-        "fragcrt/s",
-    ]
-    IPErrorStats = [
-        "timestamp",
-        "ihdrerr/s",
-        "iadrerr/s",
-        "iukwnpr/s",
-        "idisc/s",
-        "odisc/s",
-        "onort/s",
-        "asmf/s",
-        "fragf/s",
-    ]
-    ICMPStats = [
-        "timestamp",
-        "imsg/s",
-        "omsg/s",
-        "iech/s",
-        "iechr/s",
-        "oech/s",
-        "oechr/s",
-        "itm/s",
-        "itmr/s",
-        "otm/s",
-        "otmr/s",
-        "iadrmk/s",
-        "iadrmkr/s",
-        "oadrmk/s",
-        "oadrmkr/s",
-    ]
-    ICMPErrorStats = [
-        "timestamp",
-        "ierr/s",
-        "oerr/s",
-        "idstunr/s",
-        "odstunr/s",
-        "itmex/s",
-        "otmex/s",
-        "iparmpb/s",
-        "oparmpb/s",
-        "isrcq/s",
-        "osrcq/s",
-        "iredir/s",
-        "oredir/s",
-    ]
-    TCPStats = [
-        "timestamp",
-        "active/s",
-        "passive/s",
-        "iseg/s",
-        "oseg/s",
-    ]
-    TCPExtStats = [
-        "timestamp",
-        "atmptf/s",
-        "estres/s",
-        "retrans/s",
-        "isegerr/s",
-        "orsts/s",
-    ]
-    UDPStats = [
-        "timestamp",
-        "idgm/s",
-        "odgm/s",
-        "noport/s",
-        "idgmerr/s",
-    ]
-    IPv6SocketStats = [
-        "timestamp",
-        "tcp6sck",
-        "udp6sck",
-        "raw6sck",
-        "ip6-frag",
-    ]
-    IPv6Stats = [
-        "timestamp",
-        "irec6/s",
-        "fwddgm6/s",
-        "idel6/s",
-        "orq6/s",
-        "asmrq6/s",
-        "asmok6/s",
-        "imcpck6/s",
-        "omcpck6/s",
-        "fragok6/s",
-        "fragcr6/s",
-    ]
-    IPv6ErrorStats = [
-        "timestamp",
-        "ihdrer6/s",
-        "iadrer6/s",
-        "iukwnp6/s",
-        "i2big6/s",
-        "idisc6/s",
-        "odisc6/s",
-        "inort6/s",
-        "onort6/s",
-        "asmf6/s",
-        "fragf6/s",
-        "itrpck6/s",
-    ]
-    ICMPv6Stats = [
-        "timestamp",
-        "imsg6/s",
-        "omsg6/s",
-        "iech6/s",
-        "iechr6/s",
-        "oechr6/s",
-        "igmbq6/s",
-        "igmbr6/s",
-        "ogmbr6/s",
-        "igmbrd6/s",
-        "ogmbrd6/s",
-        "irtsol6/s",
-        "ortsol6/s",
-        "irtad6/s",
-        "inbsol6/s",
-        "onbsol6/s",
-        "inbad6/s",
-        "onbad6/s",
-    ]
-    ICMPv6ErrorStats = [
-        "timestamp",
-        "ierr6/s",
-        "idtunr6/s",
-        "odtunr6/s",
-        "itmex6/s",
-        "otmex6/s",
-        "iprmpb6/s",
-        "oprmpb6/s",
-        "iredir6/s",
-        "oredir6/s",
-        "ipck2b6/s",
-        "opck2b6/s",
-    ]
-    UDPv6Stats = [
-        "timestamp",
-        "idgm6/s",
-        "odgm6/s",
-        "noport6/s",
-        "idgmer6/s",
-    ]
-    AvgSoftNetStats = [
-        "Average:",
-        "CPU",
-        "total/s",
-        "dropd/s",
-        "squeezd/s",
-        "rx_rps/s",
-        "flw_lim/s",
-    ]
-    SoftNetStats = [
-        "timestamp",
-        "CPU",
-        "total/s",
-        "dropd/s",
-        "squeezd/s",
-        "rx_rps/s",
-        "flw_lim/s",
-    ]
-    AvgCPUFreq = ["Average:", "CPU", "MHz"]
-    CPUFreq = ["timestamp", "CPU", "MHz"]
-    TemperatureStats = [
-        "timestamp",
-        "TEMP",
-        "degC",
-        r"%temp",
-        "DEVICE",
-    ]
+    Timestamp = "timestamp"
+    Average = "Average:"
+    CPUUtilsMetrics = {
+        r"%usr": "float64",
+        r"%nice": "float64",
+        r"%sys": "float64",
+        r"%iowait": "float64",
+        r"%steal": "float64",
+        r"%irq": "float64",
+        r"%soft": "float64",
+        r"%guest": "float64",
+        r"%gnice": "float64",
+        r"%idle": "float64",
+    }
+    CPUUtils = [Timestamp, "CPU", *CPUUtilsMetrics.keys()]
+    AvgCPUUtils = [Average, "CPU", *CPUUtilsMetrics.keys()]
+    CPUPressureStatsMetrics = {
+        r"%scpu-10": "float64",
+        r"%scpu-60": "float64",
+        r"%scpu-300": "float64",
+        r"%scpu": "float64",
+    }
+    CPUPressureStats = [Timestamp, *CPUPressureStatsMetrics.keys()]
+    ProcessStatsMetrics = {"proc/s": "float64", "cswch/s": "float64"}
+    ProcessStats = [Timestamp, *ProcessStatsMetrics.keys()]
+    InterruptStatsMetrics = {"intr/s": "float64"}
+    InterruptStats = [Timestamp, "INTR", *InterruptStatsMetrics.keys()]
+    AvgInterruptStats = [Average, "INTR", *InterruptStatsMetrics.keys()]
+    SwapStatsMetrics = {"pswpin/s": "float64", "pswpout/s": "float64"}
+    SwapStats = [Timestamp, *SwapStatsMetrics.keys()]
+    PagingStatsMetrics = {
+        "pgpgin/s": "float64",
+        "pgpgout/s": "float64",
+        "fault/s": "float64",
+        "majflt/s": "float64",
+        "pgfree/s": "float64",
+        "pgscank/s": "float64",
+        "pgscand/s": "float64",
+        "pgsteal/s": "float64",
+        r"%vmeff": "float64",
+    }
+    PagingStats = [Timestamp, *PagingStatsMetrics.keys()]
+    DiskIOStatsMetrics = {
+        "tps": "float64",
+        "rtps": "float64",
+        "wtps": "float64",
+        "dtps": "float64",
+        "bread/s": "float64",
+        "bwrtn/s": "float64",
+        "bdscd/s": "float64",
+    }
+    DiskIOStats = [Timestamp, *DiskIOStatsMetrics.keys()]
+    MemPressureStatsMetrics = {
+        r"%smem-10": "float64",
+        r"%smem-60": "float64",
+        r"%smem-300": "float64",
+        r"%smem": "float64",
+        r"%fmem-10": "float64",
+        r"%fmem-60": "float64",
+        r"%fmem-300": "float64",
+        r"%fmem": "float64",
+    }
+    MemPressureStats = [Timestamp, *MemPressureStatsMetrics.keys()]
+    MemoryStatsMetrics = {
+        "kbmemfree": "int",
+        "kbavail": "int",
+        "kbmemused": "int",
+        r"%memused": "float64",
+        "kbbuffers": "int",
+        "kbcached": "int",
+        "kbcommit": "int",
+        r"%commit": "float64",
+        "kbactive": "int",
+        "kbinact": "int",
+        "kbdirty": "int",
+        "kbanonpg": "int",
+        "kbslab": "int",
+        "kbkstack": "int",
+        "kbpgtbl": "int",
+        "kbvmused": "int",
+    }
+    MemoryStats = [Timestamp, *MemoryStatsMetrics.keys()]
+    SwapMemoryStatsMetrics = {
+        "kbswpfree": "int",
+        "kbswpused": "int",
+        r"%swpused": "float",
+        "kbswpcad": "int",
+        r"%swpcad": "float",
+    }
+    SwapMemoryStats = [Timestamp, *SwapMemoryStatsMetrics.keys()]
+    HugePagesStatsMetrics = {
+        "kbhugfree": "int",
+        "kbhugused": "int",
+        r"%hugused": "float64",
+        "kbhugrsvd": "int",
+        "kbhugsurp": "int",
+    }
+    HugePagesStats = [Timestamp, *HugePagesStatsMetrics.keys()]
+    FileSystemStatsMetrics = {
+        "dentunusd": "int",
+        "file-nr": "int",
+        "inode-nr": "int",
+        "pty-nr": "int",
+    }
+    FileSystemStats = [Timestamp, *FileSystemStatsMetrics.keys()]
+    LoadStatsMetrics = {
+        "runq-sz": "int",
+        "plist-sz": "int",
+        "ldavg-1": "float64",
+        "ldavg-5": "float64",
+        "ldavg-15": "float64",
+        "blocked": "int",
+    }
+    LoadStats = [Timestamp, *LoadStatsMetrics.keys()]
+    TTYStatsMetrics = {
+        "rcvin/s": "float64",
+        "xmtin/s": "float64",
+        "framerr/s": "float64",
+        "prtyerr/s": "float64",
+        "brk/s": "float64",
+        "ovrun/s": "float64",
+    }
+    TTYStats = [Timestamp, "TTY", *TTYStatsMetrics.keys()]
+    IOPressureStatsMetrics = {
+        r"%sio-10": "float64",
+        r"%sio-60": "float64",
+        r"%sio-300": "float64",
+        r"%sio": "float64",
+        r"%fio-10": "float64",
+        r"%fio-60": "float64",
+        r"%fio-300": "float64",
+        r"%fio": "float64",
+    }
+    IOPressureStats = [Timestamp, *IOPressureStatsMetrics.keys()]
+    DeviceIOStatsMetrics = {
+        "tps": "float64",
+        "rkB/s": "float64",
+        "wkB/s": "float64",
+        "dkB/s": "float64",
+        "areq-sz": "float64",
+        "aqu-sz": "float64",
+        "await": "float64",
+        r"%util": "float64",
+    }
+    DeviceIOStats = [Timestamp, "DEV", *DeviceIOStatsMetrics.keys()]
+    NetUtilsMetrics = {
+        "rxpck/s": "float64",
+        "txpck/s": "float64",
+        "rxkB/s": "float64",
+        "txkB/s": "float64",
+        "rxcmp/s": "float64",
+        "txcmp/s": "float64",
+        "rxmcst/s": "float64",
+        r"%ifutil": "float64",
+    }
+    NetUtils = [Timestamp, "IFACE", *NetUtilsMetrics.keys()]
+    NetErrorMetrics = {
+        "rxerr/s": "float64",
+        "txerr/s": "float64",
+        "coll/s": "float64",
+        "rxdrop/s": "float64",
+        "txdrop/s": "float64",
+        "txcarr/s": "float64",
+        "rxfram/s": "float64",
+        "rxfifo/s": "float64",
+        "txfifo/s": "float64",
+    }
+    NetError = [Timestamp, "IFACE", *NetErrorMetrics.keys()]
+    NFSClientStatsMetrics = {
+        "call/s": "float64",
+        "retrans/s": "float64",
+        "read/s": "float64",
+        "write/s": "float64",
+        "access/s": "float64",
+        "getatt/s": "float64",
+    }
+    NFSClientStats = [Timestamp, *NFSClientStatsMetrics.keys()]
+    NFSServerStatsMetrics = {
+        "scall/s": "float64",
+        "badcall/s": "float64",
+        "packet/s": "float64",
+        "udp/s": "float64",
+        "tcp/s": "float64",
+        "hit/s": "float64",
+        "miss/s": "float64",
+        "sread/s": "float64",
+        "swrite/s": "float64",
+        "saccess/s": "float64",
+        "sgetatt/s": "float64",
+    }
+    NFSServerStats = [Timestamp, *NFSServerStatsMetrics.keys()]
+    SocketStatsMetrics = {
+        "totsck": "int",
+        "tcpsck": "int",
+        "udpsck": "int",
+        "rawsck": "int",
+        "ip-frag": "int",
+        "tcp-tw": "int",
+    }
+    SocketStats = [Timestamp, *SocketStatsMetrics.keys()]
+    IPStatsMetrics = {
+        "irec/s": "float64",
+        "fwddgm/s": "float64",
+        "idel/s": "float64",
+        "orq/s": "float64",
+        "asmrq/s": "float64",
+        "asmok/s": "float64",
+        "fragok/s": "float64",
+        "fragcrt/s": "float64",
+    }
+    IPStats = [Timestamp, *IPStatsMetrics.keys()]
+    IPErrorStatsMetrics = {
+        "ihdrerr/s": "float64",
+        "iadrerr/s": "float64",
+        "iukwnpr/s": "float64",
+        "idisc/s": "float64",
+        "odisc/s": "float64",
+        "onort/s": "float64",
+        "asmf/s": "float64",
+        "fragf/s": "float64",
+    }
+    IPErrorStats = [Timestamp, *IPErrorStatsMetrics.keys()]
+    ICMPStatsMetrics = {
+        "imsg/s": "float64",
+        "omsg/s": "float64",
+        "iech/s": "float64",
+        "iechr/s": "float64",
+        "oech/s": "float64",
+        "oechr/s": "float64",
+        "itm/s": "float64",
+        "itmr/s": "float64",
+        "otm/s": "float64",
+        "otmr/s": "float64",
+        "iadrmk/s": "float64",
+        "iadrmkr/s": "float64",
+        "oadrmk/s": "float64",
+        "oadrmkr/s": "float64",
+    }
+    ICMPStats = [Timestamp, *ICMPStatsMetrics.keys()]
+    ICMPErrorStatsMetrics = {
+        "ierr/s": "float64",
+        "oerr/s": "float64",
+        "idstunr/s": "float64",
+        "odstunr/s": "float64",
+        "itmex/s": "float64",
+        "otmex/s": "float64",
+        "iparmpb/s": "float64",
+        "oparmpb/s": "float64",
+        "isrcq/s": "float64",
+        "osrcq/s": "float64",
+        "iredir/s": "float64",
+        "oredir/s": "float64",
+    }
+    ICMPErrorStats = [Timestamp, *ICMPErrorStatsMetrics.keys()]
+    TCPStatsMetrics = {
+        "active/s": "float64",
+        "passive/s": "float64",
+        "iseg/s": "float64",
+        "oseg/s": "float64",
+    }
+    TCPStats = [Timestamp, *TCPStatsMetrics.keys()]
+    TCPExtStatsMetrics = {
+        "atmptf/s": "float64",
+        "estres/s": "float64",
+        "retrans/s": "float64",
+        "isegerr/s": "float64",
+        "orsts/s": "float64",
+    }
+    TCPExtStats = [Timestamp, *TCPExtStatsMetrics.keys()]
+    UDPStatsMetrics = {
+        "idgm/s": "float64",
+        "odgm/s": "float64",
+        "noport/s": "float64",
+        "idgmerr/s": "float64",
+    }
+    UDPStats = [Timestamp, *UDPStatsMetrics.keys()]
+    IPv6SocketStatsMetrics = {
+        "tcp6sck": "float64",
+        "udp6sck": "float64",
+        "raw6sck": "float64",
+        "ip6-frag": "float64",
+    }
+    IPv6SocketStats = [Timestamp, *IPv6SocketStatsMetrics.keys()]
+    IPv6StatsMetrics = {
+        "irec6/s": "float64",
+        "fwddgm6/s": "float64",
+        "idel6/s": "float64",
+        "orq6/s": "float64",
+        "asmrq6/s": "float64",
+        "asmok6/s": "float64",
+        "imcpck6/s": "float64",
+        "omcpck6/s": "float64",
+        "fragok6/s": "float64",
+        "fragcr6/s": "float64",
+    }
+    IPv6Stats = [Timestamp, *IPv6StatsMetrics.keys()]
+    IPv6ErrorStatsMetrics = {
+        "ihdrer6/s": "float64",
+        "iadrer6/s": "float64",
+        "iukwnp6/s": "float64",
+        "i2big6/s": "float64",
+        "idisc6/s": "float64",
+        "odisc6/s": "float64",
+        "inort6/s": "float64",
+        "onort6/s": "float64",
+        "asmf6/s": "float64",
+        "fragf6/s": "float64",
+        "itrpck6/s": "float64",
+    }
+    IPv6ErrorStats = [Timestamp, *IPv6ErrorStatsMetrics.keys()]
+    ICMPv6StatsMetrics = {
+        "imsg6/s": "float64",
+        "omsg6/s": "float64",
+        "iech6/s": "float64",
+        "iechr6/s": "float64",
+        "oechr6/s": "float64",
+        "igmbq6/s": "float64",
+        "igmbr6/s": "float64",
+        "ogmbr6/s": "float64",
+        "igmbrd6/s": "float64",
+        "ogmbrd6/s": "float64",
+        "irtsol6/s": "float64",
+        "ortsol6/s": "float64",
+        "irtad6/s": "float64",
+        "inbsol6/s": "float64",
+        "onbsol6/s": "float64",
+        "inbad6/s": "float64",
+        "onbad6/s": "float64",
+    }
+    ICMPv6Stats = [Timestamp, *ICMPv6StatsMetrics.keys()]
+    ICMPv6ErrorStatsMetrics = {
+        "ierr6/s": "float64",
+        "idtunr6/s": "float64",
+        "odtunr6/s": "float64",
+        "itmex6/s": "float64",
+        "otmex6/s": "float64",
+        "iprmpb6/s": "float64",
+        "oprmpb6/s": "float64",
+        "iredir6/s": "float64",
+        "oredir6/s": "float64",
+        "ipck2b6/s": "float64",
+        "opck2b6/s": "float64",
+    }
+    ICMPv6ErrorStats = [Timestamp, *ICMPv6ErrorStatsMetrics.keys()]
+    UDPv6StatsMetrics = {
+        "idgm6/s": "float64",
+        "odgm6/s": "float64",
+        "noport6/s": "float64",
+        "idgmer6/s": "float64",
+    }
+    UDPv6Stats = [Timestamp, *UDPv6StatsMetrics.keys()]
+    SoftNetStatsMetrics = {
+        "total/s": "float64",
+        "dropd/s": "float64",
+        "squeezd/s": "float64",
+        "rx_rps/s": "float64",
+        "flw_lim/s": "float64",
+    }
+    SoftNetStats = [Timestamp, "CPU", *SoftNetStatsMetrics.keys()]
+    AvgSoftNetStats = [Average, "CPU", *SoftNetStatsMetrics.keys()]
+    CPUFreqMetrics = {"MHz": "float64"}
+    CPUFreq = [Timestamp, "CPU", *CPUFreqMetrics.keys()]
+    AvgCPUFreq = [Average, "CPU", *CPUFreqMetrics.keys()]
+    TemperatureStatsMetrics = {"degC": "float64", r"%temp": "float64"}
+    TemperatureStats = [Timestamp, "TEMP", *TemperatureStatsMetrics.keys(), "DEVICE"]
+    BusStatsMetrics = {"maxpower": "int"}
     BusStats = [
-        "timestamp",
+        Timestamp,
         "BUS",
         "idvendor",
         "idprod",
-        "maxpower",
+        *BusStatsMetrics.keys(),
         "manufact",
         "product",
     ]
+    FileSystemSpaceStatsMetrics = {
+        "MBfsfree": "int",
+        "MBfsused": "int",
+        r"%fsused": "float64",
+        r"%ufsused": "float64",
+        "Ifree": "int",
+        "Iused": "int",
+        r"%Iused": "float64",
+    }
     FileSystemSpaceStats = [
-        "timestamp",
-        "MBfsfree",
-        "MBfsused",
-        r"%fsused",
-        r"%ufsused",
-        "Ifree",
-        "Iused",
-        r"%Iused",
+        Timestamp,
+        *FileSystemSpaceStatsMetrics.keys(),
         "FILESYSTEM",
     ]
 
@@ -442,17 +414,13 @@ class SarDataIndex(Enum):
 
     @classmethod
     def avg_metric_to_all_metric(cls, item: Enum) -> Optional[Enum]:
-        match item:
-            case cls.AvgCPUUtils:
-                return cls.CPUUtils
-            case cls.AvgInterruptStats:
-                return cls.InterruptStats
-            case cls.AvgCPUFreq:
-                return cls.CPUFreq
-            case cls.AvgSoftNetStats:
-                return cls.SoftNetStats
-            case _:
+        if item.name.startswith("Avg"):
+            try:
+                n = item.name.replace("Avg", "")
+                return cls.__getitem__(n)
+            except Exception:
                 return None
+        return None
 
     def __eq__(self, value: object) -> bool:
         return self.value == value
@@ -570,18 +538,7 @@ class SarData:
         if idx is None:
             raise KeyError(f"{SarDataIndex.CPUUtils} not found in sar data")
         util = self.filter_dataframe(self.sar_data[idx], data_type).astype(
-            {
-                r"%usr": "float64",
-                r"%nice": "float64",
-                r"%sys": "float64",
-                r"%iowait": "float64",
-                r"%irq": "float64",
-                r"%soft": "float64",
-                r"%steal": "float64",
-                r"%guest": "float64",
-                r"%gnice": "float64",
-                r"%idle": "float64",
-            }
+            SarDataIndex.CPUUtilsMetrics.value
         )
         util[r"%util"] = 100 - util[r"%idle"]
         return util
@@ -659,46 +616,28 @@ class SarData:
         df = trans_time_to_seconds(df)
         scatters = []
         if aggregation:
-            if threads is None:
-                df = df.query("CPU=='all'")
-                sname_cpu = "All"
-            else:
+            if threads:
                 df = df[df["CPU"].isin([str(t) for t in threads])]
                 df = df.groupby("timestamp").mean(numeric_only=True).reset_index()
                 df["CPU"] = "all"
-                sname_cpu = f"{threads[0]}-{threads[-1]}"
+            threads = ["all"]
+        elif threads is None:
+            threads = list(range(0, cpu_counts))
+        for t in threads:
+            cpu_data = df[df["CPU"] == str(t)]
             for i, y in enumerate(metrics):
                 seed = random.randint(1, 256)
-                r, g, b = generate_unique_rgb_color([i, seed])
+                r, g, b = generate_unique_rgb_color([t, i, seed])
                 scatters.append(
                     go.Scatter(
-                        x=df["timestamp"],
-                        y=df[y],
+                        x=cpu_data["timestamp"],
+                        y=cpu_data[y],
                         mode="lines+markers",
-                        name=f"CPU {sname_cpu} {y}",
+                        name=f"CPU {t} {y}",
                         # different colors
                         line=dict(color=f"rgb({r}, {g}, {b})"),
                     )
                 )
-        else:
-            if threads is None:
-                threads = list(range(0, cpu_counts))
-            df = df[df["CPU"].isin([str(t) for t in threads])]
-            for t in threads:
-                cpu_data = df[df["CPU"] == str(t)]
-                for i, y in enumerate(metrics):
-                    seed = random.randint(1, 256)
-                    r, g, b = generate_unique_rgb_color([t, i, seed])
-                    scatters.append(
-                        go.Scatter(
-                            x=cpu_data["timestamp"],
-                            y=cpu_data[y],
-                            mode="lines+markers",
-                            name=f"CPU{t} {y}",
-                            # different colors
-                            line=dict(color=f"rgb({r}, {g}, {b})"),
-                        )
-                    )
         return scatters
 
     def plot_interactive_CPU_metrics_time(
@@ -720,8 +659,9 @@ class SarData:
             ]
         ] = [r"%util"],
         aggregation: bool = False,
+        show: bool = True,
         write_html_name: Optional[str] = None,
-    ):
+    ) -> go.Figure:
         """
         Plot interactive CPU metrics over time.
 
@@ -737,30 +677,14 @@ class SarData:
         scatters = self.plot_interactive_CPU_metrics_time_raw(
             threads=threads, metrics=metrics, aggregation=aggregation
         )
-        fig = go.Figure()
-        for s in scatters:
-            fig.add_trace(s)
-        fig.update_layout(
+        return self.make_single_plot(
+            scatters=scatters,
             title="CPU Metrics Trend",
             xaxis_title="Timestamp",
             yaxis_title="Percentage",
-            hovermode="closest",
-            updatemenus=[
-                {
-                    "direction": "left",
-                    "pad": {"r": 10, "t": 87},
-                    "showactive": False,
-                    "type": "buttons",
-                    "x": 0.1,
-                    "xanchor": "right",
-                    "y": 0,
-                    "yanchor": "top",
-                }
-            ],
+            show=show,
+            write_html_name=write_html_name,
         )
-        fig.show()
-        if write_html_name:
-            fig.write_html(write_html_name)
 
     def plot_CPU_util_time(self, threads: list = None):
         """
@@ -801,8 +725,7 @@ class SarData:
         )
 
     def plot_interactive_CPU_freq_time_raw(
-        self,
-        threads: Optional[list[int]] = None,
+        self, threads: Optional[list[int]] = None, aggregation: bool = False
     ) -> List[go.Scatter]:
         """
         Plot raw scatters of CPU frequency metrics over time.
@@ -816,38 +739,28 @@ class SarData:
             List[go.Scatter]: list of raw scatter plots.
         """
         df = self.get_CPU_frequency()
-        df = (
-            df[df["CPU"].isin([str(t) for t in threads])]
-            if threads
-            else df.query("CPU=='all'")
-        )
+        # minus 'all'
+        cpu_counts = df["CPU"].nunique() - 1
         df = trans_time_to_seconds(df)
-
         scatters = []
-        if threads:
-            for t in threads:
-                cpu_data = df[df["CPU"] == str(t)]
-                seed = random.randint(1, 256)
-                r, g, b = generate_unique_rgb_color([t, seed])
-                scatters.append(
-                    go.Scatter(
-                        x=cpu_data["timestamp"],
-                        y=cpu_data["MHz"],
-                        mode="lines+markers",
-                        name=f"CPU{t} freq",
-                        # different colors
-                        line=dict(color=f"rgb({r}, {g}, {b})"),
-                    )
-                )
-        else:
+        if aggregation:
+            if threads:
+                df = df[df["CPU"].isin([str(t) for t in threads])]
+                df = df.groupby("timestamp").mean(numeric_only=True).reset_index()
+                df["CPU"] = "all"
+            threads = ["all"]
+        elif threads is None:
+            threads = list(range(0, cpu_counts))
+        for t in threads:
+            cpu_data = df[df["CPU"] == str(t)]
             seed = random.randint(1, 256)
-            r, g, b = generate_unique_rgb_color([seed])
+            r, g, b = generate_unique_rgb_color([t, seed])
             scatters.append(
                 go.Scatter(
-                    x=df["timestamp"],
-                    y=df["MHz"],
+                    x=cpu_data["timestamp"],
+                    y=cpu_data["MHz"],
                     mode="lines+markers",
-                    name="CPU All freq",
+                    name=f"CPU {t} Freq",
                     # different colors
                     line=dict(color=f"rgb({r}, {g}, {b})"),
                 )
@@ -857,6 +770,8 @@ class SarData:
     def plot_interactive_CPU_freq_time(
         self,
         threads: Optional[List[int]] = None,
+        aggregation: bool = False,
+        show: bool = True,
         write_html_name: Optional[str] = None,
     ):
         """
@@ -872,31 +787,17 @@ class SarData:
         Returns:
         - None
         """
-        scatters = self.plot_interactive_CPU_freq_time_raw(threads)
-        fig = go.Figure()
-        for s in scatters:
-            fig.add_trace(s)
-        fig.update_layout(
+        scatters = self.plot_interactive_CPU_freq_time_raw(
+            threads=threads, aggregation=aggregation
+        )
+        return self.make_single_plot(
+            scatters=scatters,
             title="CPU Freq Trend",
             xaxis_title="Timestamp",
             yaxis_title="MHz",
-            hovermode="closest",
-            updatemenus=[
-                {
-                    "direction": "left",
-                    "pad": {"r": 10, "t": 87},
-                    "showactive": False,
-                    "type": "buttons",
-                    "x": 0.1,
-                    "xanchor": "right",
-                    "y": 0,
-                    "yanchor": "top",
-                }
-            ],
+            show=show,
+            write_html_name=write_html_name,
         )
-        fig.show()
-        if write_html_name:
-            fig.write_html(write_html_name)
 
     def plot_CPU_freq_time(self, threads: list = None):
         """
@@ -976,30 +877,9 @@ class SarData:
         if idx is None:
             raise KeyError(f"{sar_loc} not found in sar data")
         astype_t = (
-            {
-                "IFACE": str,
-                "rxerr/s": float,
-                "txerr/s": float,
-                "coll/s": float,
-                "rxdrop/s": float,
-                "rxdrop/s": float,
-                "txcarr/s": float,
-                "rxfram/s": float,
-                "rxfifo/s": float,
-                "txfifo/s": float,
-            }
+            SarDataIndex.NetErrorMetrics.value
             if on_failures
-            else {
-                "IFACE": str,
-                "rxpck/s": float,
-                "txpck/s": float,
-                "rxkB/s": float,
-                "txkB/s": float,
-                "rxcmp/s": float,
-                "txcmp/s": float,
-                "rxmcst/s": float,
-                r"%ifutil": float,
-            }
+            else SarDataIndex.NetUtilsMetrics.value
         )
         return self.filter_dataframe(self.sar_data[idx], data_type).astype(astype_t)
 
@@ -1052,7 +932,6 @@ class SarData:
             return []
         metrics = err_metrics if on_failures else trans_metrics
         df = self.get_network_statistics(on_failures=on_failures)
-        df = df[df["IFACE"].isin(devs)]
         df = trans_time_to_seconds(df)
 
         scatters = []
@@ -1102,6 +981,7 @@ class SarData:
             ]
         ] = [r"rxerr/s"],
         on_failures: bool = False,
+        show: bool = True,
         write_html_name: Optional[str] = None,
     ):
         """
@@ -1124,30 +1004,14 @@ class SarData:
             err_metrics=err_metrics,
             on_failures=on_failures,
         )
-        fig = go.Figure()
-        for s in scatters:
-            fig.add_trace(s)
-        fig.update_layout(
+        return self.make_single_plot(
+            scatters=scatters,
             title="Net Err Trend" if on_failures else "Net Stat Trend",
             xaxis_title="Timestamp",
             yaxis_title="Net Stat",
-            hovermode="closest",
-            updatemenus=[
-                {
-                    "direction": "left",
-                    "pad": {"r": 10, "t": 87},
-                    "showactive": False,
-                    "type": "buttons",
-                    "x": 0.1,
-                    "xanchor": "right",
-                    "y": 0,
-                    "yanchor": "top",
-                }
-            ],
+            show=show,
+            write_html_name=write_html_name,
         )
-        fig.show()
-        if write_html_name:
-            fig.write_html(write_html_name)
 
     def get_network_statistics_avg(self, on_failures: bool = False):
         return (
@@ -1170,24 +1034,7 @@ class SarData:
         if idx is None:
             raise KeyError(f"{SarDataIndex.MemoryStats} not found in sar data")
         return self.filter_dataframe(self.sar_data[idx], data_type).astype(
-            {
-                "kbmemfree": int,
-                "kbavail": int,
-                "kbmemused": int,
-                r"%memused": float,
-                "kbbuffers": int,
-                "kbcached": int,
-                "kbcommit": int,
-                r"%commit": float,
-                "kbactive": int,
-                "kbinact": int,
-                "kbdirty": int,
-                "kbanonpg": int,
-                "kbslab": int,
-                "kbkstack": int,
-                "kbpgtbl": int,
-                "kbvmused": int,
-            }
+            SarDataIndex.MemoryStatsMetrics.value
         )
 
     def plot_interactive_mem_usage_time_raw(
@@ -1266,6 +1113,7 @@ class SarData:
                 "kbvmused",
             ]
         ] = [r"%memused"],
+        show: bool = True,
         write_html_name: Optional[str] = None,
     ):
         """
@@ -1279,30 +1127,14 @@ class SarData:
             write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
         """
         scatters = self.plot_interactive_mem_usage_time_raw(metrics)
-        fig = go.Figure()
-        for s in scatters:
-            fig.add_trace(s)
-        fig.update_layout(
+        return self.make_single_plot(
+            scatters=scatters,
             title="Memory Metrics Trend",
             xaxis_title="Timestamp",
             yaxis_title="Memory Usage",
-            hovermode="closest",
-            updatemenus=[
-                {
-                    "direction": "left",
-                    "pad": {"r": 10, "t": 87},
-                    "showactive": False,
-                    "type": "buttons",
-                    "x": 0.1,
-                    "xanchor": "right",
-                    "y": 0,
-                    "yanchor": "top",
-                }
-            ],
+            show=show,
+            write_html_name=write_html_name,
         )
-        fig.show()
-        if write_html_name:
-            fig.write_html(write_html_name)
 
     def get_memory_usage_avg(self):
         """
@@ -1339,16 +1171,7 @@ class SarData:
         if idx is None:
             raise KeyError(f"{SarDataIndex.DeviceIOStats} not found in sar data")
         df = self.filter_dataframe(self.sar_data[idx], data_type).astype(
-            {
-                "tps": "float64",
-                r"rkB/s": "float64",
-                r"wkB/s": "float64",
-                r"dkB/s": "float64",
-                "areq-sz": "float64",
-                "aqu-sz": "float64",
-                "await": "float64",
-                r"%util": "float64",
-            }
+            SarDataIndex.DeviceIOStatsMetrics.value
         )
         return df[df["DEV"] == dev] if dev else df
 
@@ -1384,7 +1207,6 @@ class SarData:
         if len(devs) < 1:
             return []
         df = self.get_disk_usage()
-        df = df[df["DEV"].isin(devs)]
         df = trans_time_to_seconds(df)
 
         scatters = []
@@ -1420,6 +1242,7 @@ class SarData:
                 r"%util",
             ]
         ] = [r"%util"],
+        show: bool = True,
         write_html_name: Optional[str] = None,
     ):
         """
@@ -1434,30 +1257,14 @@ class SarData:
             write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
         """
         scatters = self.plot_interactive_disk_usage_time_raw(devs=devs, metrics=metrics)
-        fig = go.Figure()
-        for s in scatters:
-            fig.add_trace(s)
-        fig.update_layout(
+        return self.make_single_plot(
+            scatters=scatters,
             title="Disk Usage Trend",
             xaxis_title="Timestamp",
             yaxis_title="Disk Usage",
-            hovermode="closest",
-            updatemenus=[
-                {
-                    "direction": "left",
-                    "pad": {"r": 10, "t": 87},
-                    "showactive": False,
-                    "type": "buttons",
-                    "x": 0.1,
-                    "xanchor": "right",
-                    "y": 0,
-                    "yanchor": "top",
-                }
-            ],
+            show=show,
+            write_html_name=write_html_name,
         )
-        fig.show()
-        if write_html_name:
-            fig.write_html(write_html_name)
 
     def get_disk_usage_avg(self, dev: str = None):
         """
@@ -1567,6 +1374,7 @@ class SarData:
                 r"%util",
             ]
         ] = [r"%util"],
+        show: bool = True,
         write_html_name: Optional[str] = None,
         height=1000,
         shared_xaxes=True,
@@ -1587,6 +1395,7 @@ class SarData:
             net_err_metrics (List[Literal], optional): A list of network error metrics to plot. Defaults to `["rxerr/s"]`.
             mem_metrics (List[Literal], optional): A list of memory metrics to plot. Defaults to `["%memused"]`.
             disk_metrics (List[Literal], optional): A list of disk usage metrics to plot. Defaults to `["%util"]`.
+            show (bool, optional): Whether to show the plot. Defaults to True
             write_html_name (Optional[str], optional): The filename to save the plot as an HTML file. If None, the plot is not saved. Defaults to None.
             height (int, optional): The height of the plot in pixels. Defaults to 1000.
             shared_xaxes (bool, optional): Whether to share the x-axis across subplots. Defaults to True.
@@ -1645,7 +1454,31 @@ class SarData:
             height=height,
             showlegend=True,
         )
-        fig.show()
+        if show:
+            fig.show()
+        if write_html_name:
+            fig.write_html(write_html_name)
+
+    def make_single_plot(
+        self,
+        scatters: List[go.Scatter],
+        title: str,
+        xaxis_title: str,
+        yaxis_title: str,
+        show: bool = True,
+        write_html_name: Optional[str] = None,
+    ) -> go.Figure:
+        fig = go.Figure()
+        for s in scatters:
+            fig.add_trace(s)
+        fig.update_layout(
+            title=title,
+            xaxis_title=xaxis_title,
+            yaxis_title=yaxis_title,
+            hovermode="closest",
+        )
+        if show:
+            fig.show()
         if write_html_name:
             fig.write_html(write_html_name)
 

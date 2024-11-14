@@ -6,6 +6,7 @@ from pipa.parser.sar import (
     add_post_fix,
     split_sar_block,
     parse_sar_string,
+    SarDataIndex,
 )
 
 
@@ -16,6 +17,14 @@ def test_trans_time_to_seconds():
     result = trans_time_to_seconds(df.copy())
     expected = pd.DataFrame({"timestamp": [0.0, 1.0, 2.0]})
     pd.testing.assert_frame_equal(result, expected)
+
+
+# Test for avg_metric_to_all_metric
+def test_avg_metric_to_all_metric():
+    e1 = SarDataIndex.avg_metric_to_all_metric(SarDataIndex.AvgCPUFreq)
+    assert e1 == SarDataIndex.CPUFreq
+    e2 = SarDataIndex.avg_metric_to_all_metric(SarDataIndex.AvgCPUUtils)
+    assert e2 == SarDataIndex.CPUUtils
 
 
 # Test for merge_one_line
