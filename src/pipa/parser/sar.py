@@ -1517,13 +1517,30 @@ def trans_time_to_seconds(df: pd.DataFrame):
     """
     Transforms the timestamp column in the given DataFrame to seconds.
 
+    Note this function sees each non-descending queue as a seperate day and raw timestamp format is %H:%M:%S.
+
+    Thus this function can't deal with those interval more than 1 day, like: ["00:00:00", "00:00:00"].
+    We see as the same time and parse it as ["1900-01-01 00:00:00", "1900-01-01 00:00:00"], but it also can be ["1900-01-01 00:00:00", "1900-01-02 00:00:00"].
+
+    We are now try to use sadf instead of rewriting parsing sar file directly.
+
     Args:
         df (pandas.DataFrame): The DataFrame containing the timestamp column.
 
     Returns:
         pandas.DataFrame: The DataFrame with the timestamp column transformed to seconds.
     """
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="%H:%M:%S")
+    day_prefix = 0
+    result = []
+    base_date = pd.Timestamp("1900-01-01")
+    # iter all timestamp and add day prefix
+    for i, ts in enumerate(df["timestamp"]):
+        # switch to next day
+        if i > 0 and ts < df["timestamp"].iloc[i - 1]:
+            day_prefix += 1
+        result.append(base_date + pd.Timedelta(days=day_prefix) + pd.to_timedelta(ts))
+    df["timestamp"] = result
+
     try:
         df["timestamp"] -= df.loc[:, "timestamp"].iloc[0]
         df["timestamp"] = df["timestamp"].dt.total_seconds()

@@ -12,11 +12,24 @@ from pipa.parser.sar import (
 
 # Test for trans_time_to_seconds
 def test_trans_time_to_seconds():
-    data = {"timestamp": ["12:00:00", "12:00:01", "12:00:02"]}
-    df = pd.DataFrame(data)
-    result = trans_time_to_seconds(df.copy())
-    expected = pd.DataFrame({"timestamp": [0.0, 1.0, 2.0]})
-    pd.testing.assert_frame_equal(result, expected)
+    tas = [
+        (["12:00:00", "12:00:01", "12:00:02"], [0.0, 1.0, 2.0]),
+        (["23:59:59", "00:00:00", "00:00:01"], [0.0, 1.0, 2.0]),
+        (["23:59:59"], [0.0]),
+        ([], []),
+        (["23:59:59", "00:00:00", "00:00:00"], [0.0, 1.0, 1.0]),
+        (
+            ["23:59:59", "00:00:00", "00:00:01", "00:00:00"],
+            [0.0, 1.0, 2.0, 86401.0],
+        ),
+    ]
+    for ta in tas:
+        t, e = ta
+        data = {"timestamp": t}
+        df = pd.DataFrame(data)
+        result = trans_time_to_seconds(df.copy())
+        expected = pd.DataFrame({"timestamp": e})
+        pd.testing.assert_frame_equal(result, expected)
 
 
 # Test for avg_metric_to_all_metric
