@@ -1,7 +1,10 @@
 import re
 import pandas as pd
 from multiprocessing import Pool
+from typing import Optional
+from decimal import Decimal, InvalidOperation
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
+from pipa.common.logger import logger
 
 
 class PerfScriptCall:
@@ -69,11 +72,16 @@ class PerfScriptHeader:
         event (str): The event associated with the record.
     """
 
-    def __init__(self, command, pid, cpu, time, value, event):
+    def __init__(self, command, pid, cpu, time: str, value, event):
         self.command: str = command
         self.pid: int = pid
         self.cpu: int = cpu
+        # the perf script time field format is x.y
+        # default unit is seconds.microseconds
+        # when append --ns param, unit is seconds.nanoseconds
+        # when append --reltime param, it starts from 0.0 at the begining
         self.time: str = time
+        self.xytime: Decimal = Decimal(time)
         self.value: int = value
         self.event: str = event
 
@@ -245,6 +253,80 @@ class PerfScriptData:
 
     def __len__(self):
         return len(self.blocks)
+
+    def filter_by_time_window(
+        self,
+        start: Optional[Decimal | str | float] = None,
+        end: Optional[Decimal | str | float] = None,
+        deltatime: Optional[Decimal | str | float] = None,
+    ):
+        """
+        Filters the PerfScriptData object by a given time window.
+
+        Will generate start and end time by params start / end / deltatime
+        If deltatime is None, start / end will be block start / block end if set to none
+        If deltatime not None, following is used:
+            If start not None and end is None then start = start; end = start + deltatime;
+            If start is None and end not None then end = end; start = end - deltatime;
+            If start not None and end not None then start = start; end = start + deltatime;
+            If start is None and end is None then start = block start; end = start + deltatime
+
+        Args:
+            start (Optional[str | float]): _description_
+            end (Optional[str | float]): _description_
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing only the blocks in given time window.
+        """
+        if len(self.blocks) < 2:
+            return PerfScriptData(self.blocks)
+        block_start = self.blocks[0].header.xytime
+        block_end = self.blocks[-1].header.xytime
+        logger.debug(f"Script start time: {block_start}")
+        logger.debug(f"Script end time: {block_end}")
+        try:
+            tstart = Decimal(str(start)) if start else block_start
+            tend = Decimal(str(end)) if end else block_end
+            if deltatime:
+                deltatime = Decimal(str(deltatime))
+                if start is None and end:
+                    tstart = Decimal(str(end)) - deltatime
+                else:
+                    tend = tstart + deltatime
+        except InvalidOperation:
+            logger.warning("The time window should be format of float")
+            return PerfScriptData(self.blocks)
+        return PerfScriptData(
+            [
+                b
+                for b in self.blocks
+                if b.header.xytime >= tstart and b.header.xytime <= tend
+            ]
+        )
+
+    def filter_by_command(self, command: str):
+        """
+        Filters the PerfScriptData object by a command.
+
+        Args:
+            commands (str): The command to filter by.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing only the blocks with matching command.
+        """
+        return PerfScriptData([b for b in self.blocks if b.header.command == command])
+
+    def filter_by_commands(self, commands: list[str]):
+        """
+        Filters the PerfScriptData object by a list of commands.
+
+        Args:
+            commands (list[str]): A list of commands to filter by.
+
+        Returns:
+            PerfScriptData: A new PerfScriptData object containing only the blocks with matching commands.
+        """
+        return PerfScriptData([b for b in self.blocks if b.header.command in commands])
 
     def filter_by_pid(self, pid: int):
         """
