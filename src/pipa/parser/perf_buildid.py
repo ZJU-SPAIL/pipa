@@ -9,6 +9,7 @@ class PerfBuildidData:
 
     def __init__(self, buildid_lists: Dict[str, str]):
         self.buildid_lists = buildid_lists
+        """The buildid_lists are dict, key is module name while value is buildid"""
 
     def __str__(self):
         return f"{self.buildid_lists}"
@@ -39,7 +40,10 @@ class PerfBuildidData:
                 # buildid : module name
                 l = l.strip().split(" ", maxsplit=1)
                 # module name : buildid
-                buildid_lists[str(l[1])] = l[0]
+                try:
+                    buildid_lists[str(l[1])] = l[0]
+                except IndexError:
+                    continue
 
         return cls(buildid_lists)
 

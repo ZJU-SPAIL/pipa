@@ -206,12 +206,16 @@ class FunctionNodeTable:
         node_table: NodeTable,
         gen_epm: bool = False,
         buildid_list: Dict[str, str] = {},
+        source_file_prefix: Optional[str] = None,
     ):
         """
         Create a CallGraph object from a NodeTable.
 
         Args:
             node_table (NodeTable): The NodeTable object containing the nodes.
+            gen_epm (bool, optional): If True, generate EPM for each function node. Defaults to False.
+            buildid_list (Dict[str, str], optional): A dictionary containing build IDs. Not provided as default.
+            source_file_prefix (Optional[str], optional): The prefix of all source files. Useful when analysis machine is different from the collected machine. Defaults to None.
 
         Returns:
             CallGraph: The CallGraph object created from the NodeTable.
@@ -394,9 +398,16 @@ class FunctionNodeTable:
         pool.close()
         pool.join()
         for (sourcef, relative_dir), func_nodes in EPM.items():
-            source_file = sourcef
-            if not os.path.exists(sourcef):
+            sourcefp = (
+                os.path.join(source_file_prefix, sourcef)
+                if source_file_prefix
+                else sourcef
+            )
+            source_file = sourcefp
+            if not os.path.exists(sourcefp):
                 d = os.path.join(relative_dir, sourcef)
+                if source_file_prefix:
+                    d = os.path.join(source_file_prefix, d)
                 if not os.path.exists(d):
                     logger.warning(f"source file {d} couldn't found, please check")
                     continue

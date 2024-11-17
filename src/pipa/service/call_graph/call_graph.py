@@ -60,6 +60,7 @@ class CallGraph:
         filter_none: bool = False,
         gen_epm: bool = False,
         perf_buildid: Optional[PerfBuildidData] = None,
+        source_file_prefix: Optional[str] = None,
     ):
         """
         Creates a CallGraph object from performance script data.
@@ -69,7 +70,9 @@ class CallGraph:
             pid (int, optional): The process ID. Defaults to None.
             cpu (int, optional): The CPU ID. Defaults to None.
             filter_none (bool): Whether to filter out unknown functions. Defaults to False.
-            gen_epm (bool): Whether to generate EPM. Defaults to False
+            gen_epm (bool): Whether to generate EPM. Defaults to False.
+            perf_buildid (PerfBuildidData, optional): The buildid data. Defaults to None.
+            source_file_prefix (str, optional): The prefix of source file. Defaults to None.
 
         Returns:
             CallGraph: The CallGraph object created from the performance script data.
@@ -86,7 +89,10 @@ class CallGraph:
         if perf_buildid:
             buildid_list = perf_buildid.buildid_lists
         func_table = FunctionNodeTable.from_node_table(
-            node_table, gen_epm=gen_epm, buildid_list=buildid_list
+            node_table,
+            gen_epm=gen_epm,
+            buildid_list=buildid_list,
+            source_file_prefix=source_file_prefix,
         )
         func_graph = nx.DiGraph()
 
