@@ -4,10 +4,9 @@ import sys
 from typing import Tuple, List
 from rich import print
 
-
-def find_closet_factor_pair(n: int) -> Tuple[int, int]:
+def find_closest_factor_pair(n: int) -> Tuple[int, int]:
     """
-    Find closet fator pair of n
+    Find closest factor pair of n
 
     Args:
         n (int): number to find

@@ -5,7 +5,7 @@ import time
 
 from pipa.common.logger import logger
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
-from pipa.common.utils import find_closet_factor_pair
+from pipa.common.utils import find_closest_factor_pair
 
 # multi processing
 from multiprocessing.pool import Pool as PoolCls
@@ -184,7 +184,7 @@ def addr2lines(
 
         # allocate tasks
         stime = time.perf_counter()
-        m, n = find_closet_factor_pair(parallel)
+        m, n = find_closest_factor_pair(parallel)
         state_p = [int(state_len / m)] * m
         for i in range(0, state_len % m):
             state_p[i] += 1
