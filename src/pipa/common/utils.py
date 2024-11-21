@@ -47,9 +47,11 @@ def handle_user_cancelled(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             # Print "Cancelled by user" and exit
             print("Cancelled by user")
+            sys.exit(0)
+        except TypeError as e:
             sys.exit(0)
 
     return wrapper
