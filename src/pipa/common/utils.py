@@ -4,6 +4,7 @@ import sys
 from typing import Tuple, List
 from rich import print
 
+
 def find_closest_factor_pair(n: int) -> Tuple[int, int]:
     """
     Find closest factor pair of n
