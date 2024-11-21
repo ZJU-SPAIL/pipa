@@ -93,4 +93,7 @@
 * [x] Improve documentation
 * [x] Enhance each sar columns' indexing
 * [x] Use range instead of core numbers
+* [x] Add pipa archive
+* [x] Add aggregation mode in CPU Utils
+* [x] perf script parse add filter by commands / time window
 * [ ] Improve unit tests coverage
