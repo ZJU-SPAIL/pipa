@@ -1,4 +1,4 @@
-from .upload import load
+from .upload import load, build
 import yaml
 
 
@@ -47,7 +47,7 @@ def dump(output_path: str, config_path: str = None, verbose: bool = False):
     """
     data = load(config_path, verbose)
     with open(output_path, "w") as file:
-        yaml.dump(data, file)
+        yaml.dump(build(data), file)
     return data
 
 
