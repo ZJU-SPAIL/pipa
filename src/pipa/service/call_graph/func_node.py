@@ -264,7 +264,7 @@ class FunctionNodeTable:
                 )
             if debug_module is not None and os.path.exists(debug_module):
                 logger.debug(
-                    f"Found module {module}'s elf debuginfo file: {debug_module}"
+                    f"Found module {module}'s seperated debuginfo file: {debug_module}"
                 )
                 module = debug_module
             elif not os.path.exists(module):
@@ -288,9 +288,9 @@ class FunctionNodeTable:
                     format=file_format.xz,
                     decompress=True,
                 )
-                if not os.path.exists(module):
+                if not os.path.exists(extracted):
                     logger.warning(
-                        f"Extract {module} to {extracted}. Elf file {module} not found"
+                        f"Extract {module} to {tmpd}. But expected {extracted} not found"
                     )
                     continue
                 module = extracted
@@ -330,10 +330,15 @@ class FunctionNodeTable:
             symtable = elffile.get_section_by_name(".symtab")
             if symtable is None:
                 logger.warning(
-                    f"Not found symtable in elf file {module}, please provide debuginfo."
+                    f"Not found symtable in {module}, please provide debuginfo."
                 )
                 f.close()
                 continue
+            # check dwarf info has debug info
+            if not dwarfinfo.has_debug_info:
+                logger.warning(
+                    f"{module}'s dwarf lost debuginfo, source codes may not be found. Please check your compile methods"
+                )
             f.seek(0)
             # get elfcodes
             elfcodes = f.read()
@@ -343,7 +348,7 @@ class FunctionNodeTable:
             # func_sourcelines: list of (source file, address, line, column)
             # combine info to FunctionNode
             for func_n, ip_perfs in funcs.items():
-                # start finnd addr by function name
+                # start find addr by function name
                 logger.debug(f"Start parse {func_n} info in {module}")
                 stime = time.perf_counter()
                 func_info = find_addr_by_func_name(symtable, func_n)
@@ -408,6 +413,7 @@ class FunctionNodeTable:
                         if ioffset + func_addr == addr:
                             addr_ips.append(ip)
                             addr_cycles += ic
+                    # when source codes (debuginfo) lost, the key will be ("", "")
                     EPM[(addr_sourcef, addr_relative_dir)][func_node_k].append(
                         (
                             addr,

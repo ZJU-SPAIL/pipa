@@ -11,7 +11,7 @@ from pipa.common.utils import (
 from pipa.parser.perf_buildid import PerfBuildidData
 from pipa.common.cmd import run_command
 from pipa.service.call_graph.addr import DEFAULT_BUILD_ID_DIR
-from typing import List
+from typing import List, Dict
 from tempfile import mktemp, mkdtemp
 import os
 
@@ -77,9 +77,22 @@ def get_archive_manifest(
     return manifest
 
 
-def archive(perf_data: str, output_path: str):
+def archive(
+    perf_data: str,
+    output_path: str,
+    replace_modules: Dict[str, str] = {},
+):
+    """PIPA Archive
+
+    archive buildid and source files in a perf data
+
+    Args:
+        perf_data (str): perf data
+        output_path (str): stored archive to output path
+        replace_modules (Dict[str, str]): replace some modules' to specified one, useful when original module doesn't provide debuginfo at all. For example, '/path/to/workload/cmd' -> '/path/to/workload-debug/cmd', just pass replace_modules={'/path/to/workload/cmd': '/path/to/workload-debug/cmd'}
+    """
     if not os.path.exists(perf_data):
-        logger.error(f"{perf_data} not exists!")
+        logger.error(f"perf data {perf_data} not exists!")
         return
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -93,10 +106,24 @@ def archive(perf_data: str, output_path: str):
     if len(perf_buildid_data.buildid_lists) == 0:
         logger.error("No buildid found in perf data")
         return
+    logger.debug("Get original buildid list:")
+    for bid in f"{perf_buildid_data.to_raw_dataframe()}".splitlines():
+        logger.debug(bid)
+    modules_list = perf_buildid_data.get_modules()
+    # apply module replace
+    for i in range(len(modules_list)):
+        for o, v in replace_modules.items():
+            m = modules_list[i]
+            if m != o:
+                continue
+            modules_list[i] = v
+    logger.debug("Final module list:")
+    for i, m in enumerate(modules_list):
+        logger.debug(f"{i}: {m}")
     source_files = []
-    for module in perf_buildid_data.buildid_lists.keys():
+    for module in modules_list:
         if not os.path.exists(module):
-            logger.warning(f"Not found ELF File {module}")
+            logger.warning(f"Not found ELF File {module} in buildid list")
             continue
         # check if it's an elf file with debuginfo
         # if it's a compress file, extract to a tmpdir and will use the extracted elf file (if it contains) for further processing
@@ -114,9 +141,9 @@ def archive(perf_data: str, output_path: str):
                 format=file_format.xz,
                 decompress=True,
             )
-            if not os.path.exists(module):
+            if not os.path.exists(extracted):
                 logger.warning(
-                    f"Extract {module} to {extracted}. Elf file {module} not found"
+                    f"Extract {module} to {tmpd}, but expected elf file {extracted} not found"
                 )
                 continue
             module = extracted
@@ -131,6 +158,11 @@ def archive(perf_data: str, output_path: str):
             continue
         # get dwarf info
         dwarfinfo = elffile.get_dwarf_info()
+        if not dwarfinfo.has_debug_info:
+            logger.warning(
+                f"{module}'s dwarf lost debuginfo, check your compile methods"
+            )
+            continue
         source_files.extend(find_all_source_files(dwarfinfo=dwarfinfo))
         f.close()
     # get archive manifest

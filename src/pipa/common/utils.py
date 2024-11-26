@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Set
 from rich import print
 from pipa.common.logger import logger
 from enum import Enum, unique
@@ -67,18 +67,24 @@ def tar(
     with tarfile.open(output_tar, mode="w") as tar:
         if type(manifest) is str:
             manifest = [manifest]
+        non_duplicate_lists: Set[Tuple[str, str]] = set()
         for file in manifest:
             full_path = file
             if base_dir:
                 full_path = os.path.join(base_dir, full_path)
             if os.path.exists(full_path):
-                # Add file to tar archive
-                tar.add(full_path, arcname=file)
+                # First add file to set to prevent duplicate files
+                # Duplicate files will significantly increase the size of the tar archive
+                non_duplicate_lists.add((full_path, file))
             else:
                 logger.warning(
                     f"Warning: {full_path} does not exist and will be skipped."
                 )
                 continue
+        # Add file to tar archive
+        for f in non_duplicate_lists:
+            full_path, file = f
+            tar.add(full_path, arcname=file)
 
 
 def untar(

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 import pandas as pd
 
 
@@ -46,6 +46,12 @@ class PerfBuildidData:
                     continue
 
         return cls(buildid_lists)
+
+    def get_modules(self) -> List[str]:
+        return list(self.buildid_lists.keys())
+
+    def get_buildids(self) -> List[str]:
+        return list(self.buildid_lists.values())
 
     def to_raw_dataframe(self):
         """

@@ -76,9 +76,22 @@ class PipaCLI:
         # Dump PIPASHU overview data to a file
         pipa_dump(output_path, config_path, verbose)
 
-    def archive(self, perf_data: str = "perf.data", output_path: str = "./"):
+    def archive(
+        self,
+        perf_data: str = "perf.data",
+        output_path: str = "./",
+        replace_modules: str = "",
+    ):
+        rmp = {}
+        replaces = replace_modules.split(",")
+        for r in replaces:
+            rs = r.split(":", maxsplit=1)
+            if len(rs) != 2:
+                logger.warning(f"module replace pattern {r} should be patha:pathb")
+                continue
+            rmp[rs[0]] = rs[1]
         # Archive buildid and source files
-        pipa_archive(perf_data=perf_data, output_path=output_path)
+        pipa_archive(perf_data=perf_data, output_path=output_path, replace_modules=rmp)
 
     def help(self):
         # Show this help message and exit
