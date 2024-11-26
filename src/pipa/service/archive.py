@@ -2,13 +2,18 @@
 from elftools.dwarf.dwarfinfo import DWARFInfo
 from elftools.elf.elffile import ELFFile
 from pipa.common.logger import logger
+from pipa.common.utils import (
+    tar,
+    process_compression,
+    file_format,
+    check_file_format,
+)
 from pipa.parser.perf_buildid import PerfBuildidData
 from pipa.common.cmd import run_command
 from pipa.service.call_graph.addr import DEFAULT_BUILD_ID_DIR
-from typing import List, Optional
-from tempfile import mktemp
+from typing import List
+from tempfile import mktemp, mkdtemp
 import os
-import tarfile
 
 
 def find_all_source_files(dwarfinfo: DWARFInfo) -> List[str]:
@@ -72,30 +77,6 @@ def get_archive_manifest(
     return manifest
 
 
-def create_tar_bz2(output_tar, manifest: List[str], base_dir: Optional[str] = None):
-    """
-    Create a tar.bz2 archive based on a manifest file.
-
-    Args:
-        output_tar (str): Path to the output tar.bz2 file.
-        base_dir (str): Base directory to use for relative paths.
-        manifest_file (str): Path to the manifest file containing files to include.
-    """
-    with tarfile.open(output_tar, mode="w:bz2") as tar:
-        for file in manifest:
-            full_path = file
-            if base_dir:
-                full_path = os.path.join(base_dir, full_path)
-            if os.path.exists(full_path):
-                # Add file to tar archive
-                tar.add(full_path, arcname=file)
-            else:
-                logger.warning(
-                    f"Warning: {full_path} does not exist and will be skipped."
-                )
-                continue
-
-
 def archive(perf_data: str, output_path: str):
     if not os.path.exists(perf_data):
         logger.error(f"{perf_data} not exists!")
@@ -117,8 +98,32 @@ def archive(perf_data: str, output_path: str):
         if not os.path.exists(module):
             logger.warning(f"Not found ELF File {module}")
             continue
-        f = open(module, "rb")
+        # check if it's an elf file with debuginfo
+        # if it's a compress file, extract to a tmpdir and will use the extracted elf file (if it contains) for further processing
+        # if it's not a compress file or elf file, pass
+        fformat = check_file_format(module)
+        if fformat == file_format.xz:
+            # buildid will generate a xz compressed file named like drm_vram_helper.ko.xz
+            # it contains debuginfo elf, named like drm_vram_helper.ko
+            tmpd = mkdtemp()
+            extracted, _ = os.path.splitext(os.path.basename(module))
+            extracted = os.path.join(tmpd, extracted)
+            process_compression(
+                compressed=module,
+                decompressed=extracted,
+                format=file_format.xz,
+                decompress=True,
+            )
+            if not os.path.exists(module):
+                logger.warning(
+                    f"Extract {module} to {extracted}. Elf file {module} not found"
+                )
+                continue
+            module = extracted
+        elif fformat != file_format.elf:
+            continue
         # open elf file
+        f = open(module, "rb")
         elffile = ELFFile(f)
         if not elffile.has_dwarf_info():
             logger.warning(f"{module} has no dwarf info, please provide debuginfo")
@@ -131,26 +136,37 @@ def archive(perf_data: str, output_path: str):
     # get archive manifest
     archive_files = get_archive_manifest(perf_buildid_data)
     # generate archive
-    buildid_tar = os.path.join(output_path, f"{perf_data}.buildid.tar.bz2")
-    sourcefiles_tar = os.path.join(output_path, f"{perf_data}.sourcefiles.tar.bz2")
-    create_tar_bz2(
+    buildid_tar = os.path.join(output_path, f"{perf_data}.buildid.tar")
+    buildid_bz2 = f"{buildid_tar}.bz2"
+    sourcefiles_tar = os.path.join(output_path, f"{perf_data}.sourcefiles.tar")
+    sourcefiles_bz2 = f"{sourcefiles_tar}.bz2"
+    tar(
         output_tar=buildid_tar,
         base_dir=DEFAULT_BUILD_ID_DIR,
         manifest=archive_files,
     )
-    create_tar_bz2(
-        output_tar=sourcefiles_tar,
-        manifest=source_files,
+    process_compression(
+        decompressed=buildid_tar,
+        compressed=buildid_bz2,
+        format=file_format.bzip2,
+        decompress=False,
     )
-    print(f"Created buildid archive: {buildid_tar}")
-    print(f"Created sourcefiles archive: {sourcefiles_tar}")
+    tar(output_tar=sourcefiles_tar, manifest=source_files)
+    process_compression(
+        decompressed=sourcefiles_tar,
+        compressed=sourcefiles_bz2,
+        format=file_format.bzip2,
+        decompress=False,
+    )
+    print(f"Created buildid archive: {buildid_bz2}")
+    print(f"Created sourcefiles archive: {sourcefiles_bz2}")
     print("Now you can transfer them to another machine")
     print("Usage:")
-    print(f"\t tar -xf {os.path.basename(buildid_tar)} -C ~/.debug")
-    print(f"\t tar -xf {os.path.basename(sourcefiles_tar)} -C /")
+    print(f"\t tar -xf {os.path.basename(buildid_bz2)} -C ~/.debug")
+    print(f"\t tar -xf {os.path.basename(sourcefiles_bz2)} -C /")
     print("\t\t Or")
     print(
-        f"\t tar -xf {os.path.basename(sourcefiles_tar)} -C /path/to/source_file_prefix"
+        f"\t tar -xf {os.path.basename(sourcefiles_bz2)} -C /path/to/source_file_prefix"
     )
 
 

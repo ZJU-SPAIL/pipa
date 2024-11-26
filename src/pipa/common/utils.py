@@ -1,8 +1,136 @@
-import datetime
 from math import sqrt
-import sys
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from rich import print
+from pipa.common.logger import logger
+from enum import Enum, unique
+from functools import partial
+import tarfile
+import os
+import sys
+import datetime
+import shutil
+import lzma
+import bz2
+
+
+@unique
+class file_format(Enum):
+    xz = "xz"
+    bzip2 = "bz2"
+    elf = "elf"
+    tar = "tar"
+    other = "other"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def check_file_format(file: str) -> file_format:
+    """Check the file format of the given file.
+
+    Args:
+        file (str): file to be checked
+
+    Returns:
+        file_format: The file format of the given file.
+    """
+    with open(file, "rb") as f:
+        # if omitted, will read until EOF
+        # the slice is still valid
+        magic = f.read(270)
+        if magic[0:4] == b"\x7f\x45\x4c\x46":
+            # elf file, 4 bytes
+            return file_format.elf
+        elif magic[0:6] == b"\xFD\x37\x7A\x58\x5A\x00":
+            # .xz, 6 bytes
+            return file_format.xz
+        elif magic[0:3] == b"BZh":
+            # .bz2, 4 bytes
+            return file_format.bzip2
+        elif magic[257:263] == b"ustar " or magic == b"gnutar":
+            return file_format.tar
+        return file_format.other
+
+
+def tar(
+    output_tar,
+    manifest: List[str] | str,
+    base_dir: Optional[str] = None,
+):
+    """Create a tar archive based on a manifest list.
+
+    Args:
+        output_tar (str): Path to the output tar file.
+        base_dir (str): Base directory to use for relative paths.
+        manifest_file (str | List[str]): file or files in tar archive.
+    """
+    with tarfile.open(output_tar, mode="w") as tar:
+        if type(manifest) is str:
+            manifest = [manifest]
+        for file in manifest:
+            full_path = file
+            if base_dir:
+                full_path = os.path.join(base_dir, full_path)
+            if os.path.exists(full_path):
+                # Add file to tar archive
+                tar.add(full_path, arcname=file)
+            else:
+                logger.warning(
+                    f"Warning: {full_path} does not exist and will be skipped."
+                )
+                continue
+
+
+def untar(
+    input_tar: str,
+    output_dir: str,
+):
+    """
+    Extract a tar archive to the specified directory.
+
+    Args:
+        input_tar (str): Path to the input tar file.
+        output_dir (str): Directory to extract the files to.
+    """
+    with tarfile.open(input_tar, mode="r") as tar:
+        tar.extractall(path=output_dir)
+        logger.debug(f"Extracted {input_tar} to {output_dir}")
+
+
+def process_compression(
+    compressed: str, decompressed: str, format: file_format, decompress: bool = False
+):
+    """Compress or decompress a file based on the specified format.
+
+    If in compress mode, will compress `decompressed` to `compressed`
+
+    If in decompress mode, will decompress `compressed` to `decompressed`
+
+    Args:
+        compressed (str): Compressed file
+        decompressed (str): Decompressed file
+        format (file_format): Format of the compressed file
+        decompress (bool, optional): Decompress mode. Defaults to False, which is compress mode.
+    """
+    if format == file_format.xz:
+        compress_method = lzma.open
+    elif format == file_format.bzip2:
+        compress_method = bz2.open
+    else:
+        logger.warning(f"not support {format}'s compress or decompress")
+        return
+    f_in_f = (
+        partial(compress_method, compressed)
+        if decompress
+        else partial(open, decompressed)
+    )
+    f_out_f = (
+        partial(open, decompressed)
+        if decompress
+        else partial(compress_method, compressed)
+    )
+    with f_in_f("rb") as f_in, f_out_f("wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
 
 
 def find_closest_factor_pair(n: int) -> Tuple[int, int]:

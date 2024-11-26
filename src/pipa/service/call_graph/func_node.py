@@ -4,7 +4,9 @@ import pandas as pd
 import os
 import time
 from pipa.common.logger import logger
+from pipa.common.utils import process_compression, file_format, check_file_format
 from collections import defaultdict
+from tempfile import mkdtemp
 
 # multi processing
 from multiprocessing import Pool
@@ -270,15 +272,39 @@ class FunctionNodeTable:
                 continue
             logger.debug(f"Found ELF File {module}")
             logger.debug(f"Start analyze ELF File {module}")
-            f = open(module, "rb")
+            # check if it's an elf file with debuginfo
+            # if it's a compress file, extract to a tmpdir and will use the extracted elf file (if it contains) for further processing
+            # if it's not a compress file or elf file, pass
+            fformat = check_file_format(module)
+            if fformat == file_format.xz:
+                # buildid will generate a xz compressed file named like drm_vram_helper.ko.xz
+                # it contains debuginfo elf, named like drm_vram_helper.ko
+                tmpd = mkdtemp()
+                extracted, _ = os.path.splitext(os.path.basename(module))
+                extracted = os.path.join(tmpd, extracted)
+                process_compression(
+                    compressed=module,
+                    decompressed=extracted,
+                    format=file_format.xz,
+                    decompress=True,
+                )
+                if not os.path.exists(module):
+                    logger.warning(
+                        f"Extract {module} to {extracted}. Elf file {module} not found"
+                    )
+                    continue
+                module = extracted
+            elif fformat != file_format.elf:
+                continue
             # open elf file
+            f = open(module, "rb")
             elffile = ELFFile(f)
             if not elffile.has_dwarf_info():
                 logger.warning(f"{module} has no dwarf info, please provide debuginfo")
                 f.close()
                 continue
-            elf_header = elffile["e_ident"]
             # judge arch and mod
+            elf_header = elffile["e_ident"]
             if elffile["e_machine"] == "EM_386":
                 arch = CS_ARCH_X86
                 mode = CS_MODE_32
