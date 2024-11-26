@@ -3,10 +3,11 @@ import logging
 # Create a logger
 logger = logging.getLogger(__name__)
 
-# Set the logging level
+# Set the logging level, it's the minimum acceptable level
 logger.setLevel(logging.INFO)
 
 # Create a stream handler and set its level
+# it's the minimum level that can be output
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.WARNING)
 

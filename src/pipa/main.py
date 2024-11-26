@@ -1,10 +1,12 @@
 import fire
+import logging
 from pipa.service.gengerate.all import quest_summary as generate_sh
 from pipa.service.export_sys_config import run_export_config_script
 from pipa.service.upload import main as pipa_upload
 from pipa.service.dump import dump as pipa_dump
 from pipa.service.archive import archive as pipa_archive
 from pipa.common.utils import handle_user_cancelled
+from pipa.common.logger import logger, stream_handler
 from pipa.__about__ import __version__
 from rich import print
 
@@ -34,6 +36,26 @@ class PipaCLI:
       version   Show the version of PIPA
       help      Show this help message and exit
     """
+
+    def __init__(self, debug: bool = False, log_level: str = None) -> None:  # type: ignore
+        if debug:
+            logger.setLevel(logging.DEBUG)
+            stream_handler.setLevel(logging.DEBUG)
+        if log_level:
+            try:
+                logger.setLevel(log_level.upper())
+                stream_handler.setLevel(log_level.upper())
+            except Exception as e:
+                logger.warning(f"set log level {log_level} failed: {e}")
+                logger.warning(
+                    f"available logger levels: {','.join(logging.getLevelNamesMapping().keys())}"
+                )
+                logger.warning(
+                    f"use logger level: {logging.getLevelName(logger.level)}"
+                )
+                logger.warning(
+                    f"use print level: {logging.getLevelName(stream_handler.level)}"
+                )
 
     @handle_user_cancelled
     def generate(self, config_path: str = None):
