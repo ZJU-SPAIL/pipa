@@ -76,5 +76,5 @@ def test_parse_perf_stat_file(mock_file, sample_data, expected_df):
     assert_frame_equal(result_df, expected_df, check_like=True)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

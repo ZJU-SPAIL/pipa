@@ -58,5 +58,5 @@ def test_generate_upload_template(monkeypatch):
     patch.stopall()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

@@ -80,7 +80,7 @@ jobs:
         run: pip install pytest coverage
 
       - name: Run tests
-        run: coverage run -m pytest
+        run: coverage run --source=src,test -m pytest
 
       - name: Coveralls
         uses: coverallsapp/github-action@v2

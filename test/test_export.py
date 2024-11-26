@@ -44,5 +44,5 @@ def test_export_dataframe_to_csv():
 
 
 # Run the tests
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

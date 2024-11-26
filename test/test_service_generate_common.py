@@ -106,5 +106,5 @@ def test_generate_core_list():
             generate_core_list("1-3,2,0-8")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

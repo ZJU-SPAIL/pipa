@@ -38,5 +38,5 @@ def test_main_without_config_path(mock_build, mock_quest):
     mock_build.assert_called_once_with("test-config.yaml")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

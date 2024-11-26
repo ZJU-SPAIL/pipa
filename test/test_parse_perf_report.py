@@ -101,5 +101,5 @@ def test_parse_one_line_incorrect_format():
     assert result is None
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])

@@ -170,5 +170,5 @@ Linux 5.15.0-113-generic (black)    07/15/24    _x86_64_    (160 CPU)
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__])
