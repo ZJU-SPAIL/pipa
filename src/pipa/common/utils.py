@@ -14,7 +14,7 @@ import bz2
 
 
 @unique
-class file_format(Enum):
+class FileFormat(Enum):
     xz = "xz"
     bzip2 = "bz2"
     elf = "elf"
@@ -25,7 +25,7 @@ class file_format(Enum):
         return self.value
 
 
-def check_file_format(file: str) -> file_format:
+def check_file_format(file: str) -> FileFormat:
     """Check the file format of the given file.
 
     Args:
@@ -40,16 +40,16 @@ def check_file_format(file: str) -> file_format:
         magic = f.read(270)
         if magic[0:4] == b"\x7f\x45\x4c\x46":
             # elf file, 4 bytes
-            return file_format.elf
+            return FileFormat.elf
         elif magic[0:6] == b"\xFD\x37\x7A\x58\x5A\x00":
             # .xz, 6 bytes
-            return file_format.xz
+            return FileFormat.xz
         elif magic[0:3] == b"BZh":
             # .bz2, 4 bytes
-            return file_format.bzip2
+            return FileFormat.bzip2
         elif magic[257:263] == b"ustar " or magic == b"gnutar":
-            return file_format.tar
-        return file_format.other
+            return FileFormat.tar
+        return FileFormat.other
 
 
 def tar(
@@ -104,7 +104,7 @@ def untar(
 
 
 def process_compression(
-    compressed: str, decompressed: str, format: file_format, decompress: bool = False
+    compressed: str, decompressed: str, format: FileFormat, decompress: bool = False
 ):
     """Compress or decompress a file based on the specified format.
 
@@ -118,9 +118,9 @@ def process_compression(
         format (file_format): Format of the compressed file
         decompress (bool, optional): Decompress mode. Defaults to False, which is compress mode.
     """
-    if format == file_format.xz:
+    if format == FileFormat.xz:
         compress_method = lzma.open
-    elif format == file_format.bzip2:
+    elif format == FileFormat.bzip2:
         compress_method = bz2.open
     else:
         logger.warning(f"not support {format}'s compress or decompress")

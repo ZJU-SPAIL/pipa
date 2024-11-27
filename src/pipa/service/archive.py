@@ -5,7 +5,7 @@ from pipa.common.logger import logger
 from pipa.common.utils import (
     tar,
     process_compression,
-    file_format,
+    FileFormat,
     check_file_format,
 )
 from pipa.parser.perf_buildid import PerfBuildidData
@@ -129,7 +129,7 @@ def archive(
         # if it's a compress file, extract to a tmpdir and will use the extracted elf file (if it contains) for further processing
         # if it's not a compress file or elf file, pass
         fformat = check_file_format(module)
-        if fformat == file_format.xz:
+        if fformat == FileFormat.xz:
             # buildid will generate a xz compressed file named like drm_vram_helper.ko.xz
             # it contains debuginfo elf, named like drm_vram_helper.ko
             tmpd = mkdtemp()
@@ -138,7 +138,7 @@ def archive(
             process_compression(
                 compressed=module,
                 decompressed=extracted,
-                format=file_format.xz,
+                format=FileFormat.xz,
                 decompress=True,
             )
             if not os.path.exists(extracted):
@@ -147,7 +147,7 @@ def archive(
                 )
                 continue
             module = extracted
-        elif fformat != file_format.elf:
+        elif fformat != FileFormat.elf:
             continue
         # open elf file
         f = open(module, "rb")
@@ -180,14 +180,14 @@ def archive(
     process_compression(
         decompressed=buildid_tar,
         compressed=buildid_bz2,
-        format=file_format.bzip2,
+        format=FileFormat.bzip2,
         decompress=False,
     )
     tar(output_tar=sourcefiles_tar, manifest=source_files)
     process_compression(
         decompressed=sourcefiles_tar,
         compressed=sourcefiles_bz2,
-        format=file_format.bzip2,
+        format=FileFormat.bzip2,
         decompress=False,
     )
     print(f"Created buildid archive: {buildid_bz2}")

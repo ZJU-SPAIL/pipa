@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import time
 from pipa.common.logger import logger
-from pipa.common.utils import process_compression, file_format, check_file_format
+from pipa.common.utils import process_compression, FileFormat, check_file_format
 from collections import defaultdict
 from tempfile import mkdtemp
 
@@ -276,7 +276,7 @@ class FunctionNodeTable:
             # if it's a compress file, extract to a tmpdir and will use the extracted elf file (if it contains) for further processing
             # if it's not a compress file or elf file, pass
             fformat = check_file_format(module)
-            if fformat == file_format.xz:
+            if fformat == FileFormat.xz:
                 # buildid will generate a xz compressed file named like drm_vram_helper.ko.xz
                 # it contains debuginfo elf, named like drm_vram_helper.ko
                 tmpd = mkdtemp()
@@ -285,7 +285,7 @@ class FunctionNodeTable:
                 process_compression(
                     compressed=module,
                     decompressed=extracted,
-                    format=file_format.xz,
+                    format=FileFormat.xz,
                     decompress=True,
                 )
                 if not os.path.exists(extracted):
@@ -294,7 +294,7 @@ class FunctionNodeTable:
                     )
                     continue
                 module = extracted
-            elif fformat != file_format.elf:
+            elif fformat != FileFormat.elf:
                 continue
             # open elf file
             f = open(module, "rb")
