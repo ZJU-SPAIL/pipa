@@ -1,10 +1,11 @@
 import re
 import pandas as pd
 from multiprocessing import Pool
-from typing import Optional
+from typing import Optional, Dict, Set
 from decimal import Decimal, InvalidOperation
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 from pipa.common.logger import logger
+from collections import defaultdict
 
 
 class PerfScriptCall:
@@ -41,7 +42,7 @@ class PerfScriptCall:
             matches = pattern.findall(line)
             addr, symbol, caller = matches[0]
         except Exception as e:
-            print(e)
+            logger.warning(f"script one call '{line}' parse failed due to: {e}")
             return None
         return [addr, symbol, caller]
 
@@ -56,7 +57,11 @@ class PerfScriptCall:
         Returns:
             PerfScriptCall: The created PerfScriptCall instance.
         """
-        return cls(*cls.parse_one_call(line))
+        call = cls.parse_one_call(line)
+        if call is None:
+            logger.warning(f"can't create script call for line '{line}'")
+            return None
+        return cls(*call)
 
 
 class PerfScriptHeader:
@@ -124,7 +129,7 @@ class PerfScriptHeader:
 
                     command = line[:10].strip()
         except Exception as e:
-            print(e)
+            logger.warning(f"script header '{line}' parse failed due to: {e}")
             return None
 
         return [
@@ -147,7 +152,11 @@ class PerfScriptHeader:
         Returns:
             PerfScriptHeader: The created PerfScriptHeader object.
         """
-        return cls(*cls.parse_one_header(line))
+        p = cls.parse_one_header(line)
+        if p is None:
+            logger.warning(f"can't create script header for line '{line}'")
+            return None
+        return cls(*p)
 
 
 class PerfScriptBlock:
@@ -182,8 +191,23 @@ class PerfScriptBlock:
         Returns:
             tuple: A tuple containing the parsed header and calls.
         """
-        header = PerfScriptHeader.from_line(lines[0])
-        calls = [PerfScriptCall.from_line(line) for line in lines[1:]]
+        # TODO: There may be some other info like brstackinsn at first
+        # TODO: First we just ignore, need to handle it at further stage
+        # perf script -F comm,pid,cpu,time,period,event,ip,sym,dso -I --header
+        start_index = -1
+        line_len = len(lines)
+        header = None
+        while header is None:
+            start_index += 1
+            if start_index >= line_len:
+                break
+            header = PerfScriptHeader.from_line(lines[start_index])
+        if header is None:
+            logger.warning(f"{lines} can't be parsed by perf script")
+            return None
+        calls = [PerfScriptCall.from_line(line) for line in lines[start_index + 1 :]]
+        # remove None in calls
+        calls = list(filter(lambda x: x is not None, calls))
         return header, calls
 
     @classmethod
@@ -197,7 +221,11 @@ class PerfScriptBlock:
         Returns:
             PerfScriptBlock: The created PerfScriptBlock object.
         """
-        return cls(*cls.parse_block(lines))
+        b = cls.parse_block(lines)
+        if b is None:
+            logger.warning(f"can't create script block for lines '{lines}'")
+            return None
+        return cls(*b)
 
     def to_record(self):
         """
@@ -253,6 +281,21 @@ class PerfScriptData:
 
     def __len__(self):
         return len(self.blocks)
+
+    def summary_all_cmds(self) -> Dict[str, Dict[str, Set]]:
+        """
+        Returns a dictionary of commands, each containing a set of CPUs and modules relative to the command.
+
+        Returns:
+            Dict[Dict[Set]]: A dictionary of commands, each command contains a dict of 'cpus' and 'modules'. 'cpus' are the set of CPUs, 'modules' are the set of modules.
+        """
+        cmds = defaultdict(lambda: defaultdict(lambda: set()))
+        for b in self.blocks:
+            cmd = b.header.command
+            cmds[cmd]["cpus"].add(b.header.cpu)
+            for s in b.calls:
+                cmds[cmd]["modules"].add(s.caller)
+        return cmds
 
     def filter_by_time_window(
         self,
@@ -420,6 +463,9 @@ class PerfScriptData:
 
         with Pool(processes=processes_num) as pool:
             blocks = pool.map(PerfScriptBlock.from_lines, cls.divid_into_blocks(lines))
+
+        # remove None in blocks
+        blocks = list(filter(lambda x: x is not None, blocks))
 
         return cls(blocks)
 
