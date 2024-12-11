@@ -2,6 +2,7 @@ from typing import Optional
 import pandas as pd
 import json
 from pipa.parser.perf_script_call import PerfScriptData
+from typing import Dict
 
 
 class Node:
@@ -55,6 +56,19 @@ class Node:
         self.command = command
         self.cycles = cycles
         self.instructions = instructions
+        self.events: Dict[str, int] = {}
+
+    def get_event_value(self, event: str) -> int:
+        return self.events[event] if event in self.events else 0
+
+    def set_event_value(self, event: str, value: int):
+        old = self.get_event_value(event)
+        self.events[event] = value
+        return old
+
+    def add_event_value(self, event: str, value: int):
+        old = self.get_event_value(event)
+        self.events[event] = old + value
 
     def get_function_name(self):
         return self.function_name
@@ -111,7 +125,7 @@ class NodeTable:
         from_perf_script_file(cls, perf_script_file: str, pids: list | None = None, cpus: list | None = None): Creates a NodeTable from a perf script file.
     """
 
-    def __init__(self, nodes: dict | None = None):
+    def __init__(self, nodes: Dict[str, Node] | None = None):
         """
         Initializes a node table object.
 
@@ -122,7 +136,7 @@ class NodeTable:
         Returns:
             None
         """
-        self._nodes = nodes if nodes else {}
+        self._nodes: Dict[str, Node] = nodes if nodes else {}
 
     def __getitem__(self, key):
         return self._nodes[key]
@@ -210,7 +224,7 @@ class NodeTable:
         if cpus is not None:
             perf_script = perf_script.filter_by_cpus(cpus=cpus)
 
-        res = {}
+        res: Dict[str, Node] = {}
         for block in perf_script.blocks:
             header = block.header
             calls = block.calls
@@ -224,6 +238,8 @@ class NodeTable:
                     res[addr].cycles += header.value
                 elif header.event == "instructions":
                     res[addr].instructions += header.value
+                else:
+                    res[addr].add_event_value(event=header.event, value=header.value)
             else:
                 res[addr] = Node(
                     addr=calls[0].addr,
@@ -233,6 +249,8 @@ class NodeTable:
                     cycles=header.value if header.event == "cycles" else 0,
                     instructions=header.value if header.event == "instructions" else 0,
                 )
+                if header.event not in ["cycles", "instructions"]:
+                    res[addr].set_event_value(event=header.event, value=header.value)
             for i in range(1, len(calls)):
                 if calls[i].addr not in res:
                     res[calls[i].addr] = Node(
@@ -272,6 +290,7 @@ class NodeTable:
                 "command": v.command,
                 "cycles": v.cycles,
                 "instructions": v.instructions,
+                **v.events,
             }
             for v in self._nodes.values()
         ]

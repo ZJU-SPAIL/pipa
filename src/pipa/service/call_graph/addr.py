@@ -4,7 +4,6 @@ import os
 import time
 
 from pipa.common.logger import logger
-from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 from pipa.common.utils import find_closest_factor_pair
 
 # multi processing
@@ -12,38 +11,108 @@ from multiprocessing.pool import Pool as PoolCls
 
 # pyelftools
 from elftools.dwarf.dwarfinfo import DWARFInfo
+from elftools.elf.elffile import ELFFile
 from elftools.dwarf.lineprogram import LineState, LineProgram
+from elftools.elf.sections import SymbolTableSection
 
+# capstone for disassemble
 from capstone import Cs
+from capstone import (
+    CS_ARCH_ARM,
+    CS_ARCH_ARM64,
+    CS_MODE_32,
+    CS_MODE_ARM,
+    CS_MODE_V8,
+    CS_ARCH_X86,
+    CS_MODE_64,
+    CS_ARCH_PPC,
+)
 
 DEFAULT_BUILD_ID_DIR = os.path.join(os.path.expanduser("~"), ".debug")
 """Default build-id dir"""
-
-NUM_ADDR2LINE_PROCESS = NUM_CORES_PHYSICAL
-"""Process number addr2line uses"""
 
 ADDR2LINE_OPT_STRENGTH = 1e9
 """Operation strength to indicate when to parallelize in addr2line"""
 
 
-def find_addr_by_func_name(symtab, func_name: str) -> Optional[tuple[int, int]]:
-    """Find address by function name
+def get_arch_mode(elffile: ELFFile) -> Tuple[int, int]:
+    """Judge arch and mode based on elf file
 
     Args:
-        symtab : symbol table in elf
-        func_name (str): the function name
+        elffile (ELFFile): The elf file
+
+    Raises:
+        NotImplementedError: Will raise error when the arch is not supported
 
     Returns:
-        Optional[tuple[int, int]]: (start_addr, size)
+        Tuple[int, int]: (arch, mode)
     """
-    symbols = symtab.get_symbol_by_name(func_name)
-    if symbols is None:
-        return None
-    if type(symbols) is list and len(symbols) >= 1:
-        sym = symbols[0]
-        return (int(sym["st_value"]), sym["st_size"])
+    arch = elffile["e_machine"]
+    elf_header = elffile["e_ident"]
+
+    if arch == "EM_X86_64":
+        return (CS_ARCH_X86, CS_MODE_64)
+    elif arch == "EM_386":
+        return (CS_ARCH_X86, CS_MODE_32)
+    elif arch == "EM_ARM":
+        a = CS_ARCH_ARM
+        if elf_header["EI_CLASS"] == "ELFCLASS32":
+            return (a, CS_MODE_ARM)
+        else:
+            return (a, CS_MODE_ARM | CS_MODE_V8)
+    elif arch == "EM_AARCH64":
+        return (CS_ARCH_ARM64, CS_MODE_ARM)
+    elif arch == "EM_PPC64":
+        return (CS_ARCH_PPC, CS_MODE_64)
     else:
-        return None
+        raise NotImplementedError(
+            f"Unsupported architecture. Arch: {arch} / ELF Header: {elf_header}"
+        )
+
+
+def get_symbol_addresses(
+    elffile: ELFFile, func_name: Optional[str]
+) -> Dict[str, Tuple[int, int]]:
+    """Find all functions' name / start address / size in the given elf file
+
+    Args:
+        elffile (ELFFile): The elf file
+        func_name (Optional[str]): If given, will only return the given function's info, otherwise return all functions' info
+
+    Returns:
+        tuple[str, Tuple[int, int]]: Take function's name as key, start address and size as value in tuple format: (start address, size)
+    """
+    symbol_addresses = {}
+    for section in elffile.iter_sections():
+        if not isinstance(section, SymbolTableSection):
+            continue
+        for symbol in section.iter_symbols():
+            # function type
+            if symbol["st_info"]["type"] == "STT_FUNC":
+                name = symbol.name
+                addr = symbol["st_value"]  # start address
+                size = symbol["st_size"]  # function size
+                if func_name is None or func_name == name:
+                    symbol_addresses[name] = (addr, size)
+    return symbol_addresses
+
+
+def get_text_section(elffile: ELFFile) -> Tuple[bytes, int]:
+    """Get data and start addr of text section in the elf file
+
+    Args:
+        elffile (ELFFile): The elf file
+
+    Raises:
+        ValueError: Not found `.text` section in the elf file
+
+    Returns:
+        Tuple[bytes, int]: (section data, section start address)
+    """
+    text_section = elffile.get_section_by_name(".text")
+    if not text_section:
+        raise ValueError("Not found .text section in the elf file")
+    return text_section.data(), text_section["sh_addr"]
 
 
 def disassemble_func(
@@ -61,9 +130,12 @@ def disassemble_func(
         Dict[int, Tuple[str, str]]: The disassembled function, key is address, value is (mnemonic, op_str)
     """
     md = Cs(arch, mode)
-    disa = md.disasm(elfcodes, start_addr)
+    md.detail = False
+    md.skipdata = True
     func_asm = {}
-    for i in disa:
+    for i in md.disasm(elfcodes, start_addr):
+        # mnemonic indicates the instruction
+        # op_str indicates the operands
         func_asm[i.address] = (i.mnemonic, i.op_str)
     return func_asm
 
@@ -84,23 +156,22 @@ def addr2lines(
         List[Tuple[str, int, int, int]]: The source line mapping, list of (file_name, address, line, column)
 
     Example:
-    >>> import pipa.service.call_graph as pipa_cfg
-    >>> pipa_cfg.NUM_ADDR2LINE_PROCESS = 160
+    >>> import pipa.service.call_graph.addr as pipa_cfg
     >>> pipa_cfg.ADDR2LINE_OPT_STRENGTH = 2e8
     >>> dwarfinfo = DWARFInfo(elf)
-    >>> addr2lines(dwarfinfo, [0x400000, 0x400001], pool)
+    >>> with Pool(NUM_CORES_PHYSICAL) as pool:
+    >>>     addr2lines(dwarfinfo, [0x400000, 0x400001], pool)
     [('main.c', 0x400000, 1, 1), ('main.c', 0x400001, 1, 2)]
     """
-    global NUM_ADDR2LINE_PROCESS, ADDR2LINE_OPT_STRENGTH
-    parallel = NUM_ADDR2LINE_PROCESS
+    global ADDR2LINE_OPT_STRENGTH
     operations_strength = ADDR2LINE_OPT_STRENGTH
-    if pool._processes < parallel:  # type: ignore
-        logger.warning(
-            "The pool given to addr2line's processes are small than global setting NUM_ADDR2LINE_PROCESS"
-        )
+    parallel = pool._processes  # type: ignore
     sourcelines: List[Tuple[str, int, int, int, str]] = []
     state_list: List[Tuple[int, LineState, LineState]] = []
     lineprog_list: List[Tuple[LineProgram, int, str]] = []
+    address_len = len(addresses)
+    if address_len <= 0:
+        return sourcelines
     # Iter all Compile Units, may be a source file or part of it.
     for i, CU in enumerate(dwarfinfo.iter_CUs()):
         # get the compile unit's line program (includes mapping from machine codes to souce codes)
@@ -132,7 +203,6 @@ def addr2lines(
             else:
                 prevstate = state
     # prepare for addr2line
-    address_len = len(addresses)
     found_addresses = []
     state_len = len(state_list)
     operations_len = address_len * state_len

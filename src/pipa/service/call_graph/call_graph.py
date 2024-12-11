@@ -6,9 +6,8 @@ from pipa.parser.perf_buildid import PerfBuildidData
 from pipa.parser.perf_script_call import PerfScriptData
 from networkx.drawing.nx_pydot import write_dot
 from collections import defaultdict
-
-from .node import NodeTable
-from .func_node import FunctionNodeTable, ClusterEncoder
+from pipa.service.call_graph.node import NodeTable
+from pipa.service.call_graph.func_node import FunctionNodeTable, ClusterEncoder
 
 
 class CallGraph:
