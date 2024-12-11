@@ -2,7 +2,11 @@ import pandas as pd
 from pandarallel import pandarallel
 from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 from pipa.common.logger import logger
+from pipa.common.utils import generate_unique_rgb_color
+from pipa.parser import make_single_plot
+from typing import List, Optional
 import seaborn as sns
+import plotly.graph_objects as go
 
 
 class PerfStatData:
@@ -436,3 +440,66 @@ class PerfStatData:
             )
             df["cpu_id"] = -1
         return df
+
+    def get_available_events(self) -> List[str]:
+        """Get all available events in the data.
+
+        Returns:
+            List[str]: list of avaiable events.
+        """
+        df = self.get_wider_data()
+        col = df.columns.copy()
+        col = col.drop(["timestamp", "cpu_id"])
+        return col.to_list()
+
+    def plot_interactive_event(
+        self,
+        events: Optional[List[str]] = None,
+        threads: Optional[List[int]] = None,
+        aggregation: bool = False,
+        raw_data: bool = False,
+        show: bool = True,
+        write_to_html: Optional[str] = None,
+    ) -> List[go.Scatter]:
+        df = self.get_wider_data()
+        scatters = []
+        if threads:
+            df = df[df["cpu_id"].isin(threads)]
+        if aggregation:
+            df = df.groupby(["timestamp"]).mean(numeric_only=True).reset_index()
+            df["cpu_id"] = "all"
+        # prevent duplicated events
+        if events:
+            events = list(set(events))
+        else:
+            events = df.columns.copy()
+            events = events.drop(["timestamp", "cpu_id"])
+        avail_threads = df["cpu_id"].unique().tolist()
+        for t in avail_threads:
+            data = df[df["cpu_id"] == t]
+            for i, y in enumerate(events):
+                r, g, b = generate_unique_rgb_color([t, i], generate_seed=True)
+                try:
+                    scatters.append(
+                        go.Scatter(
+                            x=data["timestamp"],
+                            y=data[y],
+                            mode="lines+markers",
+                            name=f"CPU {t} {y}",
+                            # different colors
+                            line=dict(color=f"rgb({r}, {g}, {b})"),
+                        )
+                    )
+                except KeyError as e:
+                    logger.warning(f"Not found event: {y} in the stat data: {e}")
+        if raw_data:
+            return scatters
+        else:
+            return make_single_plot(
+                scatters=scatters,
+                title="Stat events trend",
+                xaxis_title="Timestamp",
+                yaxis_title="Value",
+                show=show,
+                write_to_html=write_to_html,
+            )

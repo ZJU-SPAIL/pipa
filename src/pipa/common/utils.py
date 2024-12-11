@@ -11,6 +11,7 @@ import datetime
 import shutil
 import lzma
 import bz2
+import random
 
 
 @unique
@@ -191,16 +192,19 @@ def handle_user_cancelled(func):
     return wrapper
 
 
-def generate_unique_rgb_color(data: List) -> Tuple[int, int, int]:
+def generate_unique_rgb_color(data: List, generate_seed=True) -> Tuple[int, int, int]:
     """
     Generate unique RGB color from data
 
     Args:
         data (Tuple): Generate rgb from hash of data
+        generate_seed (bool, optional): Generate random seed for hash. Defaults to True.
 
     Returns:
         Tuple[int, int, int]: rgb color, (r, g, b)
     """
+    if generate_seed:
+        data.append(random.randint(1, 256))
     # generate hash
     data_hash = hash(tuple(data))
 
