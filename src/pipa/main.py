@@ -6,7 +6,7 @@ from pipa.service.upload import main as pipa_upload
 from pipa.service.dump import dump as pipa_dump
 from pipa.service.archive import archive as pipa_archive
 from pipa.common.utils import handle_user_cancelled
-from pipa.common.logger import logger, stream_handler
+from pipa.common.logger import logger, set_level
 from pipa.__about__ import __version__
 from rich import print
 
@@ -39,23 +39,9 @@ class PipaCLI:
 
     def __init__(self, debug: bool = False, log_level: str = None) -> None:  # type: ignore
         if debug:
-            logger.setLevel(logging.DEBUG)
-            stream_handler.setLevel(logging.DEBUG)
+            set_level(logging.DEBUG, logging.DEBUG)
         if log_level:
-            try:
-                logger.setLevel(log_level.upper())
-                stream_handler.setLevel(log_level.upper())
-            except Exception as e:
-                logger.warning(f"set log level {log_level} failed: {e}")
-                logger.warning(
-                    f"available logger levels: {','.join(logging.getLevelNamesMapping().keys())}"
-                )
-                logger.warning(
-                    f"use logger level: {logging.getLevelName(logger.level)}"
-                )
-                logger.warning(
-                    f"use print level: {logging.getLevelName(stream_handler.level)}"
-                )
+            set_level(log_level.upper(), log_level.upper())
 
     @handle_user_cancelled
     def generate(self, config_path: str = None):
