@@ -1152,7 +1152,8 @@ class SarData:
         Plots the disk tps over time.
         """
         df = self.get_disk_usage()
-        df = trans_time_to_seconds(df).query(f"DEV=='{dev}'") if dev else df
+        df = trans_time_to_seconds(df)
+        df = df.query(f"DEV=='{dev}'") if dev else df
         if dev:
             sns.lineplot(data=df, x="timestamp", y=metrics)
         else:
