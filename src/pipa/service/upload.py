@@ -218,6 +218,7 @@ def build(config: dict):
         Exception: If the required files are missing.
 
     """
+    config = config.copy()
     data_dir = config.get("data_location", None)
     if data_dir:
         perf_stat_path = os.path.join(data_dir, "perf-stat.csv")
