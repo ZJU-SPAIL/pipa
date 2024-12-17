@@ -396,7 +396,10 @@ def main(config_path: str = None, verbose: bool = False):
     if verbose:
         print("Data:", str(data))
 
-    return send(data)
+    resp = send(data)
+    print("Response:\n", str(resp))
+
+    return resp
 
 
 if __name__ == "__main__":
