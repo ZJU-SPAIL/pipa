@@ -481,3 +481,34 @@ class PerfScriptData:
         """
 
         return pd.DataFrame([b.to_record() for b in self.blocks])
+
+    def to_flat_dataframe(self):
+        """
+        Converts the blocks to a flat dataframe. Can be used for FlameGraph.
+        Returns:
+            pd.DataFrame: A pandas DataFrame containing the records from the blocks.
+        """
+        return self.to_raw_dataframe().explode("calls")
+
+    def to_callee_dataframe(self):
+        """
+        Converts the blocks to a callee dataframe. Can be used for metrics analysis.
+        Returns:
+            pd.DataFrame: A pandas DataFrame containing the records from the blocks.
+        """
+        df = self.to_flat_dataframe()
+        df["callee"] = df["calls"].apply(lambda x: x[0] if x else None)
+
+        def extract_callee_info(callee):
+            pattern = re.compile(r"([0-9a-f]+)\s+(.+?)\s+\((.+)\)")
+            matches = pattern.findall(callee)
+            if matches:
+                addr, symbol, caller = matches[0]
+                return pd.Series([addr, symbol, caller])
+            else:
+                return pd.Series([None, None, None])
+
+        df[["addr", "symbol", "caller"]] = df["callee"].apply(extract_callee_info)
+        df = df.drop(columns=["calls", "callee", "caller"])
+        df[["symbol", "offset"]] = df["symbol"].str.rsplit("+", n=1, expand=True)
+        return df
