@@ -37,13 +37,12 @@ class PerfScriptCall:
         Returns:
             list: A list containing the parsed values [addr, symbol, caller], or None if parsing fails.
         """
-        try:
-            pattern = re.compile(r"([0-9a-f]+)\s+(.+?)\s+\((.+)\)")
-            matches = pattern.findall(line)
-            addr, symbol, caller = matches[0]
-        except Exception as e:
-            logger.warning(f"script one call '{line}' parse failed due to: {e}")
-            return None
+        pattern = re.compile(r"([0-9a-f]+)\s+(.+?)\s+\((.+)\)")
+        matches = pattern.findall(line)
+        if not matches:
+            logger.warning(f"script one call '{line}' parse failed")
+            return [None, None, None]
+        addr, symbol, caller = matches[0]
         return [addr, symbol, caller]
 
     @classmethod
