@@ -506,19 +506,26 @@ class PerfScriptData:
         return df
 
     def to_metric_dataframe(
-        self, numerator: str, denominator: str, metric_name: str | None = None
+        self,
+        numerator: str,
+        denominator: str,
+        metric_name: str | None = None,
+        df: pd.DataFrame | None = None,
     ):
         """
         Converts the blocks to a metric dataframe. Can be used for metrics analysis.
+        It's recommended to use the filtered DataFrame for metric calculation.
 
         Args:
             numerator (str): The numerator of the metric, eg. "ll_cache_miss:S".
             denominator (str): The denominator of the metric, eg. "ll_cache:S".
             metric_name (str): The name of the metric, eg. "ll_cache_miss_ratio".
+            df (pd.DataFrame): The DataFrame to use for the metric calculation. If None, the callee DataFrame will be used.
         Returns:
             pd.DataFrame: A pandas DataFrame containing the records from the blocks.
         """
-        df = self.to_callee_dataframe()
+
+        df = self.to_callee_dataframe() if df is None else df
         df_pivot = (
             df[df["event"].isin([numerator, denominator])]
             .pivot_table(
@@ -528,7 +535,13 @@ class PerfScriptData:
             )
             .reset_index()
         )
+        df_grouped = (
+            df_pivot.drop(columns=["cpu", "time"])
+            .groupby(["symbol"])
+            .sum()
+            .reset_index()
+        )
         if metric_name is None:
             metric_name = f"{numerator}_ratio"
-        df_pivot[metric_name] = df_pivot[numerator] / df_pivot[denominator]
-        return df_pivot.sort_values(by=metric_name, ascending=False)
+        df_grouped[metric_name] = df_grouped[numerator] / df_grouped[denominator]
+        return df_grouped.sort_values(by=metric_name, ascending=False)
