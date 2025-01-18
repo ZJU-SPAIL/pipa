@@ -8,9 +8,7 @@ from pandarallel import pandarallel
 
 
 class PerfScriptData:
-    def __init__(
-        self, parsed_script_path: str, threads_num=min(12, NUM_CORES_PHYSICAL)
-    ):
+    def __init__(self, parsed_script_path: str, threads_num=NUM_CORES_PHYSICAL):
         """
         Initialize the PerfScriptParser object.
 
