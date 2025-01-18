@@ -504,3 +504,31 @@ class PerfScriptData:
         df = df.drop(columns=["calls", "callee", "caller"])
         df[["symbol", "offset"]] = df["symbol"].str.rsplit("+", n=1, expand=True)
         return df
+
+    def to_metric_dataframe(
+        self, numerator: str, denominator: str, metric_name: str | None = None
+    ):
+        """
+        Converts the blocks to a metric dataframe. Can be used for metrics analysis.
+
+        Args:
+            numerator (str): The numerator of the metric, eg. "ll_cache_miss:S".
+            denominator (str): The denominator of the metric, eg. "ll_cache:S".
+            metric_name (str): The name of the metric, eg. "ll_cache_miss_ratio".
+        Returns:
+            pd.DataFrame: A pandas DataFrame containing the records from the blocks.
+        """
+        df = self.to_callee_dataframe()
+        df_pivot = (
+            df[df["event"].isin([numerator, denominator])]
+            .pivot_table(
+                index=["time", "symbol", "cpu"],
+                columns="event",
+                values="value",
+            )
+            .reset_index()
+        )
+        if metric_name is None:
+            metric_name = f"{numerator}_ratio"
+        df_pivot[metric_name] = df_pivot[numerator] / df_pivot[denominator]
+        return df_pivot.sort_values(by=metric_name, ascending=False)
