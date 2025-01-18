@@ -495,19 +495,12 @@ class PerfScriptData:
         Returns:
             pd.DataFrame: A pandas DataFrame containing the records from the blocks.
         """
-        df = self.to_flat_dataframe()
+        df = self.to_raw_dataframe()
         df["callee"] = df["calls"].apply(lambda x: x[0] if x else None)
 
-        def extract_callee_info(callee):
-            pattern = re.compile(r"([0-9a-f]+)\s+(.+?)\s+\((.+)\)")
-            matches = pattern.findall(callee)
-            if matches:
-                addr, symbol, caller = matches[0]
-                return pd.Series([addr, symbol, caller])
-            else:
-                return pd.Series([None, None, None])
-
-        df[["addr", "symbol", "caller"]] = df["callee"].apply(extract_callee_info)
+        df[["addr", "symbol", "caller"]] = df["callee"].apply(
+            lambda callee: pd.Series(PerfScriptCall.parse_one_call(callee))
+        )
         df = df.drop(columns=["calls", "callee", "caller"])
         df[["symbol", "offset"]] = df["symbol"].str.rsplit("+", n=1, expand=True)
         return df
