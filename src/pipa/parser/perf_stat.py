@@ -308,7 +308,7 @@ class PerfStatData:
         Returns:
             bool: True if the data contains multiplexing, False otherwise.
         """
-        return all(self.data["run_percentage"].astype(int) == 100)
+        return not self.data["run_percentage"].astype(float).eq(100.0).all()
 
     def get_wider_data(self):
         """
