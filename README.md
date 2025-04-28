@@ -28,6 +28,43 @@ PIPA is still in the active development process, and the current development foc
 - **Data Visualization**: PIPA can visualize based on the performance data collected to provide intuitive insights.
 - **Data Analytics**: PIPA will integrate SPAIL's performance methodology and models to provide meaningful analysis and reveal software and hardware bottlenecks.
 
+## Preparation
+
+```pipa``` needs to run on ```python 3```, and you may need to install ```venv``` (virtual environemnt) package to isolate ```pipa``` from other python projects, prior to that, you also need to have ```pip``` installed on your computer.
+
+### Install PIP
+Here is a common way to install ```pip``` on a computer without any package management tool:
+#### 1. Download get-pip.py:
+Download the [get-pip.py](https://bootstrap.pypa.io/get-pip.py) script.
+#### 2. Open a Terminal/Command Prompt:
+Open a terminal on Linux or macOS, or a command prompt on Windows.
+#### 3. Navigate to the Download Directory:
+Use the ```cd``` command to navigate to the directory where you saved get-pip.py.
+#### 4. Run the Script:
+Execute the script using the appropriate Python command:
+- Linux/macOS:
+```sh
+python3 get-pip.py
+```
+- Windows:
+> If Python 3 is the default
+```sh
+python get-pip.py
+```
+> If Python 3 is explicitly specified
+```sh
+python3 get-pip.py
+```
+### Install VENV
+
+Then you can install ```venv``` with a single command line:
+```sh
+pip install venv
+```
+### Setup and Use VENV
+
+Please find [more instructions](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/) about how to setup and use virtual environment from the python official website if you are new to it.
+
 ## Installation
 
 PIPA can be easily installed using pip:
