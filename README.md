@@ -43,18 +43,18 @@ Use the ```cd``` command to navigate to the directory where you saved get-pip.py
 #### 4. Run the Script:
 Execute the script using the appropriate Python command:
 - Linux/macOS:
-```sh
-python3 get-pip.py
-```
+  ```sh
+  python3 get-pip.py
+  ```
 - Windows:
-> If Python 3 is the default
-```sh
-python get-pip.py
-```
-> If Python 3 is explicitly specified
-```sh
-python3 get-pip.py
-```
+  > If Python 3 is the default
+  ```sh
+  python get-pip.py
+  ```
+  > If Python 3 is explicitly specified
+  ```sh
+  python3 get-pip.py
+  ```
 ### Install VENV
 
 Then you can install ```venv``` with a single command line:
