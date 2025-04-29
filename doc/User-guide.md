@@ -2,6 +2,29 @@
 
 This guide aims to clearly explain each step required for script generation and data processing, providing specific input examples to ensure users can correctly input the required parameters. The data processing section also includes instructions on how to use the PIPA tools to process and analyze performance data.
 
+## Prerequisites
+
+_**NOTICE**: up until now, ```PIPA``` only supports collecting performance data from a machine running **Linux**, but the supported OS list is subject to change in future releases_
+
+In the context of ```PIPA```, at least 2 types of machines will be involved:
+### Analysis Machine
+  > On which, we will run PIPA to generate scripts, parse and analyze the collected performance data, usually it's controlled by ourselves. The required software components and their versions on this machine go as:
+  
+  | Software/Package | Version |
+  |------------------|---------|
+  | python           | > 3.0   |
+  | pip              | > 20.0  |
+  | notebook         | > 7.0   |
+  
+### Target Machine
+  > On which, we will run our workload (or the workload has already been running), and use PIPA generated scripts to collect data. Usually we have no ```root``` privileges, but we also need to collect the system admin to have the below software components installed on it:
+  
+  | Software/Package | Version |
+  |------------------|---------|
+  | perf             | > 12.0  |
+  | sar              | > 6.0   |
+
+
 ## Table of Contents
 
 1. [Generating Data Collection Scripts](#generating-data-collection-scripts)
