@@ -17,7 +17,7 @@ In the context of ```PIPA```, at least 2 types of machines will be involved:
   | notebook         | > 7.0   |
   
 ### Target Machine
-  > On which, we will run our workload (or the workload has already been running), and use PIPA generated scripts to collect data. Usually we have no ```root``` privileges, but we also need to collect the system admin to have the below software components installed on it:
+  > On which, we will run our workload (or the workload has already been running), and use PIPA generated scripts to collect data. Usually we have no ```root``` privileges, so we need to ask the system admins to have the below software components installed on it:
   
   | Software/Package | Version |
   |------------------|---------|
