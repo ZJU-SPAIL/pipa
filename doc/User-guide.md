@@ -4,7 +4,7 @@ This guide aims to clearly explain each step required for script generation and 
 
 ## Prerequisites
 
-_**NOTICE**: up until now, ```PIPA``` only supports collecting performance data from a machine running **Linux**, but the supported OS list is subject to change in future releases_
+_**NOTICE**: up until now, ```PIPA``` only supports collecting performance data from a machine running **Linux**, but the list of supported OS is subject to change in future releases_
 
 In the context of ```PIPA```, at least 2 types of machines will be involved:
 ### Analysis Machine
