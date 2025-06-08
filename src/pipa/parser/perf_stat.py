@@ -380,7 +380,11 @@ class PerfStatData:
         -   optional unit of metric
         """
         pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
-        try:
+        # 预读取头部确定列数（nrows=0 仅读取列头）
+        header = pd.read_csv(stat_output_path, nrows=0)
+        actual_columns = len(header.columns)
+        
+        if actual_columns == 9:  # 正常模式（含 cpu_id）
             df = pd.read_csv(
                 stat_output_path,
                 skiprows=1,
@@ -409,9 +413,9 @@ class PerfStatData:
                 }
             )
             df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
-        except pd.errors.IntCastingNaNError as e:
+        else:  # 聚合模式（不含 cpu_id，列数为8）
             logger.warning(
-                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use use -1 as cpuid for all"
+                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use -1 as cpu_id for all"
             )
             df = pd.read_csv(
                 stat_output_path,
@@ -440,6 +444,7 @@ class PerfStatData:
             )
             df["cpu_id"] = -1
         return df
+
 
     def get_available_events(self) -> List[str]:
         """Get all available events in the data.
