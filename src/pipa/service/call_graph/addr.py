@@ -163,7 +163,6 @@ def addr2lines(
     >>>     addr2lines(dwarfinfo, [0x400000, 0x400001], pool)
     [('main.c', 0x400000, 1, 1), ('main.c', 0x400001, 1, 2)]
     """
-    global ADDR2LINE_OPT_STRENGTH
     operations_strength = ADDR2LINE_OPT_STRENGTH
     parallel = pool._processes  # type: ignore
     sourcelines: List[Tuple[str, int, int, int, str]] = []
