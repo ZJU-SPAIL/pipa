@@ -42,7 +42,7 @@ def check_file_format(file: str) -> FileFormat:
         if magic[0:4] == b"\x7f\x45\x4c\x46":
             # elf file, 4 bytes
             return FileFormat.elf
-        elif magic[0:6] == b"\xFD\x37\x7A\x58\x5A\x00":
+        elif magic[0:6] == b"\xfd\x37\x7a\x58\x5a\x00":
             # .xz, 6 bytes
             return FileFormat.xz
         elif magic[0:3] == b"BZh":
