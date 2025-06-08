@@ -383,7 +383,7 @@ class PerfStatData:
         # 预读取头部确定列数（nrows=0 仅读取列头）
         header = pd.read_csv(stat_output_path, nrows=0)
         actual_columns = len(header.columns)
-        
+
         if actual_columns == 9:  # 正常模式（含 cpu_id）
             df = pd.read_csv(
                 stat_output_path,
@@ -391,7 +391,7 @@ class PerfStatData:
                 names=[
                     "timestamp",
                     "cpu_id",
-                    "value",
+                    "value",  # 先作为字符串读取，后续处理无效值
                     "unit",
                     "metric_type",
                     "run_time(ns)",
@@ -399,11 +399,22 @@ class PerfStatData:
                     "opt_value",
                     "opt_unit_metric",
                 ],
-            ).astype(
+                dtype={"value": str},  # 关键修改：避免直接转换报错
+            )
+            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
+            invalid_count = df["value"].eq("<not counted>").sum()
+            if invalid_count > 0:
+                logger.warning(
+                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
+                )
+            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
+                "Int64"
+            )  # 支持空值的整数类型
+            # 后续字段类型转换（其他字段保持原逻辑）
+            df = df.astype(
                 {
                     "timestamp": "float64",
                     "cpu_id": str,
-                    "value": "int64",
                     "unit": str,
                     "metric_type": str,
                     "run_time(ns)": "int64",
@@ -422,7 +433,7 @@ class PerfStatData:
                 skiprows=1,
                 names=[
                     "timestamp",
-                    "value",
+                    "value",  # 先作为字符串读取，后续处理无效值
                     "unit",
                     "metric_type",
                     "run_time(ns)",
@@ -430,10 +441,21 @@ class PerfStatData:
                     "opt_value",
                     "opt_unit_metric",
                 ],
-            ).astype(
+                dtype={"value": str},  # 关键修改：避免直接转换报错
+            )
+            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
+            invalid_count = df["value"].eq("<not counted>").sum()
+            if invalid_count > 0:
+                logger.warning(
+                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
+                )
+            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
+                "Int64"
+            )  # 支持空值的整数类型
+            # 后续字段类型转换（其他字段保持原逻辑）
+            df = df.astype(
                 {
                     "timestamp": "float64",
-                    "value": "int64",
                     "unit": str,
                     "metric_type": str,
                     "run_time(ns)": "int64",
@@ -444,7 +466,6 @@ class PerfStatData:
             )
             df["cpu_id"] = -1
         return df
-
 
     def get_available_events(self) -> List[str]:
         """Get all available events in the data.
