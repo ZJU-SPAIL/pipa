@@ -505,8 +505,9 @@ class PerfScriptData:
         df[["symbol", "offset"]] = df["symbol"].str.rsplit("+", n=1, expand=True)
         return df
 
+    @classmethod
     def to_metric_dataframe(
-        self,
+        cls,
         numerator: str,
         denominator: str,
         metric_name: str | None = None,
