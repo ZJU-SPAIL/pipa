@@ -4,7 +4,7 @@ from pipa.common.utils import FileFormat, check_file_format
 
 
 @patch(
-    "builtins.open", new_callable=mock_open, read_data=b"\xFD\x37\x7A\x58\x5A\x00"
+    "builtins.open", new_callable=mock_open, read_data=b"\xfd\x37\x7a\x58\x5a\x00"
 )  # xz magic number
 def test_check_file_format_xz(mock_open):
     assert check_file_format(file="test.xz") == FileFormat.xz
