@@ -506,27 +506,29 @@ class PerfScriptData:
         return df
 
     @classmethod
-    def to_metric_dataframe(
+    def transfer_callee_to_metric_dataframe(
         cls,
+        df: pd.DataFrame,
         numerator: str,
         denominator: str,
         metric_name: str | None = None,
-        df: pd.DataFrame | None = None,
     ):
         """
-        Converts the blocks to a metric dataframe. Can be used for metrics analysis.
-        It's recommended to use the filtered DataFrame for metric calculation.
-
+        This method is a class method that can be used to convert a DataFrame containing perf script data into a metric DataFrame.
+        It filters the DataFrame based on the numerator and denominator events, pivots the data to create a metric ratio,
+        and returns a new DataFrame with the calculated metric.
+        It is recommended to use the filtered DataFrame for metric calculation.
+        This method is useful for analyzing performance metrics in a structured way.
+        
         Args:
+            df (pd.DataFrame): The DataFrame to use for the metric calculation. 
             numerator (str): The numerator of the metric, eg. "ll_cache_miss:S".
             denominator (str): The denominator of the metric, eg. "ll_cache:S".
             metric_name (str): The name of the metric, eg. "ll_cache_miss_ratio".
-            df (pd.DataFrame): The DataFrame to use for the metric calculation. If None, the callee DataFrame will be used.
         Returns:
             pd.DataFrame: A pandas DataFrame containing the records from the blocks.
         """
 
-        df = self.to_callee_dataframe() if df is None else df
         df_pivot = (
             df[df["event"].isin([numerator, denominator])]
             .pivot_table(
@@ -546,3 +548,24 @@ class PerfScriptData:
             metric_name = f"{numerator}_ratio"
         df_grouped[metric_name] = df_grouped[numerator] / df_grouped[denominator]
         return df_grouped.sort_values(by=metric_name, ascending=False)
+
+    def to_metric_dataframe(
+        self,
+        numerator: str,
+        denominator: str,
+        metric_name: str | None = None
+    ):
+        """
+        Converts the blocks to a metric dataframe. Can be used for metrics analysis.
+        It's recommended to use the filtered DataFrame for metric calculation.
+
+        Args:
+            numerator (str): The numerator of the metric, eg. "ll_cache_miss:S".
+            denominator (str): The denominator of the metric, eg. "ll_cache:S".
+            metric_name (str): The name of the metric, eg. "ll_cache_miss_ratio".
+            df (pd.DataFrame): The DataFrame to use for the metric calculation. If None, the callee DataFrame will be used.
+        Returns:
+            pd.DataFrame: A pandas DataFrame containing the records from the blocks.
+        """
+
+        return self.transfer_callee_to_metric_dataframe(self.to_callee_dataframe(), numerator, denominator, metric_name)
