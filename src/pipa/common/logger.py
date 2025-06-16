@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 # set to ERROR since print will slow down the process
 # use DEBUG, INFO, WARNING at most of the time
 stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.ERROR)
+stream_handler.setLevel(logging.WARNING)
 
 # Create a formatter and add it to the stream handler
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
