@@ -519,9 +519,9 @@ class PerfScriptData:
         and returns a new DataFrame with the calculated metric.
         It is recommended to use the filtered DataFrame for metric calculation.
         This method is useful for analyzing performance metrics in a structured way.
-        
+
         Args:
-            df (pd.DataFrame): The DataFrame to use for the metric calculation. 
+            df (pd.DataFrame): The DataFrame to use for the metric calculation.
             numerator (str): The numerator of the metric, eg. "ll_cache_miss:S".
             denominator (str): The denominator of the metric, eg. "ll_cache:S".
             metric_name (str): The name of the metric, eg. "ll_cache_miss_ratio".
@@ -550,10 +550,7 @@ class PerfScriptData:
         return df_grouped.sort_values(by=metric_name, ascending=False)
 
     def to_metric_dataframe(
-        self,
-        numerator: str,
-        denominator: str,
-        metric_name: str | None = None
+        self, numerator: str, denominator: str, metric_name: str | None = None
     ):
         """
         Converts the blocks to a metric dataframe. Can be used for metrics analysis.
@@ -568,4 +565,6 @@ class PerfScriptData:
             pd.DataFrame: A pandas DataFrame containing the records from the blocks.
         """
 
-        return self.transfer_callee_to_metric_dataframe(self.to_callee_dataframe(), numerator, denominator, metric_name)
+        return self.transfer_callee_to_metric_dataframe(
+            self.to_callee_dataframe(), numerator, denominator, metric_name
+        )
