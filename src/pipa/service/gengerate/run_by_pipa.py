@@ -10,6 +10,7 @@ from pipa.service.gengerate.utils import (
     generate_core_list,
 )
 from pipa.service.export_sys_config import write_export_config_script
+from .common.collect import build_perf_stat_cmd
 import os
 
 
@@ -103,9 +104,13 @@ def generate(config):
                 f"emon -i {mpp}/emon_event_all.txt -v -f $WORKSPACE/emon_result.txt -t 0.1 -l 100000000 -c -experimental -w {command} &\n"
             )
         else:
-            f.write(
-                f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv {command}\n"
+            perf_stat_cmd = build_perf_stat_cmd(
+                events_stat=events_stat,
+                core_list=f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
+                count_delta_stat=count_delta_stat,
+                command=command,
             )
+            f.write(perf_stat_cmd)
 
         f.write("kill -9 $sar_pid\n")
         f.write("LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt\n\n")

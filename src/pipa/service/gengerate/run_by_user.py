@@ -9,6 +9,7 @@ from pipa.service.gengerate.utils import (
     move_old_file,
 )
 from pipa.service.export_sys_config import write_export_config_script
+from .common.collect import build_perf_stat_cmd
 import os
 
 
@@ -110,10 +111,13 @@ def generate(config: dict):
                 + (f"-w sleep {stat_time}\n" if stat_time else "\n")
             )
         else:
-            f.write(
-                f"perf stat -e {events_stat} -C {CORES_ALL[0]}-{CORES_ALL[-1]} -A -x , -I {count_delta_stat} -o $WORKSPACE/perf-stat.csv"
-                + (f" sleep {stat_time}\n" if stat_time else "\n")
+            perf_stat_cmd = build_perf_stat_cmd(
+                events_stat=events_stat,
+                core_list=f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
+                count_delta_stat=count_delta_stat,
+                command="sleep " + str(stat_time) if stat_time else "\n",
             )
+            f.write(perf_stat_cmd)
         f.write("kill -9 $sar_pid\n")
 
         f.write("echo 'Performance data collected successfully.'\n")
