@@ -1,4 +1,4 @@
-from pipa.service.gengerate.common import (
+from pipa.service.gengerate.utils import (
     load_yaml_config,
     generate_core_list,
 )

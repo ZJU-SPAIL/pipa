@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, mock_open, MagicMock
 import os
 
-from pipa.service.gengerate.common import (
+from pipa.service.gengerate.utils import (
     ask_number,
     quest_basic,
     write_title,
@@ -86,7 +86,7 @@ def test_opener(mock_open):
 
 def test_generate_core_list():
     with patch("pipa.service.gengerate.common.CORES_ALL", new=list(range(0, 5))):
-        from pipa.service.gengerate.common import generate_core_list
+        from pipa.service.gengerate.utils import generate_core_list
 
         assert generate_core_list("1-4") == "1-4"
         assert generate_core_list("1-4", only_comma=True) == "1,2,3,4"

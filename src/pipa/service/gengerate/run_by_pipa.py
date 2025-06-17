@@ -1,6 +1,6 @@
 import questionary
 from rich import print
-from pipa.service.gengerate.common import (
+from pipa.service.gengerate.utils import (
     quest_basic,
     CORES_ALL,
     write_title,
