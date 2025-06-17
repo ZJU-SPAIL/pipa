@@ -85,7 +85,7 @@ def test_opener(mock_open):
 
 
 def test_generate_core_list():
-    with patch("pipa.service.gengerate.common.CORES_ALL", new=list(range(0, 5))):
+    with patch("pipa.service.gengerate.utils.CORES_ALL", new=list(range(0, 5))):
         from pipa.service.gengerate.utils import generate_core_list
 
         assert generate_core_list("1-4") == "1-4"
