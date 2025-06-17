@@ -48,7 +48,7 @@ pipa generate
 ```
 Then you can complete the interaction through the CLI to provide the necessary parameters. You can choose to start the workload with perf, or you can choose to observe the system directly.
 
-For the detailed usage, please check [user guide](doc/User-guide.md).
+For the detailed case study, please refer to the [quick-start](doc/quick-start.md).
 
 PIPA's API documentation is available at [https://zju-spail.github.io/pipa/](https://zju-spail.github.io/pipa/).
 
