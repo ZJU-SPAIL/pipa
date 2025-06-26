@@ -9,9 +9,122 @@ import seaborn as sns
 import plotly.graph_objects as go
 
 
-class PerfStatData:
-    def __init__(self, perf_stat_csv_path: str):
-        self.data = self.parse_perf_stat_file(perf_stat_csv_path)
+class PerfStatParser:
+    @staticmethod
+    def parse_perf_stat_file(stat_output_path: str):
+        """
+        Parse the perf stat output file and return a pandas DataFrame.
+
+        Args:
+            stat_output_path (str): The path to the perf stat output file.
+
+        Returns:
+            pandas.DataFrame: The parsed data as a DataFrame.
+
+        The fields are in this order:
+        -   optional usec time stamp in fractions of second (with -I xxx)
+        -   optional CPU, core, or socket identifier
+        -   optional number of logical CPUs aggregated
+        -   counter value
+        -   unit of the counter value or empty
+        -   event name
+        -   run time of counter
+        -   percentage of measurement time the counter was running
+        -   optional metric value
+        -   optional unit of metric
+        """
+        pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
+        # 预读取头部确定列数（nrows=0 仅读取列头）
+        header = pd.read_csv(stat_output_path, nrows=0)
+        actual_columns = len(header.columns)
+
+        if actual_columns == 9:  # 正常模式（含 cpu_id）
+            df = pd.read_csv(
+                stat_output_path,
+                skiprows=1,
+                names=[
+                    "timestamp",
+                    "cpu_id",
+                    "value",  # 先作为字符串读取，后续处理无效值
+                    "unit",
+                    "metric_type",
+                    "run_time(ns)",
+                    "run_percentage",
+                    "opt_value",
+                    "opt_unit_metric",
+                ],
+                dtype={"value": str},
+            )
+            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
+            invalid_count = df["value"].eq("<not counted>").sum()
+            if invalid_count > 0:
+                logger.warning(
+                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
+                )
+            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
+                "Int64"
+            )  # 支持空值的整数类型
+            # 后续字段类型转换（其他字段保持原逻辑）
+            df = df.astype(
+                {
+                    "timestamp": "float64",
+                    "cpu_id": str,
+                    "unit": str,
+                    "metric_type": str,
+                    "run_time(ns)": "int64",
+                    "run_percentage": "float64",
+                    "opt_value": "float64",
+                    "opt_unit_metric": str,
+                }
+            )
+            df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
+        else:  # 聚合模式（不含 cpu_id，列数为8）
+            logger.warning(
+                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use -1 as cpu_id for all"
+            )
+            df = pd.read_csv(
+                stat_output_path,
+                skiprows=1,
+                names=[
+                    "timestamp",
+                    "value",  # 先作为字符串读取，后续处理无效值
+                    "unit",
+                    "metric_type",
+                    "run_time(ns)",
+                    "run_percentage",
+                    "opt_value",
+                    "opt_unit_metric",
+                ],
+                dtype={"value": str},
+            )
+            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
+            invalid_count = df["value"].eq("<not counted>").sum()
+            if invalid_count > 0:
+                logger.warning(
+                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
+                )
+            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
+                "Int64"
+            )  # 支持空值的整数类型
+            # 后续字段类型转换（其他字段保持原逻辑）
+            df = df.astype(
+                {
+                    "timestamp": "float64",
+                    "unit": str,
+                    "metric_type": str,
+                    "run_time(ns)": "int64",
+                    "run_percentage": "float64",
+                    "opt_value": "float64",
+                    "opt_unit_metric": str,
+                }
+            )
+            df["cpu_id"] = -1
+        return df
+
+
+class PerfStatDataProcessor:
+    def __init__(self, data):
+        self.data = data
         self._df_wider = None
 
     def get_CPI(self):
@@ -109,45 +222,6 @@ class PerfStatData:
             float: The average CPI value for the specified threads.
         """
         return self.get_CPI_overall("thread").loc[threads]["CPI"].mean()
-
-    def plot_CPI_time_by_thread(self, threads: list):
-        """
-        Plots CPI over time for the specified threads.
-
-        Args:
-            threads (list): A list of thread IDs.
-
-        Returns:
-            None
-        """
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-        if len(threads) > 1:
-            p = sns.lineplot(
-                data=self.get_CPI_time(threads), x="timestamp", hue="cpu_id", y="CPI"
-            )
-        else:
-            p = sns.lineplot(data=self.get_CPI_time(threads), x="timestamp", y="CPI")
-        p.set_title("CPI over Time, Thread " + ",".join([str(t) for t in threads]))
-        p.set_xlabel("Time(s)")
-        p.set_ylabel("CPI")
-        return p
-
-    def plot_CPI_time_system(self):
-        """
-        Plots CPI (Cycles Per Instruction) over time for the system.
-
-        This method generates a line plot showing the CPI values over time for the system.
-        It uses the data returned by the `get_CPI_time` method and saves the plot as an image.
-
-        Returns:
-            None
-        """
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-        p = sns.lineplot(data=self.get_CPI_time(), x="timestamp", y="CPI")
-        p.set_title("CPI over Time, System")
-        p.set_xlabel("Time(s)")
-        p.set_ylabel("CPI")
-        return p
 
     def get_events_overall(self, events: str, data_type="thread"):
         """
@@ -356,117 +430,6 @@ class PerfStatData:
         df_t.rename(columns={"timestamp_": "timestamp"}, inplace=True)
         return df_t
 
-    @staticmethod
-    def parse_perf_stat_file(stat_output_path: str):
-        """
-        Parse the perf stat output file and return a pandas DataFrame.
-
-        Args:
-            stat_output_path (str): The path to the perf stat output file.
-
-        Returns:
-            pandas.DataFrame: The parsed data as a DataFrame.
-
-        The fields are in this order:
-        -   optional usec time stamp in fractions of second (with -I xxx)
-        -   optional CPU, core, or socket identifier
-        -   optional number of logical CPUs aggregated
-        -   counter value
-        -   unit of the counter value or empty
-        -   event name
-        -   run time of counter
-        -   percentage of measurement time the counter was running
-        -   optional metric value
-        -   optional unit of metric
-        """
-        pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
-        # 预读取头部确定列数（nrows=0 仅读取列头）
-        header = pd.read_csv(stat_output_path, nrows=0)
-        actual_columns = len(header.columns)
-
-        if actual_columns == 9:  # 正常模式（含 cpu_id）
-            df = pd.read_csv(
-                stat_output_path,
-                skiprows=1,
-                names=[
-                    "timestamp",
-                    "cpu_id",
-                    "value",  # 先作为字符串读取，后续处理无效值
-                    "unit",
-                    "metric_type",
-                    "run_time(ns)",
-                    "run_percentage",
-                    "opt_value",
-                    "opt_unit_metric",
-                ],
-                dtype={"value": str},  # 关键修改：避免直接转换报错
-            )
-            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
-            invalid_count = df["value"].eq("<not counted>").sum()
-            if invalid_count > 0:
-                logger.warning(
-                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
-                )
-            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
-                "Int64"
-            )  # 支持空值的整数类型
-            # 后续字段类型转换（其他字段保持原逻辑）
-            df = df.astype(
-                {
-                    "timestamp": "float64",
-                    "cpu_id": str,
-                    "unit": str,
-                    "metric_type": str,
-                    "run_time(ns)": "int64",
-                    "run_percentage": "float64",
-                    "opt_value": "float64",
-                    "opt_unit_metric": str,
-                }
-            )
-            df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
-        else:  # 聚合模式（不含 cpu_id，列数为8）
-            logger.warning(
-                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use -1 as cpu_id for all"
-            )
-            df = pd.read_csv(
-                stat_output_path,
-                skiprows=1,
-                names=[
-                    "timestamp",
-                    "value",  # 先作为字符串读取，后续处理无效值
-                    "unit",
-                    "metric_type",
-                    "run_time(ns)",
-                    "run_percentage",
-                    "opt_value",
-                    "opt_unit_metric",
-                ],
-                dtype={"value": str},  # 关键修改：避免直接转换报错
-            )
-            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
-            invalid_count = df["value"].eq("<not counted>").sum()
-            if invalid_count > 0:
-                logger.warning(
-                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
-                )
-            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
-                "Int64"
-            )  # 支持空值的整数类型
-            # 后续字段类型转换（其他字段保持原逻辑）
-            df = df.astype(
-                {
-                    "timestamp": "float64",
-                    "unit": str,
-                    "metric_type": str,
-                    "run_time(ns)": "int64",
-                    "run_percentage": "float64",
-                    "opt_value": "float64",
-                    "opt_unit_metric": str,
-                }
-            )
-            df["cpu_id"] = -1
-        return df
-
     def get_available_events(self) -> List[str]:
         """Get all available events in the data.
 
@@ -478,6 +441,57 @@ class PerfStatData:
         col = col.drop(["timestamp", "cpu_id"])
         return col.to_list()
 
+
+class PerfStatPlotter:
+    def __init__(self, data_processor: PerfStatDataProcessor):
+        self.data_processor = data_processor
+
+    def plot_CPI_time_by_thread(self, threads: list):
+        """
+        Plots CPI over time for the specified threads.
+
+        Args:
+            threads (list): A list of thread IDs.
+
+        Returns:
+            None
+        """
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+        if len(threads) > 1:
+            p = sns.lineplot(
+                data=self.data_processor.get_CPI_time(threads),
+                x="timestamp",
+                hue="cpu_id",
+                y="CPI",
+            )
+        else:
+            p = sns.lineplot(
+                data=self.data_processor.get_CPI_time(threads), x="timestamp", y="CPI"
+            )
+        p.set_title("CPI over Time, Thread " + ",".join([str(t) for t in threads]))
+        p.set_xlabel("Time(s)")
+        p.set_ylabel("CPI")
+        return p
+
+    def plot_CPI_time_system(self):
+        """
+        Plots CPI (Cycles Per Instruction) over time for the system.
+
+        This method generates a line plot showing the CPI values over time for the system.
+        It uses the data returned by the `get_CPI_time` method and saves the plot as an image.
+
+        Returns:
+            None
+        """
+        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
+        p = sns.lineplot(
+            data=self.data_processor.get_CPI_time(), x="timestamp", y="CPI"
+        )
+        p.set_title("CPI over Time, System")
+        p.set_xlabel("Time(s)")
+        p.set_ylabel("CPI")
+        return p
+
     def plot_interactive_event(
         self,
         events: Optional[List[str]] = None,
@@ -487,7 +501,7 @@ class PerfStatData:
         show: bool = True,
         write_to_html: Optional[str] = None,
     ) -> List[go.Scatter]:
-        df = self.get_wider_data()
+        df = self.data_processor.get_wider_data()
         scatters = []
         if threads:
             df = df[df["cpu_id"].isin(threads)]
@@ -529,3 +543,19 @@ class PerfStatData:
                 show=show,
                 write_to_html=write_to_html,
             )
+
+
+class PerfStatData:
+    def __init__(self, perf_stat_csv_path: str):
+        self.data = PerfStatParser.parse_perf_stat_file(perf_stat_csv_path)
+        self.data_processor = PerfStatDataProcessor(self.data)
+        self.plotter = PerfStatPlotter(self.data_processor)
+
+    def __getattr__(self, name):
+        if hasattr(self.data_processor, name):
+            return getattr(self.data_processor, name)
+        if hasattr(self.plotter, name):
+            return getattr(self.plotter, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
