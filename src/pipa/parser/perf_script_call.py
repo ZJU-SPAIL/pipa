@@ -495,8 +495,6 @@ class PerfScriptData:
     def __init__(self, blocks: List[PerfScriptBlock]):
         self.blocks: List[PerfScriptBlock] = blocks
         self.processor = PerfScriptDataProcessor(blocks)
-        
-        
 
     def __str__(self):
         return f"{self.blocks}"
