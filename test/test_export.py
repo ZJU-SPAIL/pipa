@@ -1,48 +1,88 @@
-import pandas as pd
+import unittest
 import os
-import pytest
-
-# Import the function to be tested
-from pipa.common.export import export_dataframe_to_csv
-
-
-# Define a sample function to be decorated
-def process_data():
-    data = {"Name": ["John", "Jane", "Mike"], "Age": [25, 30, 35]}
-    return pd.DataFrame(data)
+import pandas as pd
+from unittest.mock import patch, MagicMock
+from pipa.common.export import SQLiteConnector, export_dataframe_to_csv
 
 
-# Define test cases
-def test_export_dataframe_to_csv():
-    # Create a temporary output file path for testing
-    temp_output_filepath = "data/out/test_output.csv"
-    os.makedirs("data/out", exist_ok=True)
+class TestSQLiteConnector(unittest.TestCase):
+    def setUp(self):
+        self.db_path = ":memory:"
+        self.connector = SQLiteConnector(self.db_path)
+        self.test_df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
 
-    # Decorate the sample function with the export_dataframe_to_csv decorator
-    @export_dataframe_to_csv(filepath=temp_output_filepath)
-    def decorated_process_data():
-        return process_data()
+    @patch("sqlite3.connect")
+    def test_fetch_table_as_dataframe(self, mock_connect):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.__enter__.return_value.cursor.return_value.execute.return_value = None
+        mock_conn.__enter__.return_value.cursor.return_value.fetchall.return_value = [
+            (1, 4),
+            (2, 5),
+            (3, 6),
+        ]
+        mock_conn.__enter__.return_value.cursor.return_value.description = [
+            ("A",),
+            ("B",),
+        ]
 
-    # Call the decorated function
-    result = decorated_process_data()
+        result = self.connector.fetch_table_as_dataframe("test_table")
+        self.assertTrue(isinstance(result, pd.DataFrame))
+        self.assertEqual(result.shape, (3, 2))
 
-    # Assert that the result is the same as the original function's result
-    assert result.equals(process_data())
+    @patch("sqlite3.connect")
+    def test_execute_query(self, mock_connect):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.__enter__.return_value.cursor.return_value.execute.return_value = None
+        mock_conn.__enter__.return_value.cursor.return_value.fetchall.return_value = [
+            (1, 4),
+            (2, 5),
+            (3, 6),
+        ]
+        mock_conn.__enter__.return_value.cursor.return_value.description = [
+            ("A",),
+            ("B",),
+        ]
 
-    # Assert that the output file exists
-    assert os.path.exists(temp_output_filepath)
+        result = self.connector.execute_query("SELECT * FROM test_table")
+        self.assertTrue(isinstance(result, pd.DataFrame))
+        self.assertEqual(result.shape, (3, 2))
 
-    # Assert that the output file is a CSV file
-    assert temp_output_filepath.endswith(".csv")
+    @patch("sqlite3.connect")
+    def test_export_table_to_csv(self, mock_connect):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.__enter__.return_value.cursor.return_value.execute.return_value = None
+        mock_conn.__enter__.return_value.cursor.return_value.fetchall.return_value = [
+            (1, 4),
+            (2, 5),
+            (3, 6),
+        ]
+        mock_conn.__enter__.return_value.cursor.return_value.description = [
+            ("A",),
+            ("B",),
+        ]
 
-    # Assert that the output file is not empty
-    assert os.path.getsize(temp_output_filepath) > 0
-
-    # Clean up the temporary output file
-    os.remove(temp_output_filepath)
-    os.rmdir("data/out")
+        output_file = "test_output.csv"
+        self.connector.export_table_to_csv("test_table", output_file)
+        self.assertTrue(os.path.exists(output_file))
+        os.remove(output_file)
 
 
-# Run the tests
-if __name__ == "__main__":  # pragma: no cover
-    pytest.main([__file__])
+class TestExportDataframeToCSV(unittest.TestCase):
+    def test_export_dataframe_to_csv(self):
+        @export_dataframe_to_csv("test_output.csv")
+        def dummy_function():
+            return pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+
+        dummy_function()
+        self.assertTrue(os.path.exists("test_output.csv"))
+        df = pd.read_csv("test_output.csv")
+        self.assertEqual(df.shape, (3, 2))
+        self.assertTrue(df.equals(pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})))
+        os.remove("test_output.csv")
+
+
+if __name__ == "__main__":
+    unittest.main()
