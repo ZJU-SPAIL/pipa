@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from pipa.parser.sar import (
+from pipa.parser.sar.sar import (
     trans_time_to_seconds,
     merge_one_line,
     add_post_fix,

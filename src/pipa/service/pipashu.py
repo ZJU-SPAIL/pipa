@@ -1,4 +1,4 @@
-from pipa.parser.sar import SarData
+from pipa.parser.sar.sar import SarData
 from pipa.parser.perf_stat import PerfStatData
 from pipa.parser.perf_script_call import PerfScriptData
 
