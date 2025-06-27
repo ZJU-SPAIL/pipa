@@ -1,7 +1,6 @@
 # PIPA
 
-PIPA (Progressive & Intelligent Performance Analytics) is a platform that aggregates a complete toolchain of performance data collection, processing, and analysis with
- advanced algorithms, enabling users to effortlessly obtain in - depth insights into the performance of their systems and applications. It bridges the gap between raw performance data and actionable information, allowing for quick identification of bottlenecks and optimization opportunities.
+PIPA (Progressive & Intelligent Performance Analytics) is a platform that aggregates a complete toolchain of performance data collection, processing, and analysis with advanced algorithms, enabling users to effortlessly obtain in - depth insights into the performance of their systems and applications. It bridges the gap between raw performance data and actionable information, allowing for quick identification of bottlenecks and optimization opportunities.
 
 
 <div align="center">
