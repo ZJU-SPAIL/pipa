@@ -227,7 +227,7 @@ def parse_perf_report_file_2(parsed_report_path, events=None):
                             colspecs[modi_indx] = (beg_old, (beg_old * (len(events)-1)+ end_old)//len(events))
                         else:
                             headers.insert(modi_indx+i, modi_column+'_'+event)
-                            colspecs.insert(modi_indx+i, ((beg_old * (len(events)-i)+ end_old * i)//len(events), end_old))
+                            colspecs.insert(modi_indx+i, ((beg_old * (len(events)-i)+ end_old * i)//len(events), ((beg_old * (len(events)-(i+1))+ end_old * (i+1))//len(events))))
                         i += 1
 
             elif events is None and line.startswith('# Samples'):  # get events
@@ -244,9 +244,7 @@ def parse_perf_report_file_2(parsed_report_path, events=None):
                     logger.warning("get events failed for line: " + line + "\n with error: " + str(e))
             elif not line.startswith('#') and line!='\n':
                 content.append(line)
-            
             pre_line = line
-
     data = [parse_one_line_2(l, colspecs,headers) for l in content]
 
     data = [d for d in data if d is not None]
