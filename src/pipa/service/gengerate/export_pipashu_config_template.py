@@ -20,11 +20,9 @@ use_emon: False # Whether to use emon.
 count_delta_stat: 1000 # The count delta of perf-stat.
 # No need to set if use_emon is True.
 events_stat: # The events to be used in perf-stat.
-        - cycles
-        - instructions
-        - branch-misses
-        - L1-dcache-load-misses
-        - L1-icache-load-misses
+        - cycles:D
+        - instructions:D
+        - ref-cycles:D
 # No need to set if use_emon is True.
 
 MPP_HOME: /mnt/hdd/share/emon/system_health_monitor # The path to the mpp.

@@ -31,7 +31,7 @@ d by perf.
 ? What's count deltas of perf-stat? (Default: 1000 milliseconds)
  1000
 ? What's the event of perf-stat?
- cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses
+ cycles:D,instructions:D,ref-cycles:D
 ? Whether to use taskset?
  Yes
 ? Which cores do you want to use? (Default: 0-47)
@@ -76,7 +76,7 @@ perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report
 
 sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &
 sar_pid=$!
-perf stat -e cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses -C 0-47 -A -x , -I 1000 -o $WORKSPACE/perf-stat.csv /usr/bin/taskset -c 0-47 perf bench futex hash
+perf stat -e cycles:D,instructions:D,ref-cycles:D -C 0-47 -A -x , -I 1000 -o $WORKSPACE/perf-stat.csv /usr/bin/taskset -c 0-47 perf bench futex hash
 kill -9 $sar_pid
 LC_ALL='C' sar -A -f $WORKSPACE/sar.dat >$WORKSPACE/sar.txt
 

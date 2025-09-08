@@ -81,7 +81,7 @@ def quest_basic():
         )
         events_stat = questionary.text(
             "What's the event of perf-stat?\n",
-            "cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses",
+            "cycles:D,instructions:D,ref-cycles:D",
         ).ask()
         return {
             "workspace": workspace,

@@ -75,7 +75,7 @@ pipa generate
 ? Whether to use perf-annotate? No
 ? Do you want to use perf-stat or emon? perf-stat
 ? What's count deltas of perf-stat? (Default: 1000 milliseconds) 1000
-? What's the event of perf-stat? cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses
+? What's the event of perf-stat? cycles:D,instructions:D,ref-cycles:D
 ? Whether to use taskset? Yes
 ? Which cores do you want to use? (Default: 0-47) 0-47
 ? What's the command of workload? perf bench futex hash
@@ -94,7 +94,7 @@ pipa generate
 ? Whether to use perf-annotate? No
 ? Do you want to use perf-stat or emon? perf-stat
 ? What's count deltas of perf-stat? (Default: 1000 milliseconds) 1000
-? What's the event of perf-stat? cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses
+? What's the event of perf-stat? cycles:D,instructions:D,ref-cycles:D
 ? Whether to set the duration of the perf-record run?
   Yes
   No, I'll control it by myself. (Exit by Ctrl+C)
@@ -274,7 +274,7 @@ pipa generate
 ? Whether to use perf-annotate? No
 ? Do you want to use perf-stat or emon? perf-stat
 ? What's count deltas of perf-stat? (Default: 1000 milliseconds) 1000
-? What's the event of perf-stat? cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses
+? What's the event of perf-stat? cycles,instructions
 ? Whether to use taskset? Yes
 ? Which cores do you want to use? (Default: 0-47) 0-47
 ? What's the command of workload? perf bench futex hash
@@ -293,7 +293,7 @@ pipa generate
 ? Whether to use perf-annotate? No
 ? Do you want to use perf-stat or emon? perf-stat
 ? What's count deltas of perf-stat? (Default: 1000 milliseconds) 1000
-? What's the event of perf-stat? cycles,instructions,branch-misses,L1-dcache-load-misses,L1-icache-load-misses
+? What's the event of perf-stat? cycles:D,instructions:D,ref-cycles:D
 ? Whether to set the duration of the perf-record run?
   Yes
   No, I'll control it by myself. (Exit by Ctrl+C)
