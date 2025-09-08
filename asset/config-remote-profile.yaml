@@ -1,0 +1,35 @@
+# Configuration template for PIPA remote SSH profiling
+# Command Example: pipa remote_profile --config_path=./config-remote-profile.yaml
+
+# SSH Connection Settings
+host: 0.0.0.0              # IP address or hostname of the remote machine
+username: root                   # SSH username
+port: 22                         # SSH port (default: 22)
+# Authentication (use one of the following methods)
+password: password123            # SSH password (for password authentication)
+#key_path: ~/.ssh/id_rsa         # Path to SSH private key file (for key authentication)
+
+# Profiling Configuration
+profiling_mode: sar              # Profiling mode: sar, perf_stat, or perf_record
+
+# Workload Configuration
+workload_command: perf bench futex hash     # Command to execute as the workload on remote machine
+
+# Output Configuration
+local_output_dir: ./remote_profile_output  # Local directory to store results
+remote_output_dir: /tmp/pipa_remote_profile  # Remote directory for temporary files
+cleanup_remote: true             # Whether to clean up remote files after profiling
+
+# Mode-specific Configuration
+# For sar mode
+sar_interval: 1                  # Sampling interval in seconds
+sar_count: all                   # Number of samples to collect (use "all" for continuous collection until workload finishes)
+
+# Mode-specific Configuration, 3 of them are Optional
+# For perf_stat mode
+perf_stat_events: "cycles,instructions,cache-misses"  # Events to collect with perf stat
+
+# For perf_record mode
+perf_record_events: "{cycles,instructions}:S"  # Events to collect with perf record
+perf_record_freq: 999            # Sampling frequency for perf record
+perf_record_callgraph: true      # Whether to capture call graphs with -g

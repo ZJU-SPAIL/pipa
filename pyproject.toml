@@ -47,7 +47,8 @@ dependencies = [
     "pyelftools",
     "capstone",
     "plotly",
-    "nbformat"
+    "nbformat",
+    "paramiko"
 ]
 
 [project.optional-dependencies]

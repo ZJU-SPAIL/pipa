@@ -5,6 +5,7 @@ from pipa.service.export_sys_config import run_export_config_script
 from pipa.service.upload import main as pipa_upload
 from pipa.service.dump import dump as pipa_dump
 from pipa.service.archive import archive as pipa_archive
+from pipa.service.remote import remote as pipa_remote_profile
 from pipa.common.utils import handle_user_cancelled
 from pipa.common.logger import logger, set_level
 from pipa.__about__ import __version__
@@ -62,6 +63,11 @@ class PipaCLI:
         # Dump PIPASHU overview data to a file
         pipa_dump(output_path, config_path, verbose)
 
+    @handle_user_cancelled
+    def remote(self, config_path: str = None, verbose: bool = False):
+        # Profile applications on a remote machine via SSH
+        pipa_remote_profile(config_path, verbose)
+
     def archive(
         self,
         perf_data: str = "perf.data",
@@ -89,6 +95,7 @@ class PipaCLI:
         print("  pipa upload")
         print("  pipa dump")
         print("  pipa archive")
+        print("  pipa remote")
         print("  pipa version")
         print("  pipa help")
         print("Options:")
@@ -97,6 +104,7 @@ class PipaCLI:
         print("  upload    Upload the performance data to PIPAD server")
         print("  dump      Dump PIPASHU overview data to a file")
         print("  archive   Archive buildid and source files")
+        print("  remote  Profile applications on a remote machine via SSH")
         print("  version   Show the version of PIPA")
         print("  help      Show this help message and exit")
 
