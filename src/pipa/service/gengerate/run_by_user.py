@@ -9,7 +9,7 @@ from pipa.service.gengerate.utils import (
     move_old_file,
 )
 from pipa.service.export_sys_config import write_export_config_script
-from .common.collect import build_perf_stat_cmd
+from pipa.service.gengerate.common.collect import build_perf_stat_cmd
 import os
 
 
@@ -116,6 +116,7 @@ def generate(config: dict):
                 core_list=f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
                 count_delta_stat=count_delta_stat,
                 command="sleep " + str(stat_time) if stat_time else "\n",
+                workspace="$WORKSPACE",
             )
             f.write(perf_stat_cmd)
         f.write("kill -9 $sar_pid\n")
@@ -150,7 +151,7 @@ def generate(config: dict):
         )
         print(
             "Note you need to make sure the workload is running when you call pipa-collect.sh",
-            "and the workload is finished when you call pipa-parsed.sh.",
+            "and the workload is finished when you call pipa-parse.sh.",
             "Otherwise, the performance data may be incomplete or incorrect."
             "You should ensure that the total workload is longer than ten minutes."
             "The core list is generated according to the machine which runs this script now.",
