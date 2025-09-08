@@ -171,12 +171,12 @@ bash ./data/pipa-run.sh > ./data/pipa-run.log
 
 2. 然后运行采集脚本：
    ```shell
-bash ./data/pipa-collect.sh > ./data/pipa-collect.log
+    bash ./data/pipa-collect.sh > ./data/pipa-collect.log
    ```
 
 3. 当工作负载完成后，运行解析脚本：
    ```shell
-bash ./data/pipa-parse.sh > ./data/pipa-parse.log
+    bash ./data/pipa-parse.sh > ./data/pipa-parse.log
    ```
 
 ## 注意事项
