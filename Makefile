@@ -65,6 +65,9 @@ test:
 	@echo "[Test Phase] Running test suite..."
 	@pytest --ignore=data -v
 	@echo "[Test Phase] Testing completed!"
+	@echo "[Test Phase] Cleaning up test logs..."
+	@rm -f pipa.log
+	@echo "[Test Phase] Test logs cleaned up!"
 
 # Code quality check
 lint:
