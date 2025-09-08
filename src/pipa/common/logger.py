@@ -20,7 +20,7 @@ stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(formatter)
 
 # Add file handler
-file_handler = logging.FileHandler('pipa.log')
+file_handler = logging.FileHandler("pipa.log")
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
@@ -48,6 +48,7 @@ def set_level(
 
 def log_execution(func):
     """Decorator to log function execution details"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger.info(f"Executing function: {func.__name__}")
@@ -57,11 +58,16 @@ def log_execution(func):
             logger.info(f"Function {func.__name__} executed successfully")
             return result
         except Exception as e:
-            logger.error(f"Function {func.__name__} failed with error: {str(e)}", exc_info=True)
+            logger.error(
+                f"Function {func.__name__} failed with error: {str(e)}", exc_info=True
+            )
             raise
         finally:
             end_time = time.time()
-            logger.info(f"Function {func.__name__} execution time: {end_time - start_time:.4f} seconds")
+            logger.info(
+                f"Function {func.__name__} execution time: {end_time - start_time:.4f} seconds"
+            )
+
     return wrapper
 
 
