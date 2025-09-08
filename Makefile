@@ -1,4 +1,4 @@
-all: clean lint build uninstall install test
+all: clean lint build uninstall install install-scripts test
 
 build:
 	pip install build
@@ -16,6 +16,19 @@ uninstall:
 	else \
 		echo "pypipa not installed."; \
 	fi
+
+install-scripts:
+	@echo "Installing PIPA scripts..."
+	@# Create user's bin directory if it doesn't exist
+	@mkdir -p $(HOME)/.local/bin
+	@# Copy scripts to user's bin directory
+	@cp -f ./script/pipa-collect.sh $(HOME)/.local/bin/pipa-collect
+	@cp -f ./script/pipa-parse.sh $(HOME)/.local/bin/pipa-parse
+	@# Make sure scripts are executable
+	@chmod +x $(HOME)/.local/bin/pipa-collect
+	@chmod +x $(HOME)/.local/bin/pipa-parse
+	@echo "Scripts installed successfully to $(HOME)/.local/bin"
+	@echo "Please ensure $(HOME)/.local/bin is in your PATH"
 
 .PHONY: test
 test:
