@@ -105,6 +105,7 @@ def generate(config):
             )
         else:
             perf_stat_cmd = build_perf_stat_cmd(
+                workspace=workspace,
                 events_stat=events_stat,
                 core_list=f"{CORES_ALL[0]}-{CORES_ALL[-1]}",
                 count_delta_stat=count_delta_stat,
