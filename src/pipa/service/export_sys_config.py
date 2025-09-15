@@ -6,7 +6,7 @@ import os
 shell_script = """
 if [[ $(id -u) -eq 0 ]]; then
     # User is root, run dmidecode directly
-    dmidecode >/$DST/dmidecode.txt
+    dmidecode >$DST/dmidecode.txt
 else
     echo "You need to be root to run dmidecode, skipping..."
 fi
