@@ -1,131 +1,131 @@
 import pandas as pd
-from pandarallel import pandarallel
-from pipa.common.hardware.cpu import NUM_CORES_PHYSICAL
 from pipa.common.logger import logger
 from pipa.common.utils import generate_unique_rgb_color
 from pipa.parser import make_single_plot
-from typing import List, Optional
+from typing import List, Optional, TextIO, Union
 import seaborn as sns
 import plotly.graph_objects as go
 
 
 class PerfStatParser:
     @staticmethod
-    def parse_perf_stat_file(stat_output_path: str):
+    def parse_perf_stat_file(
+        stat_output_path_or_buffer: Union[str, TextIO],
+    ) -> pd.DataFrame:
         """
-        Parse the perf stat output file and return a pandas DataFrame.
+        Parses a perf stat CSV file with a robust "pivot and melt" approach.
+
+        This function is designed to handle various output formats from different `perf`
+        versions, including those with varying column counts for different event types
+        (e.g., 'instructions' having more columns than 'cycles'). It correctly
+        distinguishes between per-CPU and aggregation modes.
+
+        The core logic first transforms the raw long-format data into a tidy,
+        wide-format DataFrame. It then melts this wide DataFrame back to the
+        long format required by downstream processors like `PerfStatDataProcessor`,
+        ensuring full backward compatibility while maintaining high parsing robustness.
 
         Args:
-            stat_output_path (str): The path to the perf stat output file.
+            stat_output_path_or_buffer (Union[str, TextIO]): The path to the file,
+                or a file-like object (e.g., from io.StringIO).
 
         Returns:
-            pandas.DataFrame: The parsed data as a DataFrame.
+            pandas.DataFrame: A long-format DataFrame containing the parsed data.
+            The DataFrame is guaranteed to have the following core columns, which are
+            essential for downstream analysis:
+            - timestamp (float64): Timestamp of the measurement in seconds.
+            - cpu_id (int): The CPU core identifier (-1 for aggregation mode).
+            - value (Int64): The raw counter value for the event.
+            - metric_type (str): The name of the performance event (e.g., 'cycles:D').
 
-        The fields are in this order:
-        -   optional usec time stamp in fractions of second (with -I xxx)
+        The expected fields in the raw `perf stat` output are generally in this order,
+        though this parser is robust against variations:
+        -   optional timestamp in fractions of a second
         -   optional CPU, core, or socket identifier
-        -   optional number of logical CPUs aggregated
         -   counter value
-        -   unit of the counter value or empty
+        -   optional unit of the counter value
         -   event name
-        -   run time of counter
-        -   percentage of measurement time the counter was running
-        -   optional metric value
-        -   optional unit of metric
+        -   ... and other optional metric fields
         """
-        pandarallel.initialize(min(12, NUM_CORES_PHYSICAL))
-        # 预读取头部确定列数（nrows=0 仅读取列头）
-        header = pd.read_csv(stat_output_path, nrows=0)
-        actual_columns = len(header.columns)
+        try:
+            df = pd.read_csv(
+                stat_output_path_or_buffer, header=None, comment="#", engine="python"
+            )
+        except Exception as e:
+            logger.error(f"Failed to read CSV file {stat_output_path_or_buffer}: {e}")
+            return pd.DataFrame()
 
-        if actual_columns == 9:  # 正常模式（含 cpu_id）
-            df = pd.read_csv(
-                stat_output_path,
-                skiprows=1,
-                names=[
-                    "timestamp",
-                    "cpu_id",
-                    "value",  # 先作为字符串读取，后续处理无效值
-                    "unit",
-                    "metric_type",
-                    "run_time(ns)",
-                    "run_percentage",
-                    "opt_value",
-                    "opt_unit_metric",
-                ],
-                dtype={"value": str},
-            )
-            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
-            invalid_count = df["value"].eq("<not counted>").sum()
-            if invalid_count > 0:
-                logger.warning(
-                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
+        if df.shape[1] < 3:  # 聚合模式至少需要3列
+            logger.warning("CSV file seems malformed with less than 3 columns.")
+            return pd.DataFrame()
+
+        second_column_sample = str(df.iloc[0, 1])
+        is_per_cpu_mode = second_column_sample.startswith("CPU")
+
+        if is_per_cpu_mode:
+            event_col_index = -1
+            # 如果数据行数为0，则无法通过iloc访问，因此需要先检查，
+            # 但是在for循环内部每次检查一次df是否为空则是无意义的，
+            # 因为如果 df 是空的，for 循环根本就不会执行，
+            # 因此>0的检查可以规避这个错误
+            if df.shape[0] > 0:
+                for i in range(3, df.shape[1]):
+                    if ":" in str(df.iloc[0, i]):
+                        event_col_index = i
+                        break
+
+            if event_col_index == -1:
+                logger.error(
+                    "Could not find event name column (e.g., 'cycles:D') in CSV."
                 )
-            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
-                "Int64"
-            )  # 支持空值的整数类型
-            # 后续字段类型转换（其他字段保持原逻辑）
-            df = df.astype(
-                {
-                    "timestamp": "float64",
-                    "cpu_id": str,
-                    "unit": str,
-                    "metric_type": str,
-                    "run_time(ns)": "int64",
-                    "run_percentage": "float64",
-                    "opt_value": "float64",
-                    "opt_unit_metric": str,
-                }
-            )
-            df["cpu_id"] = df["cpu_id"].str.removeprefix("CPU").astype(int)
-        else:  # 聚合模式（不含 cpu_id，列数为8）
-            logger.warning(
-                f"Detect perf stat {stat_output_path} not in no aggregation mode(-A), will use -1 as cpu_id for all"
-            )
-            df = pd.read_csv(
-                stat_output_path,
-                skiprows=1,
-                names=[
-                    "timestamp",
-                    "value",  # 先作为字符串读取，后续处理无效值
-                    "unit",
-                    "metric_type",
-                    "run_time(ns)",
-                    "run_percentage",
-                    "opt_value",
-                    "opt_unit_metric",
-                ],
-                dtype={"value": str},
-            )
-            # 处理无效值：替换 '<not counted>' 为 NaN，并转换为可空整数类型
-            invalid_count = df["value"].eq("<not counted>").sum()
-            if invalid_count > 0:
-                logger.warning(
-                    f"Detect {invalid_count} invalid 'value' entries (e.g. '<not counted>') in {stat_output_path}"
-                )
-            df["value"] = pd.to_numeric(df["value"], errors="coerce").astype(
-                "Int64"
-            )  # 支持空值的整数类型
-            # 后续字段类型转换（其他字段保持原逻辑）
-            df = df.astype(
-                {
-                    "timestamp": "float64",
-                    "unit": str,
-                    "metric_type": str,
-                    "run_time(ns)": "int64",
-                    "run_percentage": "float64",
-                    "opt_value": "float64",
-                    "opt_unit_metric": str,
-                }
-            )
-            df["cpu_id"] = -1
-        return df
+                return pd.DataFrame()
+
+            core_df = df.iloc[:, [0, 1, 2, event_col_index]].copy()
+            core_df.columns = ["timestamp", "cpu_id", "value", "metric_type"]
+            core_df["cpu_id"] = core_df["cpu_id"].str.removeprefix("CPU").astype(int)
+        else:
+            core_df = df.iloc[:, [0, 1, 3]].copy()
+            core_df.columns = ["timestamp", "value", "metric_type"]
+            core_df["cpu_id"] = -1
+
+        core_df["value"] = pd.to_numeric(core_df["value"], errors="coerce")
+        core_df.dropna(subset=["value"], inplace=True)
+        if not core_df.empty:
+            core_df["value"] = core_df["value"].astype("Int64")
+
+        wide_df = core_df.pivot_table(
+            index=["timestamp", "cpu_id"],
+            columns="metric_type",
+            values="value",
+            aggfunc="first",
+        ).reset_index()
+        wide_df.columns.name = None
+
+        long_df = wide_df.melt(
+            id_vars=["timestamp", "cpu_id"], var_name="metric_type", value_name="value"
+        )
+
+        long_df.dropna(subset=["value"], inplace=True)
+        long_df["value"] = long_df["value"].astype("Int64")
+
+        final_long_df = long_df[["timestamp", "cpu_id", "value", "metric_type"]].copy()
+        final_long_df = final_long_df.astype(
+            {"timestamp": "float64", "cpu_id": "int", "metric_type": "str"}
+        )
+
+        logger.info("Perf stat file parsed successfully with robust method.")
+        return final_long_df
 
 
 class PerfStatDataProcessor:
     def __init__(self, data):
-        self.data = data
+        self.data = data.copy()
         self._df_wider = None
+        self.data["cpu_id"] = self.data["cpu_id"].astype(int)
+        self.data["value"] = pd.to_numeric(self.data["value"], errors="coerce")
+        self.data.dropna(subset=["value"], inplace=True)
+        if not self.data.empty:
+            self.data["value"] = self.data["value"].astype("Int64")
 
     def get_CPI(self):
         """
@@ -135,9 +135,9 @@ class PerfStatDataProcessor:
             pd.DataFrame: Dataframe containing the CPI data.
         """
         return (
-            self.data[self.data["metric_type"] == "cycles"]
+            self.data[self.data["metric_type"].str.startswith("cycles")]
             .merge(
-                self.data[self.data["metric_type"] == "instructions"],
+                self.data[self.data["metric_type"].str.startswith("instructions")],
                 on=["timestamp", "cpu_id"],
                 suffixes=("_cycles", "_instructions"),
             )
@@ -238,7 +238,7 @@ class PerfStatDataProcessor:
         Raises:
         - ValueError: If an invalid data type is provided.
         """
-        df = self.data[self.data["metric_type"] == events]
+        df = self.data[self.data["metric_type"].str.startswith(events)]
         match data_type:
             case "thread":
                 return df[["cpu_id", "value"]].groupby("cpu_id").sum()
@@ -546,7 +546,7 @@ class PerfStatPlotter:
 
 
 class PerfStatData:
-    def __init__(self, perf_stat_csv_path: str):
+    def __init__(self, perf_stat_csv_path: Union[str, TextIO]):
         self.data = PerfStatParser.parse_perf_stat_file(perf_stat_csv_path)
         self.data_processor = PerfStatDataProcessor(self.data)
         self.plotter = PerfStatPlotter(self.data_processor)

@@ -471,6 +471,11 @@ class PerfScriptDataProcessor:
         )
 
 
+def _mp_parse_block(block_lines):
+    """Top-level helper function for multiprocessing pool.map."""
+    return PerfScriptParser.parse_block(block_lines)
+
+
 # Main class for handling perf script data
 class PerfScriptData:
     """
@@ -536,7 +541,7 @@ class PerfScriptData:
 
         with Pool(processes=processes_num) as pool:
             blocks = pool.map(
-                lambda block_lines: PerfScriptParser.parse_block(block_lines),
+                _mp_parse_block,
                 PerfScriptParser.divid_into_blocks(lines),
             )
 
