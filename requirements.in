@@ -1,0 +1,4 @@
+# --- Production Dependencies Only ---
+click
+pyyaml
+pandas
