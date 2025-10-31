@@ -20,7 +20,7 @@ This document outlines the planned development milestones for the pipa project. 
 - **目标：** 交付一个功能性的、端到端的命令行工具，以验证核心的“校准 -> 采样 -> 分析”工作流。
 - **Key Features / 关键特性:**
   - [x] Establish core project structure and documentation. / 建立核心项目结构和文档。
-  - [ ] Implement the `calibrate` command with adaptive CPU utilization targeting. / 实现带有自适应 CPU 利用率目标的 `calibrate` 命令。
+  - [x] Implement the `calibrate` command with adaptive CPU utilization targeting. / 实现带有自适应 CPU 利用率目标的 `calibrate` 命令。
   - [ ] Implement the `sample` command for automated, three-level data collection. / 实现 `sample` 命令，用于自动化的三级数据采集。
   - [ ] Implement the `analyze` command with a basic Python-based decision tree. / 实现 `analyze` 命令，使用基础的、基于 Python 的决策树。
   - [ ] Initial support for **MySQL** workload via the Load Driver abstraction. / 通过负载驱动程序抽象，初步支持 **MySQL** 工作负载。
