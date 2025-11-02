@@ -1,4 +1,5 @@
 import logging
+import math
 import click
 import yaml
 from src.collector import collect_cpu_utilization
@@ -70,10 +71,9 @@ def calibrate(workload, output_config):
 
         click.echo("  -> Starting service for calibration...")
         run_command(start_cmd)
-        time.sleep(10)  # Give it more time to be fully ready
+        time.sleep(10)
 
-        # Stage 1: Probe for the maximum achievable CPU utilization.
-        # 阶段一：探测最大可达的CPU利用率。
+        min_intensity = driver["intensity_variable"]["min"]
         max_intensity = driver["intensity_variable"]["max"]
         click.secho(
             f"\n  [Probe] Testing with max intensity ({max_intensity}) "
@@ -89,88 +89,153 @@ def calibrate(workload, output_config):
         )
 
         if max_achievable_cpu < 1.0:
-            click.secho(
-                "❌ Error: Max achievable CPU is near zero. Cannot proceed.", fg="red"
-            )
+            click.secho("❌ Error: Max CPU is near zero. Cannot proceed.", fg="red")
             run_command(stop_cmd)
             return
 
-        # Stage 2: Calibrate each load level based on the max achievable CPU.
-        # 阶段二：基于最大可达CPU，校准每一个负载等级。
-        calibrated_intensities = {}
-        load_levels = workload_config["target_load_levels"]
+        click.echo(
+            "\n  -> Starting Coarse-grained Scan to map performance landscape..."
+        )
+        performance_map = []
+        num_steps = 12
+        step_coarse = math.ceil((max_intensity - min_intensity + 1) / num_steps)
+        step_coarse = max(1, step_coarse)
 
-        for level_name, level_config in load_levels.items():
-            target_min_pct = level_config["target_range"][0] / 100.0
-            target_max_pct = level_config["target_range"][1] / 100.0
-            dynamic_target_range = [
-                max_achievable_cpu * target_min_pct,
-                max_achievable_cpu * target_max_pct,
-            ]
-            target_mid = (dynamic_target_range[0] + dynamic_target_range[1]) / 2
+        for intensity in range(min_intensity, max_intensity + 1, step_coarse):
+            click.echo(f"    [Coarse Scan] Testing intensity: {intensity}")
+            cpu_usage = _run_benchmark_and_measure_cpu(
+                driver["command_template"], intensity, duration=10
+            )
+            click.echo(f"    -> Observed CPU: {cpu_usage:.2f}%")
+            performance_map.append({"intensity": intensity, "cpu": cpu_usage})
 
-            click.echo(
-                f"\n  -> Calibrating for '{level_name}' level..."
-                f" Target CPU: [{dynamic_target_range[0]:.2f}%, "
-                f"{dynamic_target_range[1]:.2f}%]"
+        if max_intensity not in [p["intensity"] for p in performance_map]:
+            performance_map.append(
+                {"intensity": max_intensity, "cpu": max_achievable_cpu}
             )
 
-            # --- Linear Scan Algorithm ---
-            best_intensity = None
+        click.echo("\n  -> Finding globally optimal monotonic triplet...")
+        best_triplet = None
+        min_total_distance = float("inf")
+        load_levels = workload_config["target_load_levels"]
+
+        targets = {
+            name: (
+                max_achievable_cpu * (conf["target_range"][0] / 100.0)
+                + max_achievable_cpu * (conf["target_range"][1] / 100.0)
+            )
+            / 2
+            for name, conf in load_levels.items()
+        }
+
+        for p_low in performance_map:
+            for p_medium in performance_map:
+                for p_high in performance_map:
+                    if not (
+                        p_low["intensity"] < p_medium["intensity"] < p_high["intensity"]
+                        and p_low["cpu"] < p_medium["cpu"] < p_high["cpu"]
+                    ):
+                        continue
+
+                    dist_low = abs(p_low["cpu"] - targets["low"])
+                    dist_medium = abs(p_medium["cpu"] - targets["medium"])
+                    dist_high = abs(p_high["cpu"] - targets["high"])
+                    total_distance = dist_low + dist_medium + dist_high
+
+                    if total_distance < min_total_distance:
+                        min_total_distance = total_distance
+                        best_triplet = {
+                            "low": p_low,
+                            "medium": p_medium,
+                            "high": p_high,
+                        }
+
+        if best_triplet is None:
+            click.secho("❌ Could not find a monotonic performance path.", fg="red")
+            run_command(stop_cmd)
+            return
+
+        click.secho("  -> Found optimal coarse points:", fg="green")
+        for name, point in best_triplet.items():
+            click.echo(
+                f"    - {name}: intensity={point['intensity']}, cpu={point['cpu']:.2f}%"
+            )
+
+        calibrated_intensities = {}
+        last_intensity = 0
+        last_cpu = 0.0
+
+        level_order = ["low", "medium", "high"]
+        for i, level_name in enumerate(level_order):
+            coarse_point = best_triplet[level_name]
+
+            # --- 最终修复：约束搜索范围，使其互不重叠 ---
+            search_min = max(
+                last_intensity + 1, coarse_point["intensity"] - step_coarse // 2
+            )
+
+            # 下一个等级的粗粒度强度，是当前等级搜索的“天花板”
+            if i + 1 < len(level_order):
+                next_level_coarse_intensity = best_triplet[level_order[i + 1]][
+                    "intensity"
+                ]
+                search_max = min(
+                    max_intensity,
+                    coarse_point["intensity"] + step_coarse // 2,
+                    next_level_coarse_intensity - 1,
+                )
+            else:
+                search_max = min(
+                    max_intensity, coarse_point["intensity"] + step_coarse // 2
+                )
+
+            # Ensure min is not greater than max
+            search_min = min(search_min, search_max)
+
+            click.echo(
+                f"\n  -> Fine-tuning for '{level_name}' "
+                f"in range [{search_min}, {search_max}]..."
+            )
+
+            best_point = None
             min_distance = float("inf")
 
-            # We can define a step for the scan to make it faster if range is large
-            # 如果范围很大，我们可以定义扫描的步长以加快速度
-            step = 1
-            min_intensity = driver["intensity_variable"]["min"]
-
-            for intensity in range(min_intensity, max_intensity + 1, step):
-                click.echo(f"    [Scan] Testing intensity: {intensity}")
-
+            for intensity in range(search_min, search_max + 1):
+                click.echo(f"    [Fine Scan] Testing intensity: {intensity}")
                 cpu_usage = _run_benchmark_and_measure_cpu(
                     driver["command_template"], intensity, duration=10
                 )
                 click.echo(f"    -> Observed CPU: {cpu_usage:.2f}%")
 
-                # Check if it's inside the target range
-                # 检查是否在目标范围内
-                if dynamic_target_range[0] <= cpu_usage <= dynamic_target_range[1]:
-                    best_intensity = intensity
-                    click.secho(
-                        f"    ✅ Target found! Optimal intensity: {intensity}",
-                        fg="green",
-                    )
-                    break  # Found a perfect match, no need to continue
+                if cpu_usage <= last_cpu:
+                    continue
 
-                # If not, check if it's the closest so far
-                # 如果不是，检查它是否是目前为止最接近的
-                distance = abs(cpu_usage - target_mid)
+                distance = abs(cpu_usage - targets[level_name])
                 if distance < min_distance:
                     min_distance = distance
-                    best_intensity = intensity
+                    best_point = {"intensity": intensity, "cpu": cpu_usage}
 
-            if best_intensity is not None:
+            if best_point:
+                calibrated_intensities[level_name] = best_point["intensity"]
+                last_intensity = best_point["intensity"]
+                last_cpu = best_point["cpu"]
                 click.secho(
-                    f"  -> Best intensity found for '{level_name}': {best_intensity}",
+                    f"  -> Best fine-tuned intensity for"
+                    f" '{level_name}': {best_point['intensity']}",
                     fg="green",
                 )
             else:
                 click.secho(
-                    f"  -> Could not find any valid intensity for '{level_name}'.",
+                    f"  -> Could not fine-tune for '{level_name}', using coarse value.",
                     fg="yellow",
                 )
-
-            calibrated_intensities[level_name] = best_intensity
+                # Fallback to coarse point if no better point is found
+                calibrated_intensities[level_name] = coarse_point["intensity"]
+                last_intensity = coarse_point["intensity"]
+                last_cpu = coarse_point["cpu"]
 
         click.echo("\n  -> Stopping service after calibration...")
         run_command(stop_cmd)
-
-        # Stage 3: Generate the calibrated configuration file.
-        # 阶段三：生成校准后的配置文件。
-        if any(val is None for val in calibrated_intensities.values()):
-            click.secho("❌ Calibration failed for one or more levels.", fg="red")
-            click.echo(f"  -> Results: {calibrated_intensities}")
-            return
 
         click.echo(f"  -> Generating calibrated config at {output_config}...")
         calibrated_config = {
