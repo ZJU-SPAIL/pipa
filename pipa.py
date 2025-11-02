@@ -107,6 +107,7 @@ def calibrate(workload, output_config):
                 max_achievable_cpu * target_min_pct,
                 max_achievable_cpu * target_max_pct,
             ]
+            target_mid = (dynamic_target_range[0] + dynamic_target_range[1]) / 2
 
             click.echo(
                 f"\n  -> Calibrating for '{level_name}' level..."
@@ -114,46 +115,52 @@ def calibrate(workload, output_config):
                 f"{dynamic_target_range[1]:.2f}%]"
             )
 
-            # Binary Search Loop for the current level
-            # 针对当前等级的二分查找循环
-            low = driver["intensity_variable"]["min"]
-            high = driver["intensity_variable"]["max"]
-            optimal_intensity = None
+            # --- Linear Scan Algorithm ---
+            best_intensity = None
+            min_distance = float("inf")
 
-            for i in range(7):  # More iterations for better precision
-                if low > high:
-                    break
-                current_intensity = (low + high) // 2
-                if current_intensity == 0:
-                    current_intensity = 1  # Ensure intensity is at least 1
+            # We can define a step for the scan to make it faster if range is large
+            # 如果范围很大，我们可以定义扫描的步长以加快速度
+            step = 1
+            min_intensity = driver["intensity_variable"]["min"]
 
-                click.echo(f"    [Iter {i+1}/7] Testing intensity: {current_intensity}")
+            for intensity in range(min_intensity, max_intensity + 1, step):
+                click.echo(f"    [Scan] Testing intensity: {intensity}")
 
                 cpu_usage = _run_benchmark_and_measure_cpu(
-                    driver["command_template"], current_intensity, duration=10
+                    driver["command_template"], intensity, duration=10
                 )
                 click.echo(f"    -> Observed CPU: {cpu_usage:.2f}%")
 
+                # Check if it's inside the target range
+                # 检查是否在目标范围内
                 if dynamic_target_range[0] <= cpu_usage <= dynamic_target_range[1]:
-                    msg = (
-                        f"    ✅ Target reached! Optimal intensity for "
-                        f"'{level_name}': {current_intensity}"
+                    best_intensity = intensity
+                    click.secho(
+                        f"    ✅ Target found! Optimal intensity: {intensity}",
+                        fg="green",
                     )
-                    click.secho(msg, fg="green")
-                    optimal_intensity = current_intensity
-                    break
-                elif cpu_usage < dynamic_target_range[0]:
-                    low = current_intensity + 1
-                else:
-                    high = current_intensity - 1
+                    break  # Found a perfect match, no need to continue
 
-            if optimal_intensity is None:
+                # If not, check if it's the closest so far
+                # 如果不是，检查它是否是目前为止最接近的
+                distance = abs(cpu_usage - target_mid)
+                if distance < min_distance:
+                    min_distance = distance
+                    best_intensity = intensity
+
+            if best_intensity is not None:
                 click.secho(
-                    f"    ❌ Could not find optimal intensity for '{level_name}'.",
+                    f"  -> Best intensity found for '{level_name}': {best_intensity}",
+                    fg="green",
+                )
+            else:
+                click.secho(
+                    f"  -> Could not find any valid intensity for '{level_name}'.",
                     fg="yellow",
                 )
 
-            calibrated_intensities[level_name] = optimal_intensity
+            calibrated_intensities[level_name] = best_intensity
 
         click.echo("\n  -> Stopping service after calibration...")
         run_command(stop_cmd)
