@@ -1,0 +1,44 @@
+# config/workloads/stress_io.yaml
+
+workload_name: stress_io
+
+# --- 服务管理 ---
+# Service Management
+# 对于 stress-ng 这种无状态的工具，我们不需要启停服务
+# For a stateless tool like stress-ng, we don't need to start/stop a service.
+commands:
+  start: "echo 'No service to start for stress-ng.'"
+  stop: "echo 'No service to stop for stress-ng.'"
+
+# --- 压测驱动定义 ---
+# Benchmark Driver Definition
+benchmark_driver:
+  # 关键改动：我们不再使用 --cpu，而是使用 --hdd N 来启动 N 个进程持续写硬盘
+  # The key change: We use --hdd N instead of --cpu to start N processes that continuously write to the disk.
+  command_template: "stress-ng --hdd {intensity} --hdd-bytes 1G --timeout 300s"
+
+  intensity_variable:
+    name: "io-workers"
+    # 对于 I/O 压测，强度不需要设得太高
+    # For I/O stress testing, the intensity doesn't need to be very high.
+    min: 1
+    max: 16
+
+  # 进程名依然是 stress-ng，但我们可以通过参数来精确查找
+  # The process name is still stress-ng, but we can find it precisely with its arguments.
+  target_pid_command: "pgrep -f 'stress-ng --hdd'"
+
+# --- 目标负载等级定义 ---
+# Target Load Level Definitions
+# 核心：我们故意保持和 stress_cpu.yaml 一样的高 CPU 目标！
+# The Core Idea: We intentionally keep the same high CPU targets as in stress_cpu.yaml!
+target_load_levels:
+  low:
+    target_metric: "cpu_utilization"
+    target_range: [5, 10] # 目标：CPU利用率 5-10%
+  medium:
+    target_metric: "cpu_utilization"
+    target_range: [75, 85] # 目标：CPU利用率 80% 左右
+  high:
+    target_metric: "cpu_utilization"
+    target_range: [95, 100] # 目标：CPU利用率 95% 左右

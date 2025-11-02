@@ -20,6 +20,31 @@ def cli():
     pass
 
 
+def _run_benchmark_and_measure_cpu(
+    command_template: str, intensity: int, duration: int
+) -> float:
+    """
+    A helper to run benchmark at a given intensity and measure CPU usage.
+    一个辅助函数，用于在给定强度下运行基准测试并测量CPU使用率。
+    """
+    benchmark_cmd = command_template.format(intensity=intensity)
+    benchmark_proc = run_in_background(benchmark_cmd)
+    # Give benchmark a moment to ramp up
+    # 给基准测试一些预热时间
+    time.sleep(5)
+
+    cpu_usage = 0
+    try:
+        cpu_usage = collect_cpu_utilization(duration=duration)
+    finally:
+        # Always ensure the benchmark process is stopped
+        # 总是确保压测进程被停止
+        if benchmark_proc.poll() is None:
+            benchmark_proc.terminate()
+            benchmark_proc.wait(timeout=5)
+    return cpu_usage
+
+
 @cli.command()
 @click.option(
     "--workload",
@@ -39,125 +64,132 @@ def calibrate(workload, output_config):
     click.echo(f"🚀 Starting calibration for workload: {workload}")
     try:
         workload_config = load_workload_config(workload)
-        # --- Simulation of the workflow ---
-        # --- 工作流模拟 ---
-        click.echo("🚀 Starting adaptive calibration process...")
-
         driver = workload_config["benchmark_driver"]
         start_cmd = workload_config["commands"]["start"]
         stop_cmd = workload_config["commands"]["stop"]
 
-        # 1. Start the service (once for the whole calibration)
         click.echo("  -> Starting service for calibration...")
         run_command(start_cmd)
-        time.sleep(1)  # Give it more time to be fully ready
+        time.sleep(10)  # Give it more time to be fully ready
 
-        # --- Binary Search Loop ---
-        low = driver["intensity_variable"]["min"]
-        high = driver["intensity_variable"]["max"]
-        target_range = workload_config["target_load_levels"]["medium"]["target_range"]
-        optimal_intensity = None
-
-        click.echo(
-            f"  -> Searching for intensity to reach target CPU of {target_range}%..."
+        # Stage 1: Probe for the maximum achievable CPU utilization.
+        # 阶段一：探测最大可达的CPU利用率。
+        max_intensity = driver["intensity_variable"]["max"]
+        click.secho(
+            f"\n  [Probe] Testing with max intensity ({max_intensity}) "
+            "to find CPU ceiling...",
+            fg="cyan",
+        )
+        max_achievable_cpu = _run_benchmark_and_measure_cpu(
+            driver["command_template"], max_intensity, duration=15
+        )
+        click.secho(
+            f"  -> Maximum achievable CPU utilization: {max_achievable_cpu:.2f}%",
+            fg="cyan",
         )
 
-        # We'll do a few iterations of binary search
-        for i in range(5):  # Limit to 5 iterations to avoid infinite loops
-            if low > high:
-                break
+        if max_achievable_cpu < 1.0:
+            click.secho(
+                "❌ Error: Max achievable CPU is near zero. Cannot proceed.", fg="red"
+            )
+            run_command(stop_cmd)
+            return
 
-            current_intensity = (low + high) // 2
-            if current_intensity == 0:  # Avoid getting stuck
-                break
+        # Stage 2: Calibrate each load level based on the max achievable CPU.
+        # 阶段二：基于最大可达CPU，校准每一个负载等级。
+        calibrated_intensities = {}
+        load_levels = workload_config["target_load_levels"]
+
+        for level_name, level_config in load_levels.items():
+            target_min_pct = level_config["target_range"][0] / 100.0
+            target_max_pct = level_config["target_range"][1] / 100.0
+            dynamic_target_range = [
+                max_achievable_cpu * target_min_pct,
+                max_achievable_cpu * target_max_pct,
+            ]
 
             click.echo(
-                f"\n  [Iteration {i+1}/5] Testing with intensity: {current_intensity}"
+                f"\n  -> Calibrating for '{level_name}' level..."
+                f" Target CPU: [{dynamic_target_range[0]:.2f}%, "
+                f"{dynamic_target_range[1]:.2f}%]"
             )
 
-            benchmark_cmd = driver["command_template"].format(
-                intensity=current_intensity
-            )
-            benchmark_proc = run_in_background(benchmark_cmd)
+            # Binary Search Loop for the current level
+            # 针对当前等级的二分查找循环
+            low = driver["intensity_variable"]["min"]
+            high = driver["intensity_variable"]["max"]
+            optimal_intensity = None
 
-            # Give benchmark a moment to ramp up
-            time.sleep(5)
+            for i in range(7):  # More iterations for better precision
+                if low > high:
+                    break
+                current_intensity = (low + high) // 2
+                if current_intensity == 0:
+                    current_intensity = 1  # Ensure intensity is at least 1
 
-            # --- This is the core feedback loop! ---
-            # --- 这是核心的反馈循环！ ---
-            try:
-                cpu_usage = collect_cpu_utilization(duration=15)
-                click.echo(f"  -> Observed CPU utilization: {cpu_usage:.2f}%")
+                click.echo(f"    [Iter {i+1}/7] Testing intensity: {current_intensity}")
 
-                if target_range[0] <= cpu_usage <= target_range[1]:
+                cpu_usage = _run_benchmark_and_measure_cpu(
+                    driver["command_template"], current_intensity, duration=10
+                )
+                click.echo(f"    -> Observed CPU: {cpu_usage:.2f}%")
+
+                if dynamic_target_range[0] <= cpu_usage <= dynamic_target_range[1]:
                     msg = (
-                        f"  ✅ Target reached! "
-                        f"Optimal intensity found: {current_intensity}"
+                        f"    ✅ Target reached! Optimal intensity for "
+                        f"'{level_name}': {current_intensity}"
                     )
                     click.secho(msg, fg="green")
                     optimal_intensity = current_intensity
-                    benchmark_proc.terminate()
                     break
-                elif cpu_usage < target_range[0]:
-                    click.echo("  -> CPU usage is too low. Increasing intensity.")
+                elif cpu_usage < dynamic_target_range[0]:
                     low = current_intensity + 1
-                else:  # cpu_usage > target_range[1]
-                    click.echo("  -> CPU usage is too high. Decreasing intensity.")
+                else:
                     high = current_intensity - 1
 
-            finally:
-                # Always ensure the benchmark process is stopped
-                # 总是确保压测进程被停止
-                if benchmark_proc.poll() is None:
-                    benchmark_proc.terminate()
-                    benchmark_proc.wait(timeout=5)
+            if optimal_intensity is None:
+                click.secho(
+                    f"    ❌ Could not find optimal intensity for '{level_name}'.",
+                    fg="yellow",
+                )
 
-        # 5. Stop the service
+            calibrated_intensities[level_name] = optimal_intensity
+
         click.echo("\n  -> Stopping service after calibration...")
         run_command(stop_cmd)
 
-        if optimal_intensity is None:
-            click.secho("❌ Calibration failed...", fg="red")
-        else:
-            # **--- Generate the calibrated YAML file ---**
-            click.echo(f"  -> Generating calibrated config at {output_config}...")
+        # Stage 3: Generate the calibrated configuration file.
+        # 阶段三：生成校准后的配置文件。
+        if any(val is None for val in calibrated_intensities.values()):
+            click.secho("❌ Calibration failed for one or more levels.", fg="red")
+            click.echo(f"  -> Results: {calibrated_intensities}")
+            return
 
-            # 推算 low 和 high 的强度
-            # (我们可以让这个逻辑更智能，但现在先用简单的比例)
-            low_intensity = max(
-                driver["intensity_variable"]["min"], optimal_intensity // 4
-            )
-            high_intensity = min(
-                driver["intensity_variable"]["max"], optimal_intensity * 2
-            )
+        click.echo(f"  -> Generating calibrated config at {output_config}...")
+        calibrated_config = {
+            "workload_name": workload,
+            "calibrated_parameters": {
+                level: {"intensity": intensity}
+                for level, intensity in calibrated_intensities.items()
+            },
+            "benchmark_driver": driver,
+            "commands": workload_config["commands"],
+        }
 
-            calibrated_config = {
-                "workload_name": workload,
-                "calibrated_parameters": {
-                    "low": {"intensity": low_intensity},
-                    "medium": {"intensity": optimal_intensity},
-                    "high": {"intensity": high_intensity},
-                },
-                "benchmark_driver": driver,  # 把原始驱动信息也存进去
-                "commands": workload_config["commands"],
-            }
-
-            try:
-                with open(output_config, "w") as f:
-                    yaml.dump(
-                        calibrated_config, f, default_flow_style=False, sort_keys=False
-                    )
-                click.secho("✅ Successfully saved calibrated config!", fg="green")
-            except IOError as e:
-                click.secho(f"❌ Error saving config file: {e}", fg="red")
+        try:
+            with open(output_config, "w") as f:
+                yaml.dump(
+                    calibrated_config, f, default_flow_style=False, sort_keys=False
+                )
+            click.secho("✅ Successfully saved calibrated config!", fg="green")
+        except IOError as e:
+            click.secho(f"❌ Error saving config file: {e}", fg="red")
 
     except (ConfigError, ExecutionError) as e:
         click.secho(f"❌ Error: {e}", fg="red")
         return
 
-    click.echo(f"🔧 Calibrated config saved to: {output_config}")
-
-    click.echo("✅ Calibration finished (simulation).")
+    click.echo(f"🔧 Calibration finished. Config saved to: {output_config}")
 
 
 @cli.command()
