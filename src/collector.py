@@ -14,11 +14,11 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
     :param duration: The total duration to monitor in seconds.
     :param interval: The interval between samples in seconds.
     :return: The average total CPU utilization (%user + %system).
-    :raises ExecutionError: If sar command fails.
+    :raises ExecutionError: If sar command fails or output is unparsable.
     """
     # sar -u [interval] [count]
-    # We collect one more sample than needed to get the final "Average" line.
-    # 我们比所需多采集一个样本，以获得最终的 "Average" 行。
+    # We collect 'duration' samples at 'interval' second intervals.
+    # 我们以 'interval' 秒为间隔，收集 'duration' 个样本。
     count = duration // interval
     command = f"sar -u {interval} {count}"
 
@@ -30,56 +30,42 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
 
     try:
         output = run_command(command, env=env)
-
         lines = output.strip().splitlines()
 
-        # Filter for the data lines (which contain numbers and "all")
-        # 筛选出包含数字和 "all" 的数据行
-        cpu_data_lines = [
-            line.split()
-            for line in lines
-            if (
-                len(line.split()) > 4
-                and line.split()[1] == "all"
-                and line.split()[0] != "Average:"
-            )
-        ]
+        # Find the "Average:" line, which contains the final summary.
+        # 寻找包含最终摘要的 "Average:" 行。
+        avg_line = None
+        for line in reversed(lines):
+            if line.strip().startswith("Average:"):
+                avg_line = line
+                break
 
-        if not cpu_data_lines:
-            raise ExecutionError("No valid CPU data lines found in sar output.")
+        if not avg_line:
+            raise ExecutionError("Could not find 'Average:' line in sar output.")
 
-        # Calculate the average from all data lines ourselves
-        # 我们自己从所有数据行中计算平均值
-        total_user = 0.0
-        total_system = 0.0
-        valid_lines = 0
-        for parts in cpu_data_lines:
-            # Example line: 11:25:01     all      2.35     0.00      1.73 ...
-            # Parts:          [0]       [1]    [2]       [3]      [4]       [5]
-            try:
-                total_user += float(parts[2])
-                total_system += float(parts[4])
-                valid_lines += 1
-            except (ValueError, IndexError):
-                # Ignore lines that are not valid data (like the header)
-                # 忽略无效的数据行（比如表头）
-                continue
+        log.debug(f"Line being parsed is: '{avg_line.strip()}'")
 
-        if valid_lines == 0:
-            raise ExecutionError("Could not parse any CPU data lines from sar output.")
-        avg_util = (total_user + total_system) / valid_lines
+        parts = avg_line.split()
+        # Expected format: Average: all %user %nice %system ...
+        # parts index:      0        1    2     3     4
+        if len(parts) < 5 or parts[1] != "all":
+            raise ExecutionError("Unexpected format for 'Average:' line in sar output.")
+
+        user_cpu = float(parts[2])
+        system_cpu = float(parts[4])
+        avg_util = user_cpu + system_cpu
 
         log.info(f"Collected average CPU utilization: {avg_util:.2f}%")
         return avg_util
 
-    except ExecutionError:
-        # Re-raise ExecutionError as-is (for test matching)
-        raise
-    except (ValueError, IndexError, ZeroDivisionError) as e:
-        log.error(f"Failed to collect or parse CPU utilization: {e}")
-        # Add the raw output to the error for better debugging
-        # 在错误信息中加入原始输出，以便更好地调试
+    except (ValueError, IndexError) as e:
+        log.error(f"Failed to parse CPU utilization from sar output: {e}")
         debug_info = (
-            f"Failed to determine CPU utilization. Raw sar output:\n---\n{output}\n---"
+            "Failed to parse sar 'Average:' line. "
+            f"Raw sar output:\n---\n{output}\n---"
         )
         raise ExecutionError(debug_info)
+    except ExecutionError:
+        # Re-raise ExecutionError to propagate command failures
+        # 重新抛出 ExecutionError 以传递命令失败信息
+        raise

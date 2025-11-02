@@ -15,51 +15,48 @@ Linux 5.15.0-generic (my-laptop)   10/31/2025   _x86_64_    (16 CPU)
 Average:        all     15.00      0.00      7.50      0.00      0.00     77.50
 """
 
-SAR_OUTPUT_NO_DATA = """
+# New mock data for the refactored test case
+# 为重构后的测试用例准备的新的模拟数据
+SAR_OUTPUT_NO_AVERAGE = """
 Linux 5.15.0-generic (my-laptop)   10/31/2025   _x86_64_    (16 CPU)
 
 12:00:01     CPU     %user     %nice   %system   %iowait    %steal     %idle
-Average:        all     0.00      0.00      0.00      0.00      0.00     100.00
+12:00:02     all     10.00      0.00      5.00      0.00      0.00     85.00
 """
 
 
 def test_collect_cpu_utilization_success(monkeypatch):
     """
-    Tests successful parsing of normal sar output.
-    测试对正常 sar 输出的成功解析。
+    Tests successful parsing of normal sar output by reading the Average line.
+    测试通过读取 Average 行，成功解析正常的 sar 输出。
     """
-    # We "monkeypatch" the run_command function.
-    # When our code calls run_command, it will execute this lambda instead.
-    # 我们“猴子补丁”了 run_command 函数。
-    # 当我们的代码调用 run_command 时，它将执行这个 lambda 表达式。
     monkeypatch.setattr(
         "src.collector.run_command", lambda command, env: SAR_OUTPUT_NORMAL
     )
 
-    # Expected result is the average of (10.00 + 5.00) and (20.00 + 10.00)
-    # 期望的结果是 (10.00 + 5.00) 和 (20.00 + 10.00) 的平均值
-    # (15 + 30) / 2 = 22.5
+    # The new logic directly parses the Average line.
+    # 新的逻辑直接解析 Average 行。
+    # Expected result is %user (15.00) + %system (7.50)
+    # 期望的结果是 %user (15.00) + %system (7.50)
     expected_avg = 22.5
 
     avg_util = collect_cpu_utilization(duration=2)
 
-    # pytest.approx handles floating point comparisons
-    # pytest.approx 用于处理浮点数的比较
     assert avg_util == pytest.approx(expected_avg)
 
 
-def test_collect_cpu_utilization_no_data(monkeypatch):
+def test_collect_cpu_utilization_no_average_line(monkeypatch):
     """
-    Tests that an error is raised if no data lines are found.
-    测试在找不到数据行时是否会引发错误。
+    Tests that an error is raised if the "Average:" line is not found.
+    测试在找不到 "Average:" 行时是否会引发错误。
     """
     monkeypatch.setattr(
-        "src.collector.run_command", lambda command, env: SAR_OUTPUT_NO_DATA
+        "src.collector.run_command", lambda command, env: SAR_OUTPUT_NO_AVERAGE
     )
 
-    # We expect this to raise an ExecutionError
-    # 我们期望这里会引发一个 ExecutionError
-    with pytest.raises(ExecutionError, match="No valid CPU data lines found"):
+    # We expect this to raise an ExecutionError with the new error message.
+    # 我们期望这里会引发一个带有新错误信息的 ExecutionError。
+    with pytest.raises(ExecutionError, match="Could not find 'Average:' line"):
         collect_cpu_utilization(duration=1)
 
 
