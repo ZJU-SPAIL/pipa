@@ -6,3 +6,4 @@ build/
 dist/
 *.egg-info/
 *_calibrated.yaml
+.pytest_cache/

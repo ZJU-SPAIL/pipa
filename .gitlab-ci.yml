@@ -5,59 +5,51 @@ stages:
   - test
 
 variables:
-  # 将一些常量定义为变量
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  PIP_INDEX_URL: "http://mirrors.cloud.aliyuncs.com/pypi/simple/" # 使用阿里云 PyPI 镜像
-  PIP_TRUSTED_HOST: "mirrors.cloud.aliyuncs.com"
-
-cache:
-  key: "$CI_JOB_IMAGE"
-  paths:
-    - $PIP_CACHE_DIR
-  policy: pull-push
 
 .base_python_job:
   image: python:3.11-slim
   before_script:
-    # **加入你指定的、精确的 sed 命令**
-    - echo "Updating apt sources to use Aliyun ECS mirror..."
+    # 使用国内镜像加速 apt 和 pip
     - sed -i 's|http[s]*://deb.debian.org|http://mirrors.cloud.aliyuncs.com|g' /etc/apt/sources.list.d/debian.sources
+    - pip config set global.index-url "https://mirrors.aliyun.com/pypi/simple/"
 
-    # 安装依赖
-    - apt-get update -y
-    - apt-get install -y --no-install-recommends gcc
-
-    # 配置 pip
-    - pip config set global.index-url $PIP_INDEX_URL
-    - pip config set global.trusted-host $PIP_TRUSTED_HOST
-
-    # 安装 Python 依赖
-    - pip install --trusted-host $PIP_TRUSTED_HOST black flake8 flake8-black pytest pytest-cov
+    # 安装基础编译工具
+    - apt-get update -y && apt-get install -y --no-install-recommends gcc
+  cache:
+    key: "$CI_JOB_IMAGE"
+    paths:
+      - $PIP_CACHE_DIR
 
 linting:
   extends: .base_python_job
   stage: lint
   script:
+    # 安装开发依赖以获取 black 和 flake8
+    - pip install -r requirements-dev.txt
     - echo "Linting with flake8 and checking format with black..."
     - flake8 .
     - black --check .
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"' # 我们的主分支是 develop
 
 unit-tests:
   extends: .base_python_job
   stage: test
   script:
     - echo "Running unit tests..."
-    - echo "No tests found, but job must succeed." # 占位符
-    # - pytest --cov=src --cov-report=term --cov-report=xml
-  # 覆盖率和制品部分暂时保持，未来启用 pytest 时生效
+    # 正确的做法是安装 requirements-dev.txt，因为它包含了 pytest 和所有生产依赖
+    - pip install -r requirements-dev.txt
+    - pytest --cov=src --cov-report=xml --junitxml=junit-report.xml
   artifacts:
-    when: on_success
+    when: always
     reports:
+      # JUnit 测试报告集成
+      junit: junit-report.xml
+      # Cobertura 覆盖率报告集成
       cobertura: coverage.xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.d+)?\%)$/'
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"' # 我们的主分支是 develop

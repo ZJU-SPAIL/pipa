@@ -35,8 +35,7 @@
 ### 2. Installation (Target) / 安装 (目标)
 
 ```bash
-git clone <your_gitlab_repo_url>
-cd pipa
+cd pipapi
 pip install -r requirements.txt
 ```
 
