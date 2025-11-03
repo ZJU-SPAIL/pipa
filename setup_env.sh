@@ -22,8 +22,8 @@ SOURCE_DIR="Python-${PYTHON_VERSION}"
 
 # 编译 Python 3.11 所需的核心依赖包列表 (适用于 OpenEuler / DNF/YUM)
 REQUIRED_DEPS=(
-    "gcc" "zlib-devel" "bzip2-devel" "openssl-devel" 
-    "libffi-devel" "readline-devel" "sqlite-devel" 
+    "gcc" "zlib-devel" "bzip2-devel" "openssl-devel"
+    "libffi-devel" "readline-devel" "sqlite-devel"
     "make" "xz-devel"
 )
 # --- 配置区结束 ---
@@ -36,7 +36,7 @@ cleanup() {
     EXIT_CODE=$?
     echo ""
     echo "--- 执行退出清理 ---"
-    
+
     # 确保退出 venv (如果激活了)
     if [ -n "$VIRTUAL_ENV" ] && [ "$VIRTUAL_ENV" != "/" ]; then
         deactivate 2>/dev/null
@@ -86,7 +86,7 @@ detect_pkg_manager() {
 
 check_and_install_dependencies() {
     echo "--- 1.1 检查编译依赖 ---"
-    
+
     PACKAGE_MANAGER=$(detect_pkg_manager)
     if [ -z "$PACKAGE_MANAGER" ]; then
         echo "错误: 未找到 dnf 或 yum 包管理器. 请手动安装依赖"
@@ -107,7 +107,7 @@ check_and_install_dependencies() {
         echo "检测到以下缺失的编译依赖项:"
         echo "${MISSING_DEPS[@]}"
         echo ""
-        
+
         read -r -p "是否尝试使用 'sudo $PACKAGE_MANAGER install' 安装这些依赖? (y/N): " response
         response=${response,,}
 

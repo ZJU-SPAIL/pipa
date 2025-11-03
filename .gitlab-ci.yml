@@ -15,7 +15,7 @@ variables:
     - pip config set global.index-url "https://mirrors.aliyun.com/pypi/simple/"
 
     # 安装基础编译工具
-    - apt-get update -y && apt-get install -y --no-install-recommends gcc
+    - apt-get update -y && apt-get install -y --no-install-recommends gcc git
   cache:
     key: "$CI_JOB_IMAGE"
     paths:
@@ -27,6 +27,8 @@ linting:
   script:
     # 安装开发依赖以获取 black 和 flake8
     - pip install -r requirements.txt
+    - echo "Running pre-commit checks on all files..."
+    - pre-commit run --all-files
     - echo "Linting with flake8 and checking format with black..."
     - flake8 .
     - black --check .
