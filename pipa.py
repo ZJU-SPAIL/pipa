@@ -1,6 +1,8 @@
 import click
 from src.commands.calibrate import calibrate
+from src.commands.sample import sample
 from src.logger_setup import setup_logging
+from src.commands.analyze import analyze
 
 
 @click.group()
@@ -21,20 +23,8 @@ def cli(verbose: int):
 # Register commands from submodules
 # 从子模块中注册命令
 cli.add_command(calibrate)
-
-
-# Placeholders for future commands
-# 为未来命令保留的占位符
-@cli.command()
-def sample():
-    """(Placeholder) Runs the automated sampling process."""
-    click.echo("This is the 'sample' command. Not yet implemented.")
-
-
-@cli.command()
-def analyze():
-    """(Placeholder) Analyzes results and generates a report."""
-    click.echo("This is the 'analyze' command. Not yet implemented.")
+cli.add_command(sample)
+cli.add_command(analyze)
 
 
 if __name__ == "__main__":
