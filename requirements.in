@@ -1,5 +1,7 @@
-# --- Development Dependencies (includes production) ---
--r requirements.in
+# --- Production Dependencies Only ---
+click
+pyyaml
+pandas
 
 # --- Development & Testing Tools ---
 black

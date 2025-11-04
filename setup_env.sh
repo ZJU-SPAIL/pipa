@@ -55,16 +55,6 @@ cleanup() {
         rm -f "$DOWNLOADED_FILE"
     fi
 
-    # 关键修复: 只有在脚本非正常退出时，才清理 INSTALL_BASE_DIR
-    if [ $EXIT_CODE -ne 0 ]; then
-        if [ -d "$INSTALL_BASE_DIR" ]; then
-            echo "脚本失败，清理本地安装基础目录: $INSTALL_BASE_DIR"
-            rm -rf "$INSTALL_BASE_DIR"
-        fi
-        echo "脚本因错误或中断退出 (Exit Code: $EXIT_CODE)"
-    else
-        echo "临时编译文件清理完成. 项目基础环境 $INSTALL_BASE_DIR 已保留"
-    fi
 }
 
 # 注册 trap: 捕获 EXIT (正常或非零退出) 和 INT (Ctrl+C) 信号
@@ -95,7 +85,7 @@ check_and_install_dependencies() {
 
     MISSING_DEPS=()
     for dep in "${REQUIRED_DEPS[@]}"; do
-        if ! rpm -q "$dep" &> /dev/null; then
+        if command -v rpm >/dev/null && ! rpm -q "$dep" >/dev/null; then
             MISSING_DEPS+=("$dep")
         fi
     done
@@ -138,12 +128,6 @@ check_and_install_dependencies || exit 1
 
 echo "--- 1.2 检查和下载源码 ---"
 
-# 检查下载工具
-if ! command -v wget &> /dev/null && ! command -v curl &> /dev/null; then
-    echo "错误: 未找到下载工具 (wget 或 curl). 请先安装"
-    exit 1
-fi
-
 # 尝试下载源码包到 /tmp
 DOWNLOAD_TARGET="$DOWNLOAD_DIR/$SOURCE_TARBALL"
 if [ ! -f "$DOWNLOAD_TARGET" ]; then
@@ -170,7 +154,7 @@ rm -rf "$SOURCE_DIR" "$INSTALL_BASE_DIR"
 echo "--- 2. 解压源码 ---"
 # 在当前项目目录下解压源码，但源文件在 /tmp
 tar -xf "$DOWNLOAD_TARGET"
-cd "$SOURCE_DIR" || exit 1
+pushd "$SOURCE_DIR" || exit 1
 
 # 获取当前项目绝对路径 (重要)
 PROJECT_ROOT=$(pwd)/..
@@ -199,7 +183,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 返回项目根目录
-cd ..
+popd
 
 
 echo "--- 6. 创建 venv 虚拟环境 ---"
