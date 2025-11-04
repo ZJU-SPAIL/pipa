@@ -1,14 +1,21 @@
 import click
 from src.commands.calibrate import calibrate
+from src.logger_setup import setup_logging
 
 
 @click.group()
-def cli():
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Increase verbosity. -v for INFO, -vv for DEBUG.",
+)
+def cli(verbose: int):
     """
     PIPA (An Adaptive Performance Experimentation Platform)
     An adaptive, command-line performance experimentation platform.
     """
-    pass
+    setup_logging(verbose)
 
 
 # Register commands from submodules
