@@ -1,5 +1,5 @@
 import pytest
-from src.collector import collect_cpu_utilization
+from src.collector import collect_cpu_utilization, collect_perf_stat
 from src.executor import ExecutionError
 
 # This is a sample output from `LC_ALL=C sar -u 1 5`
@@ -73,3 +73,96 @@ def test_collect_cpu_utilization_command_fails(monkeypatch):
 
     with pytest.raises(ExecutionError, match="sar command failed"):
         collect_cpu_utilization(duration=1)
+
+
+# --- Unit tests for collect_perf_stat ---
+
+# Mock stderr output from a successful `perf stat` command
+# 模拟 `perf stat` 命令成功执行后的 stderr 输出
+PERF_OUTPUT_NORMAL = """
+ Performance counter stats for process id 12345:
+
+          1,234.56 msec task-clock                #    1.000 CPUs utilized
+             1,234      context-switches          #    0.001 M/sec
+                87      cpu-migrations            #    0.070 K/sec
+               345      page-faults               #    0.279 K/sec
+     3,000,000,000      cycles                    #    2.430 GHz
+     6,000,000,000      instructions              #    2.00  insn per cycle
+       600,000,000      branches                  #  486.000 M/sec
+        12,000,000      branch-misses             #    2.00% of all branches
+
+       1.234567890 seconds time elapsed
+"""
+
+
+def test_collect_perf_stat_success(monkeypatch):
+    """
+    Tests successful collection and parsing of perf stat output from stderr.
+    测试从 stderr 成功收集和解析 perf stat 的输出。
+    """
+
+    class MockCompletedProcess:
+        """Mocks the result of subprocess.run."""
+
+        stderr = PERF_OUTPUT_NORMAL
+        stdout = ""
+        returncode = 0
+
+        def check_returncode(self):
+            pass
+
+    # We need to mock subprocess.run for this specific function
+    # 我们需要为这个特定的函数模拟 subprocess.run
+    monkeypatch.setattr(
+        "src.collector.subprocess.run", lambda *args, **kwargs: MockCompletedProcess()
+    )
+
+    events = ["cycles", "instructions", "branches", "branch-misses"]
+    result = collect_perf_stat(target_pid=12345, events=events, duration=1)
+
+    assert "cycles" in result
+    assert "instructions" in result
+    assert "2.00  insn per cycle" in result
+    assert result == PERF_OUTPUT_NORMAL
+
+
+def test_collect_perf_stat_command_construction(monkeypatch):
+    """
+    Tests that the perf stat command is constructed correctly.
+    测试 perf stat 命令是否被正确地构建。
+    """
+    # This list will store the command that was actually called
+    # 这个列表将存储实际被调动的命令
+    called_command = []
+
+    class MockCompletedProcess:
+        stderr = "Success"
+        returncode = 0
+
+    def mock_run(*args, **kwargs):
+        # The first argument to subprocess.run is the command list
+        # subprocess.run 的第一个参数就是命令列表
+        called_command.extend(args[0])
+        return MockCompletedProcess()
+
+    monkeypatch.setattr("src.collector.subprocess.run", mock_run)
+
+    events = ["cycles", "instructions"]
+    collect_perf_stat(target_pid=999, events=events, duration=5)
+
+    # Reconstruct the expected command for comparison
+    # 重构期望的命令以进行比较
+    expected_command = "perf stat -p 999 -e cycles,instructions -- sleep 5"
+
+    assert " ".join(called_command) == expected_command
+
+
+def test_collect_perf_stat_no_events():
+    """
+    Tests that the function handles an empty event list gracefully.
+    测试函数能优雅地处理空的事件列表。
+    """
+    # No monkeypatching needed as it should return before calling subprocess
+    # 不需要 monkeypatching，因为它应该在调用子进程前就返回
+    result = collect_perf_stat(target_pid=12345, events=[], duration=1)
+    assert "No perf events specified" in result
