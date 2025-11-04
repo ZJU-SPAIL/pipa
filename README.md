@@ -17,7 +17,7 @@
 - **📊 Insightful Analysis (`analyze`):** Transforms raw data into a rich HTML report, featuring a rule-based decision tree for macro-bottleneck identification and **differential flame graphs** to pinpoint micro-level hotspots that emerge under pressure.
   - **📊 富有洞察的分析 (`analyze`):** 将原始数据转换为内容丰富的 HTML 报告，其特色在于：使用基于规则的决策树进行宏观瓶颈识别，并利用**差分火焰图**来精确定位在压力下出现的微观层面热点。
 - **🔧 Universal & Extensible:** Built on a **"Load Driver"** architecture. Supporting new workloads (like Redis or PostgreSQL) requires only adding a simple YAML configuration file, with zero changes to the core engine.
-  - **🔧 通用与可扩展:** 构建于**“负载驱动程序”**架构之上。支持新的工作负载（如 Redis 或 PostgreSQL）仅需添加一个简单的 YAML 配置文件，核心引擎代码无需任何更改。
+  - **🔧 通用与可扩展:** 构建于 **“负载驱动程序”** 架构之上。支持新的工作负载（如 Redis 或 PostgreSQL）仅需添加一个简单的 YAML 配置文件，核心引擎代码无需任何更改。
 - **⚙️ Configuration as Code:** The entire experimental process is defined in human-readable YAML files, making your performance tests versionable, repeatable, and easy to share.
   - **⚙️ 配置即代码:** 整个实验流程被定义在人类可读的 YAML 文件中，使您的性能测试可版本化、可重复且易于分享。
 
@@ -35,7 +35,6 @@
 ### 2. Installation (Target) / 安装 (目标)
 
 ```bash
-cd pipapi
 pip install -r requirements.txt
 ```
 

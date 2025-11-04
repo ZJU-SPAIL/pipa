@@ -2,3 +2,12 @@
 click
 pyyaml
 pandas
+
+# --- Development & Testing Tools ---
+black
+flake8
+flake8-black
+pytest
+pytest-cov
+pre-commit
+pip-tools

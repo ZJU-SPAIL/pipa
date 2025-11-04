@@ -15,7 +15,7 @@ variables:
     - pip config set global.index-url "https://mirrors.aliyun.com/pypi/simple/"
 
     # 安装基础编译工具
-    - apt-get update -y && apt-get install -y --no-install-recommends gcc
+    - apt-get update -y && apt-get install -y --no-install-recommends gcc git
   cache:
     key: "$CI_JOB_IMAGE"
     paths:
@@ -26,7 +26,9 @@ linting:
   stage: lint
   script:
     # 安装开发依赖以获取 black 和 flake8
-    - pip install -r requirements-dev.txt
+    - pip install -r requirements.txt
+    - echo "Running pre-commit checks on all files..."
+    - pre-commit run --all-files
     - echo "Linting with flake8 and checking format with black..."
     - flake8 .
     - black --check .
@@ -39,8 +41,8 @@ unit-tests:
   stage: test
   script:
     - echo "Running unit tests..."
-    # 正确的做法是安装 requirements-dev.txt，因为它包含了 pytest 和所有生产依赖
-    - pip install -r requirements-dev.txt
+    # 正确的做法是安装 requirements.txt，因为它包含了 pytest 和所有生产依赖
+    - pip install -r requirements.txt
     - pytest --cov=src --cov-report=xml --junitxml=junit-report.xml
   artifacts:
     when: always
