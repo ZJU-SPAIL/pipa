@@ -15,11 +15,8 @@ def mock_click_echo(*args, **kwargs):
 
 
 @pytest.fixture(autouse=True)
-def disable_click_output(monkeypatch):
-    """Fixture to suppress click output during tests."""
-    monkeypatch.setattr("click.echo", mock_click_echo)
-    monkeypatch.setattr("click.secho", mock_click_echo)
-    # 降低日志级别，避免测试时输出大量警告信息
+def setup_logging_for_test():
+    """Set log level to ERROR for cleaner test output."""
     logging.getLogger("src.static_collector").setLevel(logging.ERROR)
 
 

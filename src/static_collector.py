@@ -1,7 +1,6 @@
 import logging
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional
 
-import click
 from .executor import run_command, ExecutionError
 
 log = logging.getLogger(__name__)
@@ -20,9 +19,7 @@ def _get_info(command: str, description: str) -> str:
         return f"Error collecting {description}: Command not found"
 
 
-def _handle_error(
-    raw_output: str, description: str
-) -> Union[Dict[str, str], List[Dict[str, str]]]:
+def _handle_error(raw_output: str, description: str) -> Optional[Dict[str, str]]:
     """检查 _get_info 的输出是否是错误信息，如果是则返回一个结构化的错误字典。"""
     if raw_output.startswith("Error collecting"):
         return {"error": raw_output, "source": description}
@@ -114,24 +111,6 @@ def _parse_mem_info(raw_output: str) -> Dict[str, Any]:
     return info
 
 
-# def _parse_disk_info(df_output: str, lsblk_output: str) -> dict:
-#     """解析 df -h 和 lsblk 的输出。"""
-
-#     # 1. 解析 df -h
-#     df_info = []
-#     lines = df_output.splitlines()
-#     if len(lines) > 1:
-#         headers = [h.strip() for h in lines[0].split()]
-#         for line in lines[1:]:
-#             values = [v.strip() for v in line.split()]
-#             if len(values) == len(headers):
-#                 df_info.append(dict(zip(headers, values)))
-
-#     # 2. 解析 lsblk (简单地按行存储，lsblk的树状结构解析复杂，这里简化)
-#     lsblk_list = lsblk_output.strip().splitlines()
-
-
-#     return {"Filesystem_Usage": df_info, "Block_Devices_Raw": lsblk_list}
 def _parse_disk_info(df_output: str, lsblk_output: str) -> dict:
     df_info = []
     lines = df_output.splitlines()
@@ -301,7 +280,7 @@ def collect_all_static_info() -> dict:
 
     收集所有静态系统信息，并以字典形式返回，可直接用于JSON序列化。
     """
-    click.echo("  -> Collecting static system information...")
+    log.info("Collecting static system information...")
     info = {
         "os_info": get_os_info(),
         "kernel_info": get_kernel_info(),
@@ -311,5 +290,5 @@ def collect_all_static_info() -> dict:
         "network_info": get_network_info(),
         "numa_info": get_numa_info(),
     }
-    click.secho("  -> Static information collected successfully.", fg="green")
+    log.info("Static information collected successfully.")
     return info
