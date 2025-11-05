@@ -33,6 +33,8 @@ def run_command(
     # Create a copy of the current environment and update it
     # 创建当前环境的副本并更新它
     final_env = os.environ.copy()
+    # --- 强制设置 C locale 以保证输出格式一致性 ---
+    final_env["LC_ALL"] = "C"
     if env:
         final_env.update(env)
 
