@@ -42,12 +42,13 @@ def run_command(
         # shlex.split handles shell-like quoting correctly
         # shlex.split 能正确处理类似 shell 的引号
         result = subprocess.run(
-            shlex.split(command),
+            command,
             capture_output=True,
             text=True,
             check=True,
             timeout=timeout,
             env=final_env,
+            shell=True,
         )
         log.debug(f"Command stdout:\n{result.stdout}")
         return result.stdout.strip()

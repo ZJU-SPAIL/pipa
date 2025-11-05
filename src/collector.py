@@ -1,11 +1,10 @@
 # src/collector.py
 
 import logging
-import subprocess
-from typing import Optional
-from .executor import run_command, ExecutionError
 import signal
-import time
+import subprocess
+from typing import Optional, Union
+from .executor import run_command, ExecutionError
 from .executor import run_in_background
 
 log = logging.getLogger(__name__)
@@ -76,18 +75,17 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
         raise
 
 
-def collect_perf_stat(
-    duration: int,
+def start_perf_stat(
     output_file: str,
     mode: str = "pid",
-    target_pid: Optional[int] = None,
+    target_pid: Optional[Union[int, str]] = None,
     target_cpus: Optional[str] = None,
     event_groups: Optional[list[list[str]]] = None,
-) -> None:
+    all_threads: bool = False,
+) -> Optional[subprocess.Popen]:
     """
-    Collects performance counters using perf stat with advanced options.
-    使用 perf stat 的高级选项收集性能计数器。
-
+    Starts perf stat in the background. Its stderr is piped for capture.
+    在后台启动 perf stat，其 stderr 被管道捕获。
     :param duration: The total duration to monitor in seconds.
     :param output_file: The file to save the perf stat report.
     :param mode: The collection mode: "pid", "cpu", or "system".
@@ -100,7 +98,7 @@ def collect_perf_stat(
     """
     if not event_groups:
         log.warning("No perf event groups specified. Skipping perf stat.")
-        return
+        return None
 
     # --- 1. 构建 target 参数 (使用字典派发) ---
     target_flag_builders = {
@@ -114,66 +112,68 @@ def collect_perf_stat(
 
     target_flag = target_flag_builders[mode]()
     if not target_flag:
-        if mode == "pid":
-            raise ValueError("target_pid parameter is required for 'pid' mode.")
-        elif mode == "cpu":
-            raise ValueError("target_cpus parameter is required for 'cpu' mode.")
-        else:
-            raise ValueError(f"target_{mode} parameter is required for '{mode}' mode.")
+        raise ValueError(f"Missing required parameter for perf stat mode '{mode}'.")
 
-    # --- 2. 构建 events 参数 (支持分组) ---
     events_flags = []
     for group in event_groups:
         if group:
             events_str = ",".join(group)
             events_flags.append(f"-e {{{events_str}}}")
 
-    # --- 3. 构建最终命令 ---
-    if mode in ["pid", "cpu"]:
-        command_parts = [
-            "perf",
-            "stat",
-            target_flag,
-            "-o",
-            output_file,
-            "--append",
-            *events_flags,
-        ]
-        command = " ".join(command_parts)
+    # 对于后台模式，我们不能附加 sleep 子命令
+    command_parts = [
+        "perf",
+        "stat",
+        target_flag,
+        *events_flags,
+    ]
+    command = " ".join(command_parts)
 
-        log.info(f"Executing background perf stat: {command} for {duration}s")
-        perf_proc = run_in_background(command)
-        try:
-            time.sleep(duration)
-        finally:
-            if perf_proc.poll() is None:
-                # SIGINT tells perf to print the report before exiting
-                perf_proc.send_signal(signal.SIGINT)
-                try:
-                    perf_proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    perf_proc.kill()
-                    perf_proc.wait()
-        log.info(f"perf stat report successfully saved to {output_file}")
+    log.info(f"Starting background perf stat: {command}")
+    return run_in_background(command)
 
-    elif mode == "system":
-        command_parts = [
-            "perf",
-            "stat",
-            target_flag,
-            "-o",
-            output_file,
-            "--append",
-            *events_flags,
-            "--",
-            "sleep",
-            str(duration),
-        ]
-        command = " ".join(command_parts)
-        log.info(f"Executing perf stat with subcommand: {command}")
+
+# 修改 stop_perf_stat 函数的签名和实现
+def stop_perf_stat(
+    proc: subprocess.Popen, output_file: str, timeout: int
+) -> Optional[str]:
+    """
+    Stops perf stat, captures its stderr, writes to file, and returns the content.
+    停止 perf stat，捕获其 stderr，写入文件，并返回内容。
+    """
+    log.info(f"Sending SIGINT to perf stat process (PID: {proc.pid})...")
+    proc.send_signal(signal.SIGINT)
+
+    log.info("Waiting for perf stat to finish and output results...")
+    try:
+        # 1. 等待进程结束，并一次性读取所有 stderr
+        _, stderr_output = proc.communicate(timeout=timeout)
+        log.info("perf stat process stopped and output captured.")
+
+        # 2. 实现"双向输出"：写入文件
         try:
-            run_command(command)
-            log.info(f"perf stat report successfully saved to {output_file}")
-        except ExecutionError as e:
-            log.error(f"perf stat collection failed. Error: {e}")
-            raise
+            with open(output_file, "w") as f:
+                f.write(stderr_output)
+            log.info(f"perf stat report saved to {output_file}")
+        except IOError as e:
+            log.error(f"Failed to write perf stat report to {output_file}: {e}")
+
+        # 3. 实现“双向输出”：返回内容
+        return stderr_output
+
+    except subprocess.TimeoutExpired:
+        log.warning("perf stat process did not respond to SIGINT. Killing it...")
+        proc.kill()
+        # 尝试最后一次捕获输出
+        _, stderr_output = proc.communicate()
+
+        # 即使超时，也要尝试写入文件
+        if stderr_output:
+            try:
+                with open(output_file, "w") as f:
+                    f.write(stderr_output)
+                log.info(f"perf stat partial output saved to {output_file}")
+            except IOError as e:
+                log.error(f"Failed to write perf stat output to {output_file}: {e}")
+
+        return stderr_output or "Process killed, no output captured."
