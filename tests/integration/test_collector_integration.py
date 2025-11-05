@@ -13,6 +13,12 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
+def temp_output_file(tmp_path):
+    """Provides a temporary file path for test output."""
+    return tmp_path / "perf_report.txt"
+
+
+@pytest.fixture
 def target_process():
     """A pytest fixture to provide a simple, short-lived target process."""
     # Start a simple process in the background
@@ -31,29 +37,56 @@ def target_process():
         proc.wait()
 
 
-def test_collect_perf_stat_integration(target_process):
+def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file):
     """
-    Tests that collect_perf_stat can run a real perf command.
-    测试 collect_perf_stat 能否运行一个真实的 perf 命令。
-
-    This test requires `perf` to be installed and accessible.
-    这个测试要求 perf 已被安装且可用。
+    Tests the 'pid' mode of collect_perf_stat with a real perf command.
+    测试 collect_perf_stat 的 'pid' 模式与真实的 perf 命令的集成。
     """
-    # Use a minimal, universally available set of events
-    # 使用一组最小的、普遍可用的事件
-    events = ["cycles", "instructions"]
+    events = [["cycles", "instructions"]]
 
     try:
-        # We are testing the real execution, so no monkeypatching
-        # 我们在测试真实执行，所以没有 monkeypatching
-        output = collect_perf_stat(target_pid=target_process, events=events, duration=1)
+        collect_perf_stat(
+            mode="pid",
+            target_pid=target_process,
+            duration=1,
+            output_file=str(temp_output_file),
+            event_groups=events,
+        )
 
-        # We don't assert for specific values, just that the report looks right.
-        # 我们不断言具体的值，只断言报告看起来是正确的。
-        assert "Performance counter stats for process id" in output
-        assert "cycles" in output.lower()
-        assert "instructions" in output.lower()
-        assert "seconds time elapsed" in output
+        report_content = temp_output_file.read_text()
+        assert "Performance counter stats for process id" in report_content
+        assert "cycles" in report_content.lower()
+        assert "instructions" in report_content.lower()
+
+    except ExecutionError as e:
+        if "perf command not found" in str(e) or "Permission denied" in str(e):
+            pytest.fail(
+                "perf tool is not available or permissions are insufficient. "
+                f"Skipping integration test. Error: {e}"
+            )
+        else:
+            raise
+
+
+def test_collect_perf_stat_system_mode_integration(temp_output_file):
+    """
+    Tests the 'system' (-a) mode of collect_perf_stat.
+    测试 collect_perf_stat 的 'system' (-a) 模式。
+    """
+    events = [["cpu-clock", "page-faults"]]
+
+    try:
+        collect_perf_stat(
+            mode="system",
+            duration=1,
+            output_file=str(temp_output_file),
+            event_groups=events,
+        )
+
+        report_content = temp_output_file.read_text()
+        assert "Performance counter stats for 'system wide'" in report_content
+        assert "cpu-clock" in report_content.lower()
+        assert "page-faults" in report_content.lower()
 
     except ExecutionError as e:
         # If perf is not installed or permission is denied, fail the test

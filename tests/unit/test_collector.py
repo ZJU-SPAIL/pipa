@@ -95,74 +95,118 @@ PERF_OUTPUT_NORMAL = """
 """
 
 
-def test_collect_perf_stat_success(monkeypatch):
+@pytest.mark.parametrize(
+    "mode, kwargs_for_call, expected_flag_part",
+    [
+        ("pid", {"target_pid": 999}, "-p 999"),
+        ("cpu", {"target_cpus": "0-3,7"}, "-C 0-3,7"),
+        ("system", {}, "-a"),
+    ],
+)
+def test_collect_perf_stat_command_construction(
+    monkeypatch, mode, kwargs_for_call, expected_flag_part
+):
     """
-    Tests successful collection and parsing of perf stat output from stderr.
-    测试从 stderr 成功收集和解析 perf stat 的输出。
+    Tests that the perf stat command is constructed correctly for all modes.
+    测试 perf stat 命令是否能为所有模式正确地构建。
     """
-
-    class MockCompletedProcess:
-        """Mocks the result of subprocess.run."""
-
-        stderr = PERF_OUTPUT_NORMAL
-        stdout = ""
-        returncode = 0
-
-        def check_returncode(self):
-            pass
-
-    # We need to mock subprocess.run for this specific function
-    # 我们需要为这个特定的函数模拟 subprocess.run
-    monkeypatch.setattr(
-        "src.collector.subprocess.run", lambda *args, **kwargs: MockCompletedProcess()
-    )
-
-    events = ["cycles", "instructions", "branches", "branch-misses"]
-    result = collect_perf_stat(target_pid=12345, events=events, duration=1)
-
-    assert "cycles" in result
-    assert "instructions" in result
-    assert "2.00  insn per cycle" in result
-    assert result == PERF_OUTPUT_NORMAL
-
-
-def test_collect_perf_stat_command_construction(monkeypatch):
-    """
-    Tests that the perf stat command is constructed correctly.
-    测试 perf stat 命令是否被正确地构建。
-    """
-    # This list will store the command that was actually called
-    # 这个列表将存储实际被调动的命令
     called_command = []
 
-    class MockCompletedProcess:
-        stderr = "Success"
-        returncode = 0
+    def mock_run_command(command):
+        called_command.append(command)
+        # We don't need a real result, just to capture the command
+        return "mock output"
 
-    def mock_run(*args, **kwargs):
-        # The first argument to subprocess.run is the command list
-        # subprocess.run 的第一个参数就是命令列表
-        called_command.extend(args[0])
-        return MockCompletedProcess()
+    monkeypatch.setattr("src.collector.run_command", mock_run_command)
 
-    monkeypatch.setattr("src.collector.subprocess.run", mock_run)
+    # Mock run_in_background to do the same thing: just record the command
+    # 让 run_in_background 也做同样的事：只记录命令
+    # It needs to return a dummy Popen-like object though
+    # 但它需要返回一个假的、像 Popen 的对象
+    class MockPopen:
+        def poll(self):
+            return None
 
-    events = ["cycles", "instructions"]
-    collect_perf_stat(target_pid=999, events=events, duration=5)
+        def terminate(self):
+            pass
 
-    # Reconstruct the expected command for comparison
-    # 重构期望的命令以进行比较
-    expected_command = "perf stat -p 999 -e cycles,instructions -- sleep 5"
+        def wait(self, timeout=None):
+            pass
 
-    assert " ".join(called_command) == expected_command
+        def send_signal(self, sig):
+            pass
+
+    def mock_run_in_background(command):
+        called_command.append(command)
+        return MockPopen()
+
+    monkeypatch.setattr("src.collector.run_in_background", mock_run_in_background)
+
+    # Base arguments, merged with mode-specific ones
+    base_args = {
+        "duration": 5,
+        "output_file": "/tmp/perf.txt",
+        "event_groups": [["cycles"]],
+    }
+    collect_perf_stat(mode=mode, **base_args, **kwargs_for_call)
+
+    # The command is the first (and only) item in the list
+    final_command = called_command[0]
+    assert expected_flag_part in final_command
+    assert "-o /tmp/perf.txt" in final_command
+    assert "--append" in final_command
+    assert "-e {cycles}" in final_command
+    if mode == "system":
+        assert "-- sleep 5" in final_command
 
 
-def test_collect_perf_stat_no_events():
+@pytest.mark.parametrize(
+    "mode, kwargs_for_call, expected_error_msg",
+    [
+        ("invalid_mode", {}, "Invalid perf stat mode: invalid_mode"),
+        ("pid", {}, "target_pid parameter is required for 'pid' mode."),
+        ("cpu", {}, "target_cpus parameter is required for 'cpu' mode."),
+    ],
+)
+def test_collect_perf_stat_raises_value_error_for_invalid_params(
+    mode, kwargs_for_call, expected_error_msg
+):
     """
-    Tests that the function handles an empty event list gracefully.
-    测试函数能优雅地处理空的事件列表。
+    Tests that ValueError is raised for invalid mode or missing parameters.
+    测试在模式无效或参数缺失时，是否会引发 ValueError。
     """
-    # No monkeypatching needed as it should return before calling subprocess
-    # 不需要 monkeypatching，因为它应该在调用子进程前就返回
-    result = collect_perf_stat(target_pid=12345, events=[], duration=1)
-    assert "No perf events specified" in result
+    base_args = {
+        "duration": 1,
+        "output_file": "dummy.txt",
+        "event_groups": [["cycles"]],
+    }
+    with pytest.raises(ValueError, match=expected_error_msg):
+        collect_perf_stat(mode=mode, **base_args, **kwargs_for_call)
+
+
+def test_collect_perf_stat_success_path(monkeypatch):
+    """
+    Tests the successful execution path still works.
+    测试成功执行的路径依然有效。
+    """
+    # This test now simply ensures run_command is called and no error occurs.
+    # The actual command construction is tested above.
+    # 这个测试现在只简单确保 run_command 被调用且不发生错误。
+    # 实际的命令构建已在上面测试过。
+    mock_calls = []
+
+    def mock_run_command(command):
+        mock_calls.append(command)
+        return "Success"
+
+    monkeypatch.setattr("src.collector.run_command", mock_run_command)
+
+    collect_perf_stat(
+        mode="system",
+        duration=1,
+        output_file="dummy.txt",
+        event_groups=[["instructions"]],
+    )
+
+    assert len(mock_calls) == 1
+    assert "perf stat -a" in mock_calls[0]
