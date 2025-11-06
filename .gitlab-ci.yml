@@ -43,9 +43,12 @@ unit-tests:
     - echo "Running unit tests..."
     # 正确的做法是安装 requirements.txt，因为它包含了 pytest 和所有生产依赖
     - pip install -r requirements.txt
-    - pytest --cov=src --cov-report=xml --junitxml=junit-report.xml
+    - pytest --cov=src --cov-report=term-missing --cov-report=xml --junitxml=junit-report.xml
   artifacts:
     when: always
+    paths:
+      - coverage.xml
+      - junit-report.xml
     reports:
       # JUnit 测试报告集成
       junit: junit-report.xml
