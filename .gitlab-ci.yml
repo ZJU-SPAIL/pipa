@@ -1,9 +1,5 @@
 # .gitlab-ci.yml
 
-stages:
-  - lint
-  - test
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
@@ -23,7 +19,6 @@ variables:
 
 linting:
   extends: .base_python_job
-  stage: lint
   script:
     # 安装开发依赖以获取 black 和 flake8
     - pip install -r requirements.txt
@@ -38,7 +33,6 @@ linting:
 
 unit-tests:
   extends: .base_python_job
-  stage: test
   script:
     - echo "Running unit tests..."
     # 正确的做法是安装 requirements.txt，因为它包含了 pytest 和所有生产依赖
