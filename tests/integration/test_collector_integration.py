@@ -3,7 +3,7 @@
 import pytest
 import subprocess
 import time
-from src.collector import collect_perf_stat
+from src.collector import start_perf_stat, stop_perf_stat, start_sar, stop_sar
 from src.executor import ExecutionError
 
 # Mark this whole file as 'integration' tests.
@@ -43,20 +43,19 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
     测试 collect_perf_stat 的 'pid' 模式与真实的 perf 命令的集成。
     """
     events = [["cycles", "instructions"]]
-
+    proc = None
     try:
-        collect_perf_stat(
+        proc = start_perf_stat(
             mode="pid",
             target_pid=target_process,
-            duration=1,
             output_file=str(temp_output_file),
             event_groups=events,
         )
+        # Ensure the process was actually started
+        assert proc is not None, "start_perf_stat should return a process handle."
 
-        report_content = temp_output_file.read_text()
-        assert "Performance counter stats for process id" in report_content
-        assert "cycles" in report_content.lower()
-        assert "instructions" in report_content.lower()
+        # Simulate sampling duration
+        time.sleep(1)
 
     except ExecutionError as e:
         if "perf command not found" in str(e) or "Permission denied" in str(e):
@@ -66,38 +65,83 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
             )
         else:
             raise
+    finally:
+        if proc:
+            stop_perf_stat(proc, str(temp_output_file), timeout=5)
+
+    # Verification
+    report_content = temp_output_file.read_text()
+    assert "Performance counter stats for process id" in report_content
+    assert "cycles" in report_content.lower()
+    assert "instructions" in report_content.lower()
 
 
 def test_collect_perf_stat_system_mode_integration(temp_output_file):
     """
-    Tests the 'system' (-a) mode of collect_perf_stat.
-    测试 collect_perf_stat 的 'system' (-a) 模式。
+    Tests the 'system' (-a) mode with the new start/stop pattern.
     """
     events = [["cpu-clock", "page-faults"]]
-
+    proc = None
     try:
-        collect_perf_stat(
+        proc = start_perf_stat(
             mode="system",
-            duration=1,
             output_file=str(temp_output_file),
             event_groups=events,
         )
+        assert proc is not None
 
-        report_content = temp_output_file.read_text()
-        assert "Performance counter stats for 'system wide'" in report_content
-        assert "cpu-clock" in report_content.lower()
-        assert "page-faults" in report_content.lower()
+        time.sleep(1)
 
     except ExecutionError as e:
-        # If perf is not installed or permission is denied, fail the test
-        # with a helpful message.
-        # 如果 perf 未安装或权限被拒绝，用一个有帮助的信息让测试失败。
         if "perf command not found" in str(e) or "Permission denied" in str(e):
             pytest.fail(
                 "perf tool is not available or permissions are insufficient. "
                 f"Skipping integration test. Error: {e}"
             )
         else:
-            # For other errors, just re-raise
-            # 对于其他错误，直接重新抛出
             raise
+    finally:
+        if proc:
+            stop_perf_stat(proc, str(temp_output_file), timeout=5)
+
+    # Verification
+    report_content = temp_output_file.read_text()
+    assert "Performance counter stats for 'system wide'" in report_content
+    assert "cpu-clock" in report_content.lower()
+    assert "page-faults" in report_content.lower()
+
+
+def test_sar_integration(temp_output_file):
+    """
+    Tests the full start/stop cycle of the sar collector.
+    """
+    proc = None
+    duration = 2
+    interval = 1
+
+    try:
+        proc = start_sar(
+            duration=duration, interval=interval, output_file=str(temp_output_file)
+        )
+        assert proc is not None, "start_sar should return a process handle."
+
+        content = stop_sar(proc, str(temp_output_file), duration=duration)
+
+        assert content is not None
+        assert "Linux" in content
+        assert "CPU" in content
+        assert "%usr" in content
+
+    except ExecutionError as e:
+        if "sar command not found" in str(e):
+            pytest.fail(f"sar tool is not available, skipping integration test: {e}")
+        else:
+            raise
+    finally:
+        if proc and proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=5)
+
+    report_content = temp_output_file.read_text()
+    assert "Linux" in report_content
+    assert "CPU" in report_content
