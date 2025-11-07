@@ -109,6 +109,7 @@ PERF_OUTPUT_NORMAL = """
         ("pid", {"target_pid": 999}, "-p 999"),
         ("cpu", {"target_cpus": "0-3,7"}, "-C 0-3,7"),
         ("system", {}, "-a"),
+        ("system", {"interval": 1000}, "-I 1000"),
     ],
 )
 def test_start_perf_stat_command_construction(
