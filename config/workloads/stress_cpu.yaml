@@ -20,10 +20,9 @@ benchmark_driver:
     max: $(nproc)
 
   # stress-ng 进程的名字通常是 stress-ng
-  target_pid_command: "pgrep -f 'stress-ng --cpu'"
+  target_pid_command: "pgrep stress-ng | tr '\\n' ',' | sed 's/,$//'"
 
 # --- Target Load Level Definitions ---
-# 目标不变
 target_load_levels:
   low:
     target_metric: "cpu_utilization"
@@ -34,3 +33,26 @@ target_load_levels:
   high:
     target_metric: "cpu_utilization"
     target_range: [90, 100] # 目标：CPU利用率 95% 左右
+
+collectors:
+  macro: # 宏观指标采集阶段
+    - name: perf_stat
+      enabled: true
+      mode: "pid"
+      all_threads: true
+      duration: 10 # 为了快速测试，设为 10 秒
+      event_groups:
+        - ["cycles", "instructions"]
+        - ["cache-references", "cache-misses"]
+        - ["branch-instructions", "branch-misses"]
+    # - name: sar_cpu
+    #   enabled: true
+    #   duration: 10
+    #   interval: 1
+
+  micro: # 微观画像采集阶段
+    - name: perf_record
+      enabled: false # 暂时禁用
+      duration: 10
+      frequency: 99
+      call_graph: "fp" # frame pointer

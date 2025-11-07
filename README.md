@@ -12,19 +12,22 @@
 
 - **🚀 Adaptive Calibration (`calibrate`):** Automatically discovers the optimal load parameters (e.g., threads, connections) for your specific hardware to achieve target system states (e.g., 20% CPU, 80% CPU). Say goodbye to guesswork.
   - **🚀 自适应校准 (`calibrate`):** 针对您的特定硬件，自动发现最优的负载参数（如线程数、连接数），以达到目标系统状态（如 20% CPU, 80% CPU）。告别猜测。
-- **🤖 Fully Automated Sampling (`sample`):** Executes a reproducible, multi-stage data collection process based on a calibrated plan. It captures both high-level system metrics (`sar`, `perf stat`) and deep, function-level profiles (`perf record`).
-  - **🤖 全自动采样 (`sample`):** 基于校准过的计划，执行一个可复现的、多阶段的数据采集流程。它能同时捕获高阶系统指标（`sar`, `perf stat`）和深度的函数级画像（`perf record`）。
-- **📊 Insightful Analysis (`analyze`):** Transforms raw data into a rich HTML report, featuring a rule-based decision tree for macro-bottleneck identification and **differential flame graphs** to pinpoint micro-level hotspots that emerge under pressure.
-  - **📊 富有洞察的分析 (`analyze`):** 将原始数据转换为内容丰富的 HTML 报告，其特色在于：使用基于规则的决策树进行宏观瓶颈识别，并利用**差分火焰图**来精确定位在压力下出现的微观层面热点。
+- **🤖 Robust Sampling Engine (`sample`):** A powerful, configuration-driven engine that orchestrates concurrent data collection (`perf stat`, etc.) with precise process lifecycle management. It supports multiple operating modes:
+  - **Standard Mode:** Follows a calibrated plan.
+  - **Direct Mode:** Executes with specific intensity levels, skipping calibration.
+  - **Attach Mode:** Passively monitors existing processes without launching new loads.
+  - **🤖 健壮的采样引擎 (`sample`):** 一个强大的、配置驱动的引擎，负责编排并发的数据采集（如 `perf stat` 等），并具备精确的进程生命周期管理。它支持多种运行模式：
+    - **标准模式:** 遵循校准过的计划执行。
+    - **直接模式:** 跳过校准，直接以指定的强度等级运行。
+    - **依附模式:** 被动监控已存在的进程，不启动新的负载。
+- **📊 Insightful Analysis (`analyze`):** Transforms raw data into a rich HTML report, featuring a rule-based decision tree for macro-bottleneck identification and **differential flame graphs** to pinpoint micro-level hotspots.
+  - **📊 富有洞察的分析 (`analyze`):** 将原始数据转换为内容丰富的 HTML 报告，其特色在于：使用基于规则的决策树进行宏观瓶颈识别，并利用**差分火焰图**来精确定位微观层面的热点。
 - **🔧 Universal & Extensible:** Built on a **"Load Driver"** architecture. Supporting new workloads (like Redis or PostgreSQL) requires only adding a simple YAML configuration file, with zero changes to the core engine.
   - **🔧 通用与可扩展:** 构建于 **“负载驱动程序”** 架构之上。支持新的工作负载（如 Redis 或 PostgreSQL）仅需添加一个简单的 YAML 配置文件，核心引擎代码无需任何更改。
 - **⚙️ Configuration as Code:** The entire experimental process is defined in human-readable YAML files, making your performance tests versionable, repeatable, and easy to share.
   - **⚙️ 配置即代码:** 整个实验流程被定义在人类可读的 YAML 文件中，使您的性能测试可版本化、可重复且易于分享。
 
 ## 🚀 Quick Start / 快速入门
-
-> **Note:** pipa is currently in early development. The following is a target workflow.
-> **注意:** pipa 目前处于早期开发阶段。以下为目标工作流。
 
 ### 1. Prerequisites / 先决条件
 
@@ -38,33 +41,45 @@
 pip install -r requirements.txt
 ```
 
-### 3. The Three-Stage Workflow / 三阶段工作流
+### 3. Usage Scenarios / 使用场景
 
-**Stage 1: Calibrate your environment for a specific workload.**
-**第一阶段：为特定工作负载校准您的环境。**
-This step probes your system to find the right benchmark intensity for "low," "medium," and "high" loads.
-此步骤探测您的系统，以找到对应“低”、“中”、“高”负载的正确基准测试强度。
+#### Scenario 1: The Standard Three-Stage Workflow (标准三阶段工作流)
+
+_Best for new workloads where optimal settings are unknown._
+_适用于未知工作负载，自动发现最佳配置。_
 
 ```bash
+# 1. Calibrate to find optimal parameters
 python pipa.py calibrate --workload mysql --output-config mysql_calibrated.yaml
-```
 
-**Stage 2: Run the automated sampling process.**
-**第二阶段：运行自动化采样流程。**
-This executes the full, multi-hour test run automatically based on the calibrated plan.
-此步骤基于校准计划，自动执行完整的多小时测试运行。
-
-```bash
+# 2. Run automated sampling based on the calibrated plan
 python pipa.py sample --config mysql_calibrated.yaml --output results.pipa
+
+# 3. Analyze the results (Coming Soon)
+python pipa.py analyze --input results.pipa --output report.html
 ```
 
-**Stage 3: Analyze the results and generate a report.**
-**第三阶段：分析结果并生成报告。**
-This takes the `.pipa` data archive and produces a `report.html`.
-此步骤接收 `.pipa` 数据归档文件，并产出 `report.html`。
+#### Scenario 2: Direct Sampling Mode (直接采样模式)
+
+_Best when you already know the exact load intensity you want to test._
+_适用于已知确切压测强度的情况，跳过校准步骤。_
 
 ```bash
-python pipa.py analyze --input results.pipa --output report.html
+# Sample 'stress_cpu' workload at 8 and 16 threads directly
+python pipa.py sample --workload stress_cpu --intensity 8,16 --output direct_run.pipa
+```
+
+#### Scenario 3: Passive Attach Mode (被动依附模式)
+
+_Best for monitoring existing, running production services._
+_适用于监控已经在运行的生产服务。_
+
+```bash
+# Find the PIDs of your target service
+PID_LIST=$(pgrep mysqld | tr '\n' ',' | sed 's/,$//')
+
+# Attach pipa to these PIDs and monitor for 60 seconds
+python pipa.py sample --workload mysql --attach-to-pid "$PID_LIST" --duration 60 --output attach_run.pipa
 ```
 
 ## 📚 Deeper Dive / 深度探索
@@ -72,14 +87,25 @@ python pipa.py analyze --input results.pipa --output report.html
 For a complete understanding of pipa's architecture, principles, and future plans, please refer to our detailed documentation:
 为了全面理解 pipa 的架构、原则和未来计划，请参考我们的详细文档：
 
-- **[DESIGN.md](./DESIGN.md):** The soul and blueprint of pipa. Understand the "why" behind its architecture.
-  - **[DESIGN.md](./DESIGN.md):** pipa 的灵魂与蓝图。理解其架构背后的“为什么”。
-- **[CONTRIBUTING.md](./CONTRIBUTING.md):** The laws and rules of our kingdom. Learn how to contribute, our code styles, and our Git workflow.
-  - **[CONTRIBUTING.md](./CONTRIBUTING.md):** 我们王国的“法律”与“规则”。学习如何贡献、我们的代码风格和 Git 工作流。
-- **[ROADMAP.md](./ROADMAP.md):** The future and ambition of pipa. See where we are heading.
-  - **[ROADMAP.md](./ROADMAP.md):** pipa 的未来与雄心。了解我们的前进方向。
+- **[DESIGN.md](./DESIGN.md):** The soul and blueprint of pipa. / pipa 的灵魂与蓝图。
+- **[CONTRIBUTING.md](./CONTRIBUTING.md):** Development guide and engineering standards. / 开发指南与工程标准。
+- **[ROADMAP.md](./ROADMAP.md):** Future plans and milestones. / 未来计划与里程碑。
 
 ---
 
-_This project is currently in a private, pre-alpha stage._
-_本项目目前处于私有的 Alpha 前阶段。_
+_This project is currently in early development._
+_本项目目前处于早期开发阶段。_
+
+````
+
+---
+
+### **Commit Message 建议**
+
+```text
+docs(readme): 更新 README 以反映最新的 sample 功能和多种运行模式
+
+- 更新核心特性列表，强调新的健壮采样引擎及其支持的三种模式（标准、直接、依附）。
+- 重构“快速入门”部分，增加了“直接采样模式”和“被动依附模式”的具体使用场景和示例命令。
+- 清晰地展示了 pipa 作为通用性能分析平台的灵活性。
+````

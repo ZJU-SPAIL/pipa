@@ -1,5 +1,7 @@
+import subprocess
+from typing import cast
 import pytest
-from src.collector import collect_cpu_utilization, collect_perf_stat
+from src.collector import collect_cpu_utilization, start_perf_stat, stop_perf_stat
 from src.executor import ExecutionError
 
 # This is a sample output from `LC_ALL=C sar -u 1 5`
@@ -103,110 +105,129 @@ PERF_OUTPUT_NORMAL = """
         ("system", {}, "-a"),
     ],
 )
-def test_collect_perf_stat_command_construction(
+def test_start_perf_stat_command_construction(
     monkeypatch, mode, kwargs_for_call, expected_flag_part
 ):
     """
-    Tests that the perf stat command is constructed correctly for all modes.
-    测试 perf stat 命令是否能为所有模式正确地构建。
+    Tests that the perf stat command is constructed correctly for all modes
+    by the new start_perf_stat function.
     """
     called_command = []
 
-    def mock_run_command(command):
-        called_command.append(command)
-        # We don't need a real result, just to capture the command
-        return "mock output"
-
-    monkeypatch.setattr("src.collector.run_command", mock_run_command)
-
-    # Mock run_in_background to do the same thing: just record the command
-    # 让 run_in_background 也做同样的事：只记录命令
-    # It needs to return a dummy Popen-like object though
-    # 但它需要返回一个假的、像 Popen 的对象
-    class MockPopen:
-        def poll(self):
-            return None
-
-        def terminate(self):
-            pass
-
-        def wait(self, timeout=None):
-            pass
-
-        def send_signal(self, sig):
-            pass
-
+    # Mock run_in_background to capture the command
     def mock_run_in_background(command):
         called_command.append(command)
+
+        # Return a dummy Popen-like object
+        class MockPopen:
+            pass
+
         return MockPopen()
 
     monkeypatch.setattr("src.collector.run_in_background", mock_run_in_background)
 
-    # Base arguments, merged with mode-specific ones
     base_args = {
-        "duration": 5,
         "output_file": "/tmp/perf.txt",
         "event_groups": [["cycles"]],
     }
-    collect_perf_stat(mode=mode, **base_args, **kwargs_for_call)
+    start_perf_stat(mode=mode, **base_args, **kwargs_for_call)
 
-    # The command is the first (and only) item in the list
+    assert len(called_command) == 1
     final_command = called_command[0]
+
+    assert "perf stat" in final_command
     assert expected_flag_part in final_command
-    assert "-o /tmp/perf.txt" in final_command
-    assert "--append" in final_command
+    # assert "-o /tmp/perf.txt" in final_command
+    assert "--append" not in final_command
     assert "-e {cycles}" in final_command
-    if mode == "system":
-        assert "-- sleep 5" in final_command
+    # Most importantly, ensure 'sleep' is NOT in the command
+    assert "sleep" not in final_command
 
 
 @pytest.mark.parametrize(
-    "mode, kwargs_for_call, expected_error_msg",
+    "mode, kwargs, expected_error_msg",
     [
         ("invalid_mode", {}, "Invalid perf stat mode: invalid_mode"),
-        ("pid", {}, "target_pid parameter is required for 'pid' mode."),
-        ("cpu", {}, "target_cpus parameter is required for 'cpu' mode."),
+        ("pid", {}, "Missing required parameter for perf stat mode 'pid'."),
+        ("cpu", {}, "Missing required parameter for perf stat mode 'cpu'."),
     ],
 )
-def test_collect_perf_stat_raises_value_error_for_invalid_params(
-    mode, kwargs_for_call, expected_error_msg
+def test_start_perf_stat_raises_value_error_for_invalid_params(
+    mode, kwargs, expected_error_msg
 ):
     """
     Tests that ValueError is raised for invalid mode or missing parameters.
-    测试在模式无效或参数缺失时，是否会引发 ValueError。
     """
-    base_args = {
-        "duration": 1,
-        "output_file": "dummy.txt",
-        "event_groups": [["cycles"]],
-    }
     with pytest.raises(ValueError, match=expected_error_msg):
-        collect_perf_stat(mode=mode, **base_args, **kwargs_for_call)
+        start_perf_stat(
+            mode=mode, output_file="dummy.txt", event_groups=[["cycles"]], **kwargs
+        )
 
 
-def test_collect_perf_stat_success_path(monkeypatch):
-    """
-    Tests the successful execution path still works.
-    测试成功执行的路径依然有效。
-    """
-    # This test now simply ensures run_command is called and no error occurs.
-    # The actual command construction is tested above.
-    # 这个测试现在只简单确保 run_command 被调用且不发生错误。
-    # 实际的命令构建已在上面测试过。
-    mock_calls = []
+class MockPopen:
+    def __init__(self, pid=123, stderr_data="perf data", should_timeout=False):
+        self.pid = pid
+        self._stderr_data = stderr_data
+        self._should_timeout = should_timeout
+        self.killed = False
 
-    def mock_run_command(command):
-        mock_calls.append(command)
-        return "Success"
+    def send_signal(self, sig):
+        """Mock send_signal method."""
+        pass
 
-    monkeypatch.setattr("src.collector.run_command", mock_run_command)
+    def communicate(self, timeout=None):
+        if self._should_timeout and not self.killed:
+            raise subprocess.TimeoutExpired("cmd", timeout or 0)
+        return (None, self._stderr_data)
 
-    collect_perf_stat(
-        mode="system",
-        duration=1,
-        output_file="dummy.txt",
-        event_groups=[["instructions"]],
+    def kill(self):
+        self.killed = True
+
+    def poll(self):  # stop_perf_stat 可能会调用 poll
+        return None
+
+
+def test_stop_perf_stat_success(monkeypatch, tmp_path):
+    """Tests stop_perf_stat with a successful communicate() call."""
+    mock_proc = MockPopen(stderr_data="cycles: 100")
+    written_content = []
+    temp_file = tmp_path / "perf_output.txt"
+
+    def mock_open(*args, **kwargs):
+        class MockFile:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+            def write(self, content):
+                written_content.append(content)
+
+        return MockFile()
+
+    monkeypatch.setattr("builtins.open", mock_open)
+
+    content = stop_perf_stat(
+        cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5
     )
 
-    assert len(mock_calls) == 1
-    assert "perf stat -a" in mock_calls[0]
+    assert content == "cycles: 100"
+    assert written_content[0] == "cycles: 100"
+    assert mock_proc.killed is False
+
+
+def test_stop_perf_stat_timeout(tmp_path):
+    """Tests stop_perf_stat's behavior on communicate() timeout."""
+    mock_proc = MockPopen(should_timeout=True, stderr_data="partial data")
+    temp_file = tmp_path / "perf_output.txt"
+
+    content = stop_perf_stat(
+        cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5
+    )
+
+    assert mock_proc.killed is True
+    assert content == "partial data"
+    # 验证超时时也会写入文件
+    assert temp_file.exists()
+    assert temp_file.read_text() == "partial data"

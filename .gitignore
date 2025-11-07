@@ -8,3 +8,4 @@ dist/
 *_calibrated.yaml
 .pytest_cache/
 .python_*
+*.pipa
