@@ -1,7 +1,8 @@
 import pandas as pd
 import pytest
+from markdown_it import MarkdownIt
 
-from src.engine.rules import calculate_context_metrics, run_rules_engine
+from src.engine.rules import calculate_context_metrics, format_rules_to_html_tree, run_rules_engine
 
 
 # calculate_context_metrics 的测试保持不变，因为其逻辑没有改变
@@ -37,7 +38,7 @@ def test_calculate_context_metrics_missing_and_empty_data():
 
 @pytest.fixture
 def mock_v2_rules():
-    """提供一个层次化的 V2 mock 规则，其 precondition 已修正为直接访问 context 变量。"""
+    """提供一个层次化的 V2 mock 规则，其 finding 已加入 Markdown 标记。"""
     return [
         {
             "name": "PIPA Root",
@@ -46,24 +47,24 @@ def mock_v2_rules():
                 {
                     "name": "ON-CPU Branch",
                     "precondition": "'total_cpu' in locals() and total_cpu > 75",
-                    "finding": "诊断：ON-CPU (利用率 {total_cpu:.2f}%)。",
+                    "finding": "诊断：**ON-CPU** (利用率 **{total_cpu:.2f}%**)。",
                     "sub_rules": [
                         {
                             "name": "High Context Switches",
                             "precondition": "'avg_cswch' in locals() and avg_cswch > 100000",
-                            "finding": "根因：高上下文切换。",
+                            "finding": "根因：**高上下文切换**。",
                         },
                         {
                             "name": "Frontend Bound (Future)",
                             "precondition": "'tma' in df and df['tma']['Frontend_Bound'].mean() > 0.2",
-                            "finding": "根因：前端受限。",
+                            "finding": "根因：**前端受限**。",
                         },
                     ],
                 },
                 {
                     "name": "OFF-CPU Branch",
                     "precondition": "'total_cpu' in locals() and total_cpu <= 75",
-                    "finding": "诊断：OFF-CPU。",
+                    "finding": "诊断：**OFF-CPU**。",
                 },
             ],
         }
@@ -80,8 +81,8 @@ def test_run_rules_engine_v2_deep_path_triggered(mock_v2_rules):
     findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
 
     assert len(findings) == 2
-    assert "诊断：ON-CPU (利用率 90.00%)。" in findings
-    assert "根因：高上下文切换。" in findings
+    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
+    assert "根因：**高上下文切换**。" in findings
 
 
 def test_run_rules_engine_v2_branch_pruning(mock_v2_rules):
@@ -94,8 +95,8 @@ def test_run_rules_engine_v2_branch_pruning(mock_v2_rules):
     findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
 
     assert len(findings) == 1
-    assert "诊断：ON-CPU (利用率 90.00%)。" in findings
-    assert "根因：高上下文切换。" not in findings
+    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
+    assert "根因：**高上下文切换**。" not in findings
 
 
 def test_run_rules_engine_v2_handles_missing_data_gracefully(mock_v2_rules):
@@ -107,5 +108,33 @@ def test_run_rules_engine_v2_handles_missing_data_gracefully(mock_v2_rules):
     findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
 
     assert len(findings) == 1
-    assert "诊断：ON-CPU (利用率 90.00%)。" in findings
-    assert "根因：前端受限。" not in findings
+    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
+    assert "根因：**前端受限**。" not in findings
+
+
+def test_format_rules_to_html_tree_renders_correctly(mock_v2_rules):
+    """
+    测试 V2 可视化翻译官：
+    1. 能否生成正确的 HTML 结构。
+    2. 能否根据数据正确高亮激活的节点 (`active-node`)。
+    3. 能否将真实数据和 Markdown 正确注入到 finding 字符串中。
+    """
+    mock_dataframes = {
+        "cpu": pd.DataFrame({"pct_usr": [80.0], "pct_sys": [10.0]}),
+        "proc_cswch": pd.DataFrame({"cswch_per_s": [200000]}),
+    }
+    context = calculate_context_metrics(mock_dataframes)
+    md = MarkdownIt()
+
+    tree_html, finding_html = format_rules_to_html_tree(mock_v2_rules, mock_dataframes, context, md)
+
+    assert '<div class="tree">' in tree_html
+    assert "<span>PIPA Root</span>" in tree_html
+
+    assert "<li class='active-node'><span>ON-CPU Branch</span>" in tree_html
+    assert "<li class='active-node'><span>High Context Switches</span>" in tree_html
+    assert "<li class='active-node'><span>OFF-CPU Branch</span>" not in tree_html
+
+    assert "<strong>90.00%</strong>" in finding_html
+    assert "高上下文切换" in finding_html
+    assert "诊断：OFF-CPU" not in finding_html
