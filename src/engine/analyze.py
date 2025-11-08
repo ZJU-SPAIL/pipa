@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 from jinja2 import Environment, FileSystemLoader
@@ -74,15 +75,21 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
         log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
 
         log.info("Generating interactive plot...")
+        columns_to_plot = [
+            col for col in merged_df.columns if pd.api.types.is_numeric_dtype(merged_df[col]) and "timestamp" not in col
+        ]
+
         fig = px.line(
             merged_df,
             x="timestamp_x",
-            y=["pct_usr", "instructions:u"],
-            title="CPU Utilization vs Instructions Over Time",
+            y=columns_to_plot,
+            title="Time-Series Metrics Explorer",
             labels={"timestamp_x": "Time", "value": "Metric Value", "variable": "Metric"},
         )
+        fig.update_layout(legend_itemclick="toggleothers")
         plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
-
+        df_for_table = merged_df.round(2).replace([np.inf, -np.inf], "Infinity").fillna("N/A")
+        table_json_data = df_for_table.to_json(orient="records")
         log.info(f"Generating HTML report at: {html_report_path}")
         env = Environment(loader=FileSystemLoader("src/templates"))
 
@@ -92,7 +99,7 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
         template = env.get_template("report_template.html")
         html_content = template.render(
             interactive_plot=plot_div,
-            aligned_table=merged_df.to_html(index=False, classes="table", border=0),
+            table_data_json=table_json_data,
             findings=findings,
         )
         with open(html_report_path, "w") as f:
