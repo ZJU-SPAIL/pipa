@@ -17,110 +17,120 @@ log = logging.getLogger(__name__)
 
 def generate_report(level_dir: Path, report_path: Path):
     """
-    Analyzes sampling data, generates insights and interactive plots,
-    and creates a self-contained HTML report.
+    Analyzes sampling data, generates insights and interactive plots, and creates a
+    self-contained HTML report. Handles missing data files gracefully.
     """
     log.info(f"--- Generating analysis report from directory: {level_dir} ---")
 
-    static_info_path = level_dir.parent / "static_info.yaml"
+    analysis_warnings = []
+
     static_info_str = ""
+    static_info_path = level_dir.parent / "static_info.yaml"
     try:
-        log.info(f"Loading static system info from {static_info_path.name}...")
         with open(static_info_path, "r") as f:
             static_info_data = yaml.safe_load(f)
             static_info_str = yaml.dump(static_info_data, indent=2, allow_unicode=True)
+            log.info(f"Loaded static system info from {static_info_path.name}.")
     except FileNotFoundError:
-        log.warning("static_info.yaml not found, the report will lack system context.")
+        warning = "static_info.yaml not found. The report will lack system context."
+        log.warning(warning)
+        analysis_warnings.append(warning)
 
-    perf_file = level_dir / "perf_stat.txt"
-    sar_file = level_dir / "sar_cpu.txt"
+    df_perf_raw = pd.DataFrame()
+    try:
+        perf_content = (level_dir / "perf_stat.txt").read_text()
+        if perf_content:
+            df_perf_raw = parse_perf_stat_timeseries(perf_content)
+            log.info("Successfully parsed perf_stat.txt.")
+        else:
+            analysis_warnings.append("perf_stat.txt is empty.")
+    except FileNotFoundError:
+        analysis_warnings.append("perf_stat.txt not found. Perf-related analysis will be skipped.")
 
-    if not perf_file.exists() or not sar_file.exists():
-        log.error(f"Missing required data files in {level_dir}. Aborting PoC.")
-        return
+    results_sar = {}
+    try:
+        sar_content = (level_dir / "sar_cpu.txt").read_text()
+        if sar_content:
+            results_sar = parse_sar_timeseries(sar_content)
+            log.info("Successfully parsed sar_cpu.txt.")
+        else:
+            analysis_warnings.append("sar_cpu.txt is empty.")
+    except FileNotFoundError:
+        analysis_warnings.append("sar_cpu.txt not found. SAR-related analysis will be skipped.")
 
-    log.info("Parsing perf_stat and sar data...")
-    perf_content = perf_file.read_text()
-    sar_content = sar_file.read_text()
+    df_sar = results_sar.get("cpu", pd.DataFrame())
+    if not df_sar.empty:
+        df_sar = df_sar[df_sar["CPU"] == "all"].copy()
 
-    df_perf_raw = parse_perf_stat_timeseries(perf_content)
-    results_sar = parse_sar_timeseries(sar_content)
+    df_perf = pd.DataFrame()
+    if not df_perf_raw.empty:
+        df_perf = df_perf_raw.pivot(index="timestamp", columns="event_name", values="value").reset_index()
 
-    df_sar_cpu = results_sar.get("cpu")
-    if df_sar_cpu is None or df_sar_cpu.empty:
-        log.error("CPU data block not found or is empty in sar output. Aborting PoC.")
-        return
-    df_sar = df_sar_cpu[df_sar_cpu["CPU"] == "all"].copy()
+    merged_df = pd.DataFrame()
+    if not df_sar.empty and not df_perf.empty:
+        log.info("Both SAR and Perf data available. Performing as-of merge...")
+        df_perf = df_perf.sort_values("timestamp")
+        df_sar = df_sar.sort_values("timestamp")
+        df_sar["timestamp_dt"] = pd.to_datetime(df_sar["timestamp"].astype(str), format="%H:%M:%S")
+        df_sar["timestamp_float"] = (df_sar["timestamp_dt"] - df_sar["timestamp_dt"].iloc[0]).dt.total_seconds()
+        merged_df = pd.merge_asof(
+            left=df_sar, right=df_perf, left_on="timestamp_float", right_on="timestamp", direction="nearest"
+        )
+    elif not df_sar.empty:
+        log.info("Only SAR data available. Using it as the primary timeseries data.")
+        merged_df = df_sar
+    elif not df_perf.empty:
+        log.info("Only Perf data available. Using it as the primary timeseries data.")
+        merged_df = df_perf
+    else:
+        log.warning("No time-series data available to generate plots or tables.")
 
-    if df_perf_raw.empty or df_sar.empty:
-        log.error("Parsing resulted in empty DataFrames. Aborting PoC.")
-        return
+    all_dataframes = {"perf": df_perf, **results_sar}
+    rules = load_rules(Path("config/rules/decision_tree.yaml"))
+    context = calculate_context_metrics(all_dataframes)
+    findings = run_rules_engine(all_dataframes, rules, context)
+    md = MarkdownIt()
+    decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
 
-    df_perf = df_perf_raw.pivot(index="timestamp", columns="event_name", values="value").reset_index()
-    log.info("Pivoted perf DataFrame for alignment.")
-
-    df_perf = df_perf.sort_values("timestamp")
-    df_sar = df_sar.sort_values("timestamp")
-
-    log.info("Performing as-of merge...")
-    df_sar["timestamp_dt"] = pd.to_datetime(df_sar["timestamp"].astype(str), format="%H:%M:%S")
-    df_sar["timestamp_float"] = (df_sar["timestamp_dt"] - df_sar["timestamp_dt"].iloc[0]).dt.total_seconds()
-
-    merged_df = pd.merge_asof(
-        left=df_sar,
-        right=df_perf,
-        left_on="timestamp_float",
-        right_on="timestamp",
-        direction="nearest",
-    )
-
-    log.info("--- Analysis PoC Complete. ---")
-    columns_to_drop = ["timestamp_dt", "timestamp_float", "CPU"]
-    merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
-
-    if report_path:
-        all_dataframes = {"perf": df_perf, **results_sar}
-        rules = load_rules(Path("config/rules/decision_tree.yaml"))
-
-        context = calculate_context_metrics(all_dataframes)
-
-        findings = run_rules_engine(all_dataframes, rules, context)
-        log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
-        md = MarkdownIt()
-        decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
-        log.info("Generating interactive plot...")
+    plot_div = ""
+    table_json_data = "[]"
+    if not merged_df.empty:
+        log.info("Generating interactive plot and data table...")
         columns_to_plot = [
             col for col in merged_df.columns if pd.api.types.is_numeric_dtype(merged_df[col]) and "timestamp" not in col
         ]
+        if columns_to_plot:
+            timestamp_col = next((c for c in ["timestamp_x", "timestamp"] if c in merged_df.columns), None)
+            if timestamp_col:
+                fig = px.line(
+                    merged_df,
+                    x=timestamp_col,
+                    y=columns_to_plot,
+                    title="Time-Series Metrics Explorer",
+                    labels={timestamp_col: "Time", "value": "Metric Value", "variable": "Metric"},
+                )
+                fig.update_layout(autosize=True, height=600, legend_itemclick="toggleothers")
+                plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
 
-        fig = px.line(
-            merged_df,
-            x="timestamp_x",
-            y=columns_to_plot,
-            title="Time-Series Metrics Explorer",
-            labels={"timestamp_x": "Time", "value": "Metric Value", "variable": "Metric"},
-        )
-        fig.update_layout(autosize=True, height=600, legend_itemclick="toggleothers")
-        plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
         df_for_table = merged_df.round(2).replace([np.inf, -np.inf], "Infinity").fillna("N/A")
         table_json_data = df_for_table.to_json(orient="records")
-        log.info(f"Generating HTML report at: {report_path}")
-        env = Environment(loader=FileSystemLoader("src/templates"))
 
-        md = MarkdownIt()
-        env.filters["markdown"] = lambda text: md.render(text)
+    log.info(f"Generating HTML report at: {report_path}")
+    env = Environment(loader=FileSystemLoader("src/templates"))
+    env.filters["markdown"] = lambda text: md.render(text)
 
-        template = env.get_template("report_template.html")
-        html_content = template.render(
-            interactive_plot=plot_div,
-            table_data_json=table_json_data,
-            findings=findings,
-            decision_tree_html=decision_tree_html,
-            findings_for_tree_html=findings_for_tree_html,
-            static_info_str=static_info_str,
-        )
-        with open(report_path, "w") as f:
-            f.write(html_content)
-        log.info("✅ HTML report with insights generated successfully.")
+    template = env.get_template("report_template.html")
+    html_content = template.render(
+        warnings=analysis_warnings,
+        interactive_plot=plot_div,
+        table_data_json=table_json_data,
+        findings=findings,
+        decision_tree_html=decision_tree_html,
+        findings_for_tree_html=findings_for_tree_html,
+        static_info_str=static_info_str,
+    )
+    with open(report_path, "w") as f:
+        f.write(html_content)
+    log.info("✅ HTML report generation complete.")
 
     return merged_df

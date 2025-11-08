@@ -200,10 +200,44 @@
         color: #fff;
         border-color: #e25050;
       }
+      /* --- 高亮激活的节点 --- */
+      .tree li.active-node > span {
+        background: #e25050;
+        color: #fff;
+        border-color: #e25050;
+      }
+
+      /* --- 警告信息样式 --- */
+      .warnings-container {
+        background-color: #fffbe6;
+        border: 1px solid #ffe58f;
+        padding: 1em 1.5em;
+        margin-bottom: 2em;
+        border-radius: 4px;
+      }
+      .warnings-container h2 {
+        margin-top: 0;
+        color: #d46b08;
+      }
+      .warnings-container ul {
+        padding-left: 20px;
+        margin-bottom: 0;
+      }
     </style>
   </head>
 
   <body>
+    {% if warnings %}
+    <div class="warnings-container">
+      <h2>Warnings</h2>
+      <ul>
+        {% for warning in warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
     <h1>PIPA Analysis Report</h1>
 
     <!-- Tab Buttons -->
