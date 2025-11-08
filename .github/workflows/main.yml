@@ -79,6 +79,58 @@ jobs:
       - name: Install pytest and coverage
         run: pip install pytest coverage
 
+      - name: Prepare test data directory
+        run: mkdir -p data
+
+      - name: Download perf data (if not present)
+        env:
+          DATA_PERF_URL: ${{ vars.DATA_PERF_URL }}
+          DATA_OUT_URL:  ${{ vars.DATA_OUT_URL }}
+        run: |
+          set -euo pipefail
+          if [ ! -f data/perf_script_file.txt ]; then
+            if [ -n "${DATA_PERF_URL:-}" ]; then
+              echo "Downloading perf_script_file.txt from ${DATA_PERF_URL}"
+              curl -L --fail --retry 3 -o data/perf_script_file.txt "${DATA_PERF_URL}"
+            else
+              echo "DATA_PERF_URL not set, data/perf_script_file.txt missing" >&2
+              exit 1
+            fi
+          else
+            echo "data/perf_script_file.txt already exists, skip download"
+          fi
+          if [ ! -f data/out.py.stacks-folded ]; then
+            if [ -n "${DATA_OUT_URL:-}" ]; then
+              echo "Downloading out.py.stacks-folded from ${DATA_OUT_URL}"
+              curl -L --fail --retry 3 -o data/out.py.stacks-folded "${DATA_OUT_URL}"
+            else
+              echo "DATA_OUT_URL not set, data/out.py.stacks-folded missing" >&2
+              exit 1
+            fi
+          else
+            echo "data/out.py.stacks-folded already exists, skip download"
+          fi
+
+      - name: Verify checksums (optional)
+        env:
+          DATA_PERF_SHA256: ${{ vars.DATA_PERF_SHA256 }}
+          DATA_OUT_SHA256:  ${{ vars.DATA_OUT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DATA_PERF_SHA256:-}" ] || [ -n "${DATA_OUT_SHA256:-}" ]; then
+            echo "Verifying checksums..."
+            : > /tmp/sha256sum.txt
+            if [ -n "${DATA_PERF_SHA256:-}" ]; then
+              echo "${DATA_PERF_SHA256}  data/perf_script_file.txt" >> /tmp/sha256sum.txt
+            fi
+            if [ -n "${DATA_OUT_SHA256:-}" ]; then
+              echo "${DATA_OUT_SHA256}  data/out.py.stacks-folded" >> /tmp/sha256sum.txt
+            fi
+            sha256sum -c /tmp/sha256sum.txt
+          else
+            echo "No checksums provided (DATA_PERF_SHA256/DATA_OUT_SHA256), skipping verification"
+          fi
+
       - name: Run tests
         run: coverage run --source=src,test -m pytest
 
