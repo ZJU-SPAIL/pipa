@@ -32,13 +32,13 @@ MODE=${1:-counting}
 
 if [ "$MODE" = "counting" ] || [ "$MODE" = "" ]; then
   # Execute counting mode commands
-  sar -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &
+  sar -A -o $WORKSPACE/sar.dat 1 >/dev/null 2>&1 &
   sar_pid=$!
   perf stat -e cycles:D,instructions:D,ref-cycles:D -A -x , -I 1000 -o $WORKSPACE/perf-stat.csv
   kill -9 $sar_pid
 elif [ "$MODE" = "profiling" ]; then
   # Execute profiling mode commands
-  perf record -e '{cycles,instructions}:S' -g -a -F 999 -o $WORKSPACE/perf.data
+  perf record -e '{cycles,instructions}:S' -g -a -F 997 -o $WORKSPACE/perf.data
 else
   # Invalid parameter
   echo "Invalid parameter. Usage: $0 [counting|profiling]"
