@@ -8,7 +8,7 @@ This document outlines the planned development milestones for the pipa project. 
 
 ---
 
-## मील Milestone-Based Plan / 基于里程碑的计划
+## Milestone-Based Plan / 基于里程碑的计划
 
 ### 🚀 Version 0.1.0: The Foundation (MVP)
 
@@ -22,7 +22,7 @@ This document outlines the planned development milestones for the pipa project. 
   - [x] Establish core project structure and documentation. / 建立核心项目结构和文档。
   - [x] Implement the `calibrate` command with adaptive CPU utilization targeting. / 实现带有自适应 CPU 利用率目标的 `calibrate` 命令。
   - [x] Implement the `sample` command for automated, three-level data collection. / 实现 `sample` 命令，用于自动化的三级数据采集。
-  - [ ] Implement the `analyze` command with a basic Python-based decision tree. / 实现 `analyze` 命令，使用基础的、基于 Python 的决策树。
+  - [x] Implement the `analyze` command with a basic Python-based decision tree. / 实现 `analyze` 命令，使用基础的、基于 Python 的决策树。
   - [x] Initial support for **MySQL** workload via the Load Driver abstraction. / 通过负载驱动程序抽象，初步支持 **MySQL** 工作负载。
   - [ ] Basic unit tests for `processor` and `analyzer` modules. / 为 `processor` 和 `analyzer` 模块编写基础单元测试。
 
@@ -53,16 +53,3 @@ This document outlines the planned development milestones for the pipa project. 
   - [x] Full CI/CD pipeline for automated testing and release packaging. / 完整的 CI/CD 流水线，用于自动化测试和发布打包。
   - [x] Comprehensive user documentation. / 详尽的用户文档。
   - [ ] Pluggable analysis rule engine, allowing users to provide their own rule sets. / 可插拔的分析规则引擎，允许用户提供自己的规则集。
-
-### 🌌 Future: The Rust Frontier (pipa-rs)
-
-### 🌌 未来：Rust 前沿 (pipa-rs)
-
-- **Status:** 🔭 Research
-- **状态:** 🔭 探索中
-- **Goal:** Explore rewriting the performance-critical collection engine in Rust for maximum efficiency and reliability.
-- **目标：** 探索用 Rust 重写性能关键的采集引擎，以获得最高的效率和可靠性。
-- **Key Ideas / 核心思想:**
-  - Continue to use Python as the high-level workflow orchestrator. / 继续使用 Python 作为高阶工作流的编排器。
-  - Replace the `subprocess` calls to `perf` with a Rust binary that interacts **directly with the `perf_event_open` syscall**. / 将对 `perf` 的 `subprocess` 调用，替换为一个**直接与 `perf_event_open` 系统调用交互**的 Rust 二进制程序。
-  - This would eliminate the dependency on the system's `perf` tool and remove the overhead of parsing text output. / 这将消除对系统 `perf` 工具的依赖，并移除解析文本输出的开销。
