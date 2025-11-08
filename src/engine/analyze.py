@@ -90,7 +90,7 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
             title="Time-Series Metrics Explorer",
             labels={"timestamp_x": "Time", "value": "Metric Value", "variable": "Metric"},
         )
-        fig.update_layout(legend_itemclick="toggleothers")
+        fig.update_layout(autosize=True, height=600, legend_itemclick="toggleothers")
         plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
         df_for_table = merged_df.round(2).replace([np.inf, -np.inf], "Infinity").fillna("N/A")
         table_json_data = df_for_table.to_json(orient="records")
