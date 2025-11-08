@@ -32,4 +32,4 @@ repos:
         entry: python .hooks/check_inline_comments.py
         language: python
         types: [python]
-        stages: [commit]
+        stages: [pre-commit]

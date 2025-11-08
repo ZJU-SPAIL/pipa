@@ -14,3 +14,4 @@ pip-tools
 isort
 tabulate
 Jinja2
+plotly

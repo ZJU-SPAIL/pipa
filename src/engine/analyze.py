@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import plotly.express as px
 from jinja2 import Environment, FileSystemLoader
 
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
@@ -66,12 +67,25 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
 
     if html_report_path:
+        log.info("Generating interactive plot...")
+        fig = px.line(
+            merged_df,
+            x="timestamp_x",
+            y=["pct_usr", "instructions:u"],
+            title="CPU Utilization vs Instructions Over Time",
+            labels={"timestamp_x": "Time", "value": "Metric Value", "variable": "Metric"},
+        )
+        plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
+
         log.info(f"Generating HTML report at: {html_report_path}")
         env = Environment(loader=FileSystemLoader("src/templates"))
         template = env.get_template("report_template.html")
-        html_content = template.render(aligned_table=merged_df.to_html(index=False, classes="table", border=0))
+        html_content = template.render(
+            interactive_plot=plot_div,
+            aligned_table=merged_df.to_html(index=False, classes="table", border=0),
+        )
         with open(html_report_path, "w") as f:
             f.write(html_content)
-        log.info("✅ HTML report generated successfully.")
+        log.info("✅ HTML report with interactive plot generated successfully.")
 
     return merged_df
