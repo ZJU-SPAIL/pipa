@@ -39,10 +39,14 @@ isort==7.0.0
     # via -r requirements.in
 jinja2==3.1.6
     # via -r requirements.in
+markdown-it-py==4.0.0
+    # via -r requirements.in
 markupsafe==3.0.3
     # via jinja2
 mccabe==0.7.0
     # via flake8
+mdurl==0.1.2
+    # via markdown-it-py
 mypy-extensions==1.1.0
     # via black
 narwhals==2.10.2

@@ -44,7 +44,8 @@
     <h2>Key Findings & Insights</h2>
     <ul>
         {% for finding in findings %}
-        <li>{{ finding | safe }}</li> {# 使用 'safe' 过滤器来正确渲染 finding 中的 ** 粗体标记 #}
+        {# 使用我们自定义的 markdown 过滤器，并保持 safe #}
+        <li>{{ finding | markdown | safe }}</li>
         {% endfor %}
     </ul>
     {% endif %}
