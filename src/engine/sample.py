@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 import time
 from typing import List, Optional
-from src.collector import start_perf_stat, stop_perf_stat
+from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
 from src.config_loader import load_workload_config
 from src.executor import ExecutionError, run_command, run_in_background
 from src.static_collector import collect_all_static_info
@@ -184,17 +184,21 @@ def run_sampling(
             macro_duration = 0
 
             for collector_conf in macro_collectors_config:
+                if not collector_conf.get("enabled", False):
+                    continue
+
                 proc = None
-                perf_output_file = None
-                if collector_conf.get("name") == "perf_stat" and collector_conf.get(
-                    "enabled"
-                ):
-                    perf_output_file = level_dir / "perf_stat.txt"
+                collector_name = collector_conf.get("name")
+                output_file = None
+
+                if collector_name == "perf_stat":
+                    output_file = level_dir / "perf_stat.txt"
                     perf_args = {
-                        "output_file": str(perf_output_file),
+                        "output_file": str(output_file),
                         "mode": collector_conf.get("mode", "system"),
                         "event_groups": collector_conf.get("event_groups", []),
                         "all_threads": collector_conf.get("all_threads", False),
+                        "interval": collector_conf.get("interval"),
                     }
                     if perf_args["mode"] == "pid":
                         if not target_pid:
@@ -203,17 +207,25 @@ def run_sampling(
                             )
                             continue
                         perf_args["target_pid"] = target_pid
-
                     proc = start_perf_stat(**perf_args)
+
+                elif collector_name == "sar_cpu":
+                    output_file = level_dir / "sar_cpu.txt"
+                    duration = collector_conf.get("duration", 60)
+                    interval = collector_conf.get("interval", 1)
+                    proc = start_sar(
+                        duration=duration,
+                        interval=interval,
+                        output_file=str(output_file),
+                    )
 
                 if proc:
                     running_macro_collectors[proc.pid] = {
                         "proc": proc,
-                        "name": "perf_stat",
-                        "output_file": perf_output_file,
+                        "name": collector_name,
+                        "output_file": output_file,
                         "duration": collector_conf.get("duration", 60),
                     }
-                    # 使用配置中的最大时长作为该阶段的采集时间
                     macro_duration = max(
                         macro_duration, collector_conf.get("duration", 60)
                     )
@@ -258,22 +270,29 @@ def run_sampling(
                     output_file = collector_context["output_file"]
                     duration = collector_context["duration"]
 
+                    if output_file is None:
+                        log.warning(
+                            f"Collector '{name}' (PID: {pid}) has no output file,"
+                            " skipping stop logic."
+                        )
+                        continue
+
+                    wait_timeout = duration + 15
                     if name == "perf_stat":
-                        if output_file is not None:
-                            wait_timeout = duration + 15
-                            content = stop_perf_stat(
-                                proc, str(output_file), timeout=wait_timeout
+                        content = stop_perf_stat(
+                            proc, str(output_file), timeout=wait_timeout
+                        )
+                        if content:
+                            log.debug(
+                                f"--- perf_stat.txt content for '{level}' ---\n"
+                                f"{content}\n--------------------"
                             )
-                            if content:
-                                log.debug(
-                                    f"--- perf_stat.txt content for '{level}' ---\n"
-                                    f"{content}\n--------------------"
-                                )
-                        else:
-                            log.warning(
-                                "perf_stat output_file is None"
-                                ", skipping stop_perf_stat."
-                            )
+                    elif name == "sar_cpu":
+                        stop_sar(proc, str(output_file), duration=duration)
+                    proc = collector_context["proc"]
+                    name = collector_context["name"]
+                    output_file = collector_context["output_file"]
+                    duration = collector_context["duration"]
 
             log.info(f"--- Collection for level '{level}' finished. ---")
 

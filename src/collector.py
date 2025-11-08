@@ -84,6 +84,7 @@ def start_perf_stat(
     target_cpus: Optional[str] = None,
     event_groups: Optional[list[list[str]]] = None,
     all_threads: bool = False,
+    interval: Optional[int] = None,
 ) -> Optional[subprocess.Popen]:
     """
     Starts perf stat in the background. Its stderr is piped for capture.
@@ -94,6 +95,7 @@ def start_perf_stat(
     :param target_pid: The process ID to monitor (for "pid" mode).
     :param target_cpus: A string of CPUs to monitor, e.g., "0,2-4" (for "cpu" mode).
     :param event_groups: A list of event groups,
+    :param interval: The interval between samples in milliseconds (for -I option).
     e.g., [["cycles", "ins"], ["branches"]].
     :raises ExecutionError: If the perf command fails.
     :raises ValueError: If parameters are invalid for the selected mode.
@@ -129,6 +131,8 @@ def start_perf_stat(
         target_flag,
         *events_flags,
     ]
+    if interval is not None:
+        command_parts.append(f"-I {interval}")
     command = " ".join(command_parts)
 
     log.info(f"Starting background perf stat: {command}")
