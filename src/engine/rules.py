@@ -121,9 +121,13 @@ def format_rules_to_html_tree(
     return full_tree_html, full_findings_html
 
 
-def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
-    """从 DataFrame 字典中预先计算所有衍生指标。"""
+def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, Any]) -> Dict[str, Any]:
+    """从 DataFrame 字典和静态信息中预先计算所有衍生指标。"""
     context: Dict[str, Any] = {}
+
+    if static_info and (cpu_info := static_info.get("cpu_info")):
+        context["num_cpu"] = cpu_info.get("CPUs_Count", 1)
+
     df_cpu = df_dict.get("cpu")
     if df_cpu is not None and not df_cpu.empty:
         context["total_cpu"] = df_cpu.get("pct_usr", pd.Series(0)).mean() + df_cpu.get("pct_sys", pd.Series(0)).mean()

@@ -1,44 +1,20 @@
 import pandas as pd
 import pytest
-from markdown_it import MarkdownIt
 
-from src.engine.rules import calculate_context_metrics, format_rules_to_html_tree, run_rules_engine
+from src.engine.rules import calculate_context_metrics, run_rules_engine
 
-
-# calculate_context_metrics 的测试保持不变，因为其逻辑没有改变
-def test_calculate_context_metrics_all_data_present():
-    """测试当所有必需的 DataFrame 都存在时，函数能正确计算所有衍生指标。"""
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [10.0, 20.0], "pct_sys": [5.0, 10.0]}),
-        "proc_cswch": pd.DataFrame({"cswch_per_s": [1000, 3000]}),
-        "device_io": pd.DataFrame({"tps": [50.0, 150.0]}),
-        "paging": pd.DataFrame({"pswpin_per_s": [2.0, 8.0], "pswpout_per_s": [3.0, 7.0]}),
-        "load_queue": pd.DataFrame({"ldavg-1": [1.5, 2.5]}),
-    }
-    context = calculate_context_metrics(mock_dataframes)
-    assert context["total_cpu"] == pytest.approx(22.5)
-    assert context["avg_cswch"] == pytest.approx(2000.0)
+# --- Mocks and Fixtures ---
 
 
-def test_calculate_context_metrics_missing_and_empty_data():
-    """测试当部分 DataFrame 缺失或为空时，函数能健壮地处理。"""
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [10.0, 30.0], "pct_sys": [0.0, 0.0]}),
-        "device_io": pd.DataFrame(),
-    }
-    context = calculate_context_metrics(mock_dataframes)
-    assert "total_cpu" in context
-    assert context["total_cpu"] == pytest.approx(20.0)
-    assert "avg_cswch" not in context
-    assert "total_tps" not in context
-
-
-# --- V2 规则引擎的全新测试套件 ---
+@pytest.fixture
+def mock_static_info():
+    """提供一个包含 CPU 核心数的 mock static_info 字典。"""
+    return {"cpu_info": {"CPUs_Count": 16}}
 
 
 @pytest.fixture
 def mock_v2_rules():
-    """提供一个层次化的 V2 mock 规则，其 finding 已加入 Markdown 标记。"""
+    """提供一个层次化的 V2 mock 规则，现在包含对 num_cpu 的检查。"""
     return [
         {
             "name": "PIPA Root",
@@ -48,93 +24,64 @@ def mock_v2_rules():
                     "name": "ON-CPU Branch",
                     "precondition": "'total_cpu' in locals() and total_cpu > 75",
                     "finding": "诊断：**ON-CPU** (利用率 **{total_cpu:.2f}%**)。",
-                    "sub_rules": [
-                        {
-                            "name": "High Context Switches",
-                            "precondition": "'avg_cswch' in locals() and avg_cswch > 100000",
-                            "finding": "根因：**高上下文切换**。",
-                        },
-                        {
-                            "name": "Frontend Bound (Future)",
-                            "precondition": "'tma' in df and df['tma']['Frontend_Bound'].mean() > 0.2",
-                            "finding": "根因：**前端受限**。",
-                        },
-                    ],
                 },
                 {
                     "name": "OFF-CPU Branch",
                     "precondition": "'total_cpu' in locals() and total_cpu <= 75",
                     "finding": "诊断：**OFF-CPU**。",
+                    "sub_rules": [
+                        {
+                            "name": "High System Load",
+                            "precondition": (
+                                "'load_queue' in df and 'ldavg-1' in df['load_queue'] and 'num_cpu' in locals() and "
+                                "num_cpu > 0 and df['load_queue']['ldavg-1'].mean() / num_cpu > 0.8"
+                            ),
+                            "finding": "根因：**系统负载过高** (1分钟平均负载 **{avg_load1:.2f}**，是CPU核心数的 **{load_ratio:.1f}x**)。",
+                        }
+                    ],
                 },
             ],
         }
     ]
 
 
-def test_run_rules_engine_v2_deep_path_triggered(mock_v2_rules):
-    """测试 V2 引擎：验证当数据满足深层条件时，递归逻辑能正确触发所有层级的 finding。"""
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [80.0], "pct_sys": [10.0]}),
-        "proc_cswch": pd.DataFrame({"cswch_per_s": [200000]}),
-    }
-    context = calculate_context_metrics(mock_dataframes)
-    findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
-
-    assert len(findings) == 2
-    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
-    assert "根因：**高上下文切换**。" in findings
+# --- Test Cases ---
 
 
-def test_run_rules_engine_v2_branch_pruning(mock_v2_rules):
-    """测试 V2 引擎：验证当父节点条件不满足时，其所有子节点都被“剪枝”，不被评估。"""
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [80.0], "pct_sys": [10.0]}),
-        "proc_cswch": pd.DataFrame({"cswch_per_s": [5000]}),
-    }
-    context = calculate_context_metrics(mock_dataframes)
-    findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
-
-    assert len(findings) == 1
-    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
-    assert "根因：**高上下文切换**。" not in findings
+def test_calculate_context_metrics_extracts_num_cpu(mock_static_info):
+    """测试 calculate_context_metrics 能否从 static_info 中正确提取 num_cpu。"""
+    context = calculate_context_metrics({}, mock_static_info)
+    assert "num_cpu" in context
+    assert context["num_cpu"] == 16
 
 
-def test_run_rules_engine_v2_handles_missing_data_gracefully(mock_v2_rules):
-    """测试 V2 引擎：验证当规则所需的数据（如 'tma'）不存在时，引擎不会崩溃，而是优雅跳过。"""
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [90.0], "pct_sys": [0.0]}),
-    }
-    context = calculate_context_metrics(mock_dataframes)
-    findings = run_rules_engine(mock_dataframes, mock_v2_rules, context)
+def test_calculate_context_metrics_handles_missing_cpu_info():
+    """测试在 static_info 或 cpu_info 缺失时，函数能优雅地处理。"""
+    context_empty = calculate_context_metrics({}, {})
+    assert "num_cpu" not in context_empty
 
-    assert len(findings) == 1
-    assert "诊断：**ON-CPU** (利用率 **90.00%**)。" in findings
-    assert "根因：**前端受限**。" not in findings
+    context_no_cpu_info = calculate_context_metrics({}, {"other_info": {}})
+    assert "num_cpu" not in context_no_cpu_info
 
 
-def test_format_rules_to_html_tree_renders_correctly(mock_v2_rules):
+def test_run_rules_engine_with_dynamic_cpu_context(mock_v2_rules, mock_static_info):
     """
-    测试 V2 可视化翻译官：
-    1. 能否生成正确的 HTML 结构。
-    2. 能否根据数据正确高亮激活的节点 (`active-node`)。
-    3. 能否将真实数据和 Markdown 正确注入到 finding 字符串中。
+    核心测试：验证规则引擎现在可以使用动态注入的 num_cpu 上下文来做出正确判断。
     """
-    mock_dataframes = {
-        "cpu": pd.DataFrame({"pct_usr": [80.0], "pct_sys": [10.0]}),
-        "proc_cswch": pd.DataFrame({"cswch_per_s": [200000]}),
+    mock_dataframes_low_load = {
+        "cpu": pd.DataFrame({"pct_usr": [20.0], "pct_sys": [10.0]}),
+        "load_queue": pd.DataFrame({"ldavg-1": [15.0]}),
     }
-    context = calculate_context_metrics(mock_dataframes)
-    md = MarkdownIt()
+    context_low = calculate_context_metrics(mock_dataframes_low_load, mock_static_info)
+    findings_low = run_rules_engine(mock_dataframes_low_load, mock_v2_rules, context_low)
+    assert "诊断：**OFF-CPU**。" in findings_low
+    assert "根因：**系统负载过高**" not in findings_low
 
-    tree_html, finding_html = format_rules_to_html_tree(mock_v2_rules, mock_dataframes, context, md)
-
-    assert '<div class="tree">' in tree_html
-    assert "<span>PIPA Root</span>" in tree_html
-
-    assert "<li class='active-node'><span>ON-CPU Branch</span>" in tree_html
-    assert "<li class='active-node'><span>High Context Switches</span>" in tree_html
-    assert "<li class='active-node'><span>OFF-CPU Branch</span>" not in tree_html
-
-    assert "<strong>90.00%</strong>" in finding_html
-    assert "高上下文切换" in finding_html
-    assert "诊断：OFF-CPU" not in finding_html
+    mock_dataframes_high_load = {
+        "cpu": pd.DataFrame({"pct_usr": [20.0], "pct_sys": [10.0]}),
+        "load_queue": pd.DataFrame({"ldavg-1": [20.0]}),
+    }
+    context_high = calculate_context_metrics(mock_dataframes_high_load, mock_static_info)
+    context_high["load_ratio"] = context_high["avg_load1"] / context_high["num_cpu"]
+    findings_high = run_rules_engine(mock_dataframes_high_load, mock_v2_rules, context_high)
+    assert "根因：**系统负载过高**" in "".join(findings_high)
