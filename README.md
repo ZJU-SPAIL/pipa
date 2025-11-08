@@ -66,7 +66,7 @@ _适用于已知确切压测强度的情况，跳过校准步骤。_
 
 ```bash
 # Sample 'stress_cpu' workload at 8 and 16 threads directly
-python pipa.py sample --workload stress_cpu --intensity 8,16 --output direct_run.pipa
+pipa sample --workload stress_cpu --intensity 8,16 --output direct_run.pipa
 ```
 
 #### Scenario 3: Passive Attach Mode (被动依附模式)
@@ -79,7 +79,7 @@ _适用于监控已经在运行的生产服务。_
 PID_LIST=$(pgrep mysqld | tr '\n' ',' | sed 's/,$//')
 
 # Attach pipa to these PIDs and monitor for 60 seconds
-python pipa.py sample --workload mysql --attach-to-pid "$PID_LIST" --duration 60 --output attach_run.pipa
+pipa sample --workload mysql --attach-to-pid "$PID_LIST" --duration 60 --output attach_run.pipa
 ```
 
 ## 📚 Deeper Dive / 深度探索

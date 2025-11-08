@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import yaml
 from jinja2 import Environment, FileSystemLoader
 from markdown_it import MarkdownIt
 
@@ -20,6 +21,16 @@ def generate_report(level_dir: Path, report_path: Path):
     and creates a self-contained HTML report.
     """
     log.info(f"--- Generating analysis report from directory: {level_dir} ---")
+
+    static_info_path = level_dir.parent / "static_info.yaml"
+    static_info_str = ""
+    try:
+        log.info(f"Loading static system info from {static_info_path.name}...")
+        with open(static_info_path, "r") as f:
+            static_info_data = yaml.safe_load(f)
+            static_info_str = yaml.dump(static_info_data, indent=2, allow_unicode=True)
+    except FileNotFoundError:
+        log.warning("static_info.yaml not found, the report will lack system context.")
 
     perf_file = level_dir / "perf_stat.txt"
     sar_file = level_dir / "sar_cpu.txt"
@@ -106,6 +117,7 @@ def generate_report(level_dir: Path, report_path: Path):
             findings=findings,
             decision_tree_html=decision_tree_html,
             findings_for_tree_html=findings_for_tree_html,
+            static_info_str=static_info_str,
         )
         with open(report_path, "w") as f:
             f.write(html_content)
