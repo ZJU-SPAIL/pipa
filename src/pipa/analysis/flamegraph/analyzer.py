@@ -42,6 +42,23 @@ class DSOStat:
     leaf: int
 
 
+# Enriched value objects that carry percentage members
+@dataclass(frozen=True)
+class SymbolShare:
+    symbol: str
+    inclusive: int
+    leaf: int
+    inclusive_pct: float  # percentage in [0,100]
+    leaf_pct: float       # percentage in [0,100]
+
+
+@dataclass(frozen=True)
+class StackShare:
+    stack: str
+    weight: int
+    weight_pct: float  # percentage in [0,100]
+
+
 @dataclass(frozen=True)
 class SymbolFilter:
     include_prefixes: Tuple[str, ...] = ()
@@ -271,3 +288,40 @@ class FoldedAnalyzer:
             return False
 
         return [s for s in top if keep(s.stack)]
+
+    # ---------- Percentage helpers (non-breaking) ----------
+    def to_symbol_shares(
+        self, stats: Iterable[SymbolStat], total: Optional[int] = None
+    ) -> List[SymbolShare]:
+        denom = total if total is not None else self._total_weight
+        if denom <= 0:
+            denom = 1
+        shares: List[SymbolShare] = []
+        for s in stats:
+            shares.append(
+                SymbolShare(
+                    symbol=s.symbol,
+                    inclusive=s.inclusive,
+                    leaf=s.leaf,
+                    inclusive_pct=(s.inclusive / denom) * 100.0,
+                    leaf_pct=(s.leaf / denom) * 100.0,
+                )
+            )
+        return shares
+
+    def to_stack_shares(
+        self, stacks: Iterable[StackStat], total: Optional[int] = None
+    ) -> List[StackShare]:
+        denom = total if total is not None else self._total_weight
+        if denom <= 0:
+            denom = 1
+        shares: List[StackShare] = []
+        for s in stacks:
+            shares.append(
+                StackShare(
+                    stack=s.stack,
+                    weight=s.weight,
+                    weight_pct=(s.weight / denom) * 100.0,
+                )
+            )
+        return shares

@@ -98,3 +98,33 @@ def test_dso_aggregation_and_csv_export(tmp_path):
     with open(stack_csv, "r", encoding="utf-8") as f:
         header = f.readline().strip()
         assert header == "stack,weight"
+
+
+def test_to_shares_and_csv_with_pct(tmp_path):
+    an = _mk_analyzer()
+    sym_stats = an.topk_symbols(5)
+    stack_stats = an.topk_stacks(5)
+
+    sym_shares = an.to_symbol_shares(sym_stats)
+    stack_shares = an.to_stack_shares(stack_stats)
+
+    # values in [0,100]
+    assert all(0.0 <= s.inclusive_pct <= 100.0 and 0.0 <= s.leaf_pct <= 100.0 for s in sym_shares)
+    assert all(0.0 <= s.weight_pct <= 100.0 for s in stack_shares)
+
+    sym_csv = tmp_path / "sym_pct.csv"
+    stack_csv = tmp_path / "stack_pct.csv"
+
+    write_symbol_stats_csv(str(sym_csv), sym_shares)
+    write_stack_stats_csv(str(stack_csv), stack_shares)
+
+    with open(sym_csv, "r", encoding="utf-8") as f:
+        header = f.readline().strip()
+        row = f.readline().strip()
+        assert header == "symbol,inclusive,inclusive_pct,leaf,leaf_pct"
+        assert "%" in row
+    with open(stack_csv, "r", encoding="utf-8") as f:
+        header = f.readline().strip()
+        row = f.readline().strip()
+        assert header == "stack,weight,weight_pct"
+        assert "%" in row
