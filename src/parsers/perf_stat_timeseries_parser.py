@@ -1,7 +1,8 @@
 import io
-import pandas as pd
 import re
+
 import numpy as np
+import pandas as pd
 
 
 def parse_perf_stat_timeseries(content: str) -> pd.DataFrame:

@@ -3,8 +3,10 @@ Unit tests for the sample command CLI parameter validation.
 """
 
 from pathlib import Path
-from click.testing import CliRunner
 from unittest.mock import patch
+
+from click.testing import CliRunner
+
 from src.commands.sample import sample
 
 
@@ -93,9 +95,7 @@ class TestSampleCLIParameterValidation:
     def test_attach_mode_missing_duration(self):
         """Test that --duration is required when using --attach-to-pid."""
         runner = CliRunner()
-        result = runner.invoke(
-            sample, ["--attach-to-pid", "12345", "--output", "out.pipa"]
-        )
+        result = runner.invoke(sample, ["--attach-to-pid", "12345", "--output", "out.pipa"])
         assert result.exit_code != 0
         assert "--duration is required" in result.output.lower()
 
@@ -123,9 +123,7 @@ class TestSampleCLIParameterValidation:
             Path("test.yaml").write_text("calibrated_parameters: {}")
 
             with patch("src.commands.sample.run_sampling") as mock_run:
-                result = runner.invoke(
-                    sample, ["--config", "test.yaml", "--output", "out.pipa"]
-                )
+                result = runner.invoke(sample, ["--config", "test.yaml", "--output", "out.pipa"])
                 assert result.exit_code == 0
                 assert mock_run.called
                 assert "completed successfully" in result.output.lower()

@@ -1,8 +1,8 @@
-import subprocess
-import shlex
 import logging
 import os
-from typing import Optional, Dict
+import shlex
+import subprocess
+from typing import Dict, Optional
 
 # Configure a simple logger for this module
 # 为此模块配置一个简单的日志记录器
@@ -21,9 +21,7 @@ class PerfPermissionError(ExecutionError):
     pass
 
 
-def run_command(
-    command: str, timeout: Optional[int] = None, env: Optional[Dict[str, str]] = None
-) -> str:
+def run_command(command: str, timeout: Optional[int] = None, env: Optional[Dict[str, str]] = None) -> str:
     """
     Executes a shell command and returns its stdout.
     执行一个 shell 命令并返回其标准输出。

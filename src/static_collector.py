@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from .executor import run_command, ExecutionError
+from .executor import ExecutionError, run_command
 
 log = logging.getLogger(__name__)
 
@@ -231,9 +231,7 @@ def get_disk_info() -> Dict[str, Any]:
     lsblk_output = _get_info("lsblk", "Disk Block Device info")
 
     # 检查是否有错误，如果两者都有错误，返回整体错误
-    if df_output.startswith("Error collecting") and lsblk_output.startswith(
-        "Error collecting"
-    ):
+    if df_output.startswith("Error collecting") and lsblk_output.startswith("Error collecting"):
         return {"error": "Both df -h and lsblk failed to collect info."}
 
     return _parse_disk_info(df_output, lsblk_output)
@@ -263,11 +261,7 @@ def get_numa_info() -> Dict[str, Any]:
             "'numactl' not found or failed. NUMA info unavailable: %s",
             e,
         )
-        return {
-            "error": (
-                "'numactl' command failed or not found. " "Please install 'numactl'."
-            )
-        }
+        return {"error": ("'numactl' command failed or not found. " "Please install 'numactl'.")}
 
 
 # --- 主收集函数 ---

@@ -6,13 +6,13 @@ import shlex
 import signal
 import subprocess
 from typing import Optional, Union
+
 from .executor import (
     ExecutionError,
     PerfPermissionError,
     run_command,
     run_in_background,
 )
-
 
 log = logging.getLogger(__name__)
 
@@ -71,10 +71,7 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
 
     except (ValueError, IndexError) as e:
         log.error(f"Failed to parse CPU utilization from sar output: {e}")
-        debug_info = (
-            "Failed to parse sar 'Average:' line. "
-            f"Raw sar output:\n---\n{output}\n---"
-        )
+        debug_info = "Failed to parse sar 'Average:' line. " f"Raw sar output:\n---\n{output}\n---"
         raise ExecutionError(debug_info)
     except ExecutionError:
         # Re-raise ExecutionError to propagate command failures
@@ -145,9 +142,7 @@ def start_perf_stat(
 
 
 # 修改 stop_perf_stat 函数的签名和实现
-def stop_perf_stat(
-    proc: subprocess.Popen, output_file: str, timeout: int
-) -> Optional[str]:
+def stop_perf_stat(proc: subprocess.Popen, output_file: str, timeout: int) -> Optional[str]:
     """
     Stops perf stat, captures its stderr, writes to file, and returns the content.
     停止 perf stat，捕获其 stderr，写入文件，并返回内容。
@@ -211,9 +206,7 @@ def start_sar(
     """
     count = duration // interval
     if count <= 0:
-        log.warning(
-            f"Duration ({duration}) is less than interval ({interval}), skipping sar."
-        )
+        log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
         return None
 
     command = f"sar -A {interval} {count}"
@@ -249,10 +242,7 @@ def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optiona
         stdout_data, stderr_data = proc.communicate(timeout=timeout)
 
         if proc.returncode != 0:
-            log.error(
-                f"sar process exited with error code {proc.returncode}"
-                ". Stderr: {stderr_data}"
-            )
+            log.error(f"sar process exited with error code {proc.returncode}" ". Stderr: {stderr_data}")
 
         with open(output_file, "w") as f:
             f.write(stdout_data)

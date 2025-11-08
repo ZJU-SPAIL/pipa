@@ -9,6 +9,11 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
+  - repo: https://gitlab.youtune.tech/pymirror/isort
+    rev: 7.0.0
+    hooks:
+      - id: isort
+
   - repo: https://gitlab.youtune.tech/pymirror/black
     rev: 25.9.0
     hooks:

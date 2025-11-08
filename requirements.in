@@ -11,3 +11,4 @@ pytest
 pytest-cov
 pre-commit
 pip-tools
+isort
