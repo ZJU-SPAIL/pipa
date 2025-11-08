@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 from jinja2 import Environment, FileSystemLoader
 
+from src.engine.rules import load_rules, run_rules_engine
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
@@ -66,6 +67,11 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     columns_to_drop = ["timestamp_dt", "timestamp_float", "CPU"]
     merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
 
+    all_dataframes = {"perf": df_perf, **results_sar}
+    rules = load_rules(Path("config/rules/decision_tree.yaml"))
+    findings = run_rules_engine(all_dataframes, rules)
+    log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
+
     if html_report_path:
         log.info("Generating interactive plot...")
         fig = px.line(
@@ -83,9 +89,10 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
         html_content = template.render(
             interactive_plot=plot_div,
             aligned_table=merged_df.to_html(index=False, classes="table", border=0),
+            findings=findings,
         )
         with open(html_report_path, "w") as f:
             f.write(html_content)
-        log.info("✅ HTML report with interactive plot generated successfully.")
+        log.info("✅ HTML report with insights generated successfully.")
 
     return merged_df

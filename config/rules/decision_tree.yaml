@@ -1,0 +1,46 @@
+- name: "PIPA 根因分析"
+  precondition: "True" # 顶级入口
+  sub_rules:
+    # ==========================================================
+    # ON-CPU 分支
+    # ==========================================================
+    - name: "ON-CPU 瓶颈"
+      precondition: "'cpu' in df and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) > 75"
+      finding: "初步诊断：系统瓶颈为 **ON-CPU**，总 CPU 利用率高达 **{total_cpu:.2f}%**。"
+      sub_rules:
+        # --- TMA 分析 (占位符) ---
+        - name: "微架构瓶颈：前端受限"
+          precondition: "'tma' in df and tma['Frontend_Bound'] > 0.2" # 依赖：TMA 采集器
+          finding: "微架构分析：CPU 前端受限（占比 **{tma_frontend:.2f}%**），指令获取效率低下。"
+          sub_rules:
+            - name: "根因：指令缓存未命中"
+              precondition: "tma['ICache_Misses'] > 0.1"
+              finding: "根因定位：前端受限的主要原因是 **指令缓存（ICache）未命中率高**。建议优化代码局部性。"
+
+        # --- 系统性能分析 ---
+        - name: "高上下文切换"
+          precondition: "'proc_cswch' in df and 'cswch_per_s' in df['proc_cswch'] and df['proc_cswch']['cswch_per_s'].mean() > 100000"
+          finding: "系统分析：上下文切换过于频繁 (平均 **{avg_cswch:.0f}/s**)，可能由线程数过多或锁竞争导致。"
+
+    # ==========================================================
+    # OFF-CPU 分支
+    # ==========================================================
+    - name: "OFF-CPU 瓶颈"
+      precondition: "'cpu' in df and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) <= 75"
+      finding: "初步诊断：系统瓶颈为 **OFF-CPU**，CPU 有大量时间在等待外部资源。"
+      sub_rules:
+        # --- 磁盘分析 ---
+        - name: "磁盘 IO 瓶颈"
+          precondition: "'device_io' in df and 'tps' in df['device_io'] and df['device_io']['tps'].sum() > 800"
+          finding: "IO 分析：磁盘 IOPS 繁忙 (总计 **{total_tps:.0f}/s**)，可能是 IO 瓶颈。"
+
+        # --- 内存分析 ---
+        - name: "内存交换频繁"
+          precondition: "'paging' in df and 'pswpin_per_s' in df['paging'] and (df['paging']['pswpin_per_s'].mean() + df['paging']['pswpout_per_s'].mean()) > 10"
+          finding: "内存分析：系统正在频繁进行 Swap 换页 (平均 **{avg_swaps:.0f}/s**)，这将导致严重的性能下降，很可能是物理内存不足。"
+
+        # --- 调度分析 ---
+        - name: "系统负载过高"
+          # 注意：num_cpu 需要从 static_info 中获取, 此处暂时硬编码
+          precondition: "'load_queue' in df and 'ldavg-1' in df['load_queue'] and df['load_queue']['ldavg-1'].mean() / 32 > 0.8"
+          finding: "调度分析：系统平均负载过高 (1分钟平均负载 **{avg_load1:.2f}**)，大量进程处于运行或等待运行状态。"
