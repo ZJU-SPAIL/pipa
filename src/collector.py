@@ -6,8 +6,13 @@ import shlex
 import signal
 import subprocess
 from typing import Optional, Union
-from .executor import run_command, ExecutionError
-from .executor import run_in_background
+from .executor import (
+    ExecutionError,
+    PerfPermissionError,
+    run_command,
+    run_in_background,
+)
+
 
 log = logging.getLogger(__name__)
 
@@ -154,6 +159,16 @@ def stop_perf_stat(
     try:
         # 1. 等待进程结束，并一次性读取所有 stderr
         _, stderr_output = proc.communicate(timeout=timeout)
+        if "perf_event_paranoid" in stderr_output:
+            error_msg = (
+                "Perf permission denied. The kernel's perf_event_paranoid setting "
+                "is too restrictive.\n"
+                "To fix this temporarily, run:\n"
+                "    echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid\n"
+                "To make the change permanent, add 'kernel.perf_event_paranoid = -1' "
+                "to /etc/sysctl.conf"
+            )
+            raise PerfPermissionError(error_msg)
         log.info("perf stat process stopped and output captured.")
 
         # 2. 实现"双向输出"：写入文件
