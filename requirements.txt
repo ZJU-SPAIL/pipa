@@ -45,6 +45,8 @@ mccabe==0.7.0
     # via flake8
 mypy-extensions==1.1.0
     # via black
+narwhals==2.10.2
+    # via plotly
 nodeenv==1.9.1
     # via pre-commit
 numpy==2.3.4
@@ -53,6 +55,7 @@ packaging==25.0
     # via
     #   black
     #   build
+    #   plotly
     #   pytest
 pandas==2.3.3
     # via -r requirements.in
@@ -64,6 +67,8 @@ platformdirs==4.5.0
     # via
     #   black
     #   virtualenv
+plotly==6.4.0
+    # via -r requirements.in
 pluggy==1.6.0
     # via
     #   pytest
