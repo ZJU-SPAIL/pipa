@@ -2,8 +2,11 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-g">
+    <meta charset="UTF-8">
     <title>PIPA Analysis Report</title>
+    <!-- 引入 Tabulator 的 CSS 和 JS -->
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -35,6 +38,12 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+
+        /* 为 Tabulator 添加一些样式 */
+        .tabulator {
+            border: 1px solid #ddd;
+            margin-top: 1em;
+        }
     </style>
 </head>
 
@@ -49,15 +58,31 @@
         {% endfor %}
     </ul>
     {% endif %}
-    <h2>Aligned Time-Series Data (PoC)</h2>
-    <p>This table shows the time-aligned data from `perf stat` and `sar` collectors.</p>
     <h2>Time-Series Visualization</h2>
     <div id="plot">
         {{ interactive_plot }}
     </div>
 
-    <h2>Raw Aligned Data</h2>
-    {{ aligned_table }}
+    <h2>Raw Aligned Data (Interactive)</h2>
+    <div id="interactive-table"></div>
+
+    <script>
+        var tableData = {{ table_data_json | safe }};
+        var table = new Tabulator("#interactive-table", {
+            data: tableData,
+            layout: "fitColumns",
+            pagination: "local",
+            paginationSize: 15,
+            columns: [
+                // 动态生成所有列的定义
+                ...Object.keys(tableData[0] || {}).map(key => ({
+                    title: key,
+                    field: key,
+                    headerFilter: "input"
+                }))
+            ],
+        });
+    </script>
 </body>
 
 </html>
