@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 88
-ignore = E741,W293,F841,E203,W391,E501,W503
-exclude = src/pipa/service/pipad/pipad_pb2.py,src/pipa/service/pipad/pipad_pb2_grpc.py,src/pipa/service/pipad/pipad_pb2.pyi,script/stackcollapse_perf.py
+ignore = E741,E704,W293,F841,E203,W391,E501,W503
+exclude = src/pipa/service/pipad/pipad_pb2.py,src/pipa/service/pipad/pipad_pb2_grpc.py,src/pipa/service/pipad/pipad_pb2.pyi,script/stackcollapse_perf.py,script/flamegraph.py
