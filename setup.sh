@@ -122,8 +122,8 @@ pip install -e .
 if [ $? -ne 0 ]; then
     echo "警告: 依赖安装失败。请检查 pyproject.toml 文件和网络。"
 fi
-
+source $VENV_DIR/bin/activate
 echo "====================================================="
-echo "✅ 配置成功！项目级环境 '$VENV_DIR' 已创建并配置。"
-echo "请运行 'source $VENV_DIR/bin/activate' 来激活环境。"
+echo "✅ 配置成功！项目级环境 '$VENV_DIR' 已创建并激活。"
+echo "请运行 'source $VENV_DIR/bin/activate' 来激活环境。运行 'deactivate' 退出环境。"
 echo "====================================================="
