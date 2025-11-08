@@ -61,7 +61,9 @@ if not logger.handlers:
     logger.addHandler(file_handler)
 else:
     # If handlers exist, try to find stream handler for set_level
-    stream_handler = next((h for h in logger.handlers if isinstance(h, logging.StreamHandler)), None)
+    stream_handler = next(
+        (h for h in logger.handlers if isinstance(h, logging.StreamHandler)), None
+    )
 
 
 def set_level(
@@ -81,7 +83,9 @@ def set_level(
         logger.warning(f"available logger levels: {avail}")
         logger.warning(f"use logger level: {logging.getLevelName(logger.level)}")
         if stream_handler is not None:
-            logger.warning(f"use print level: {logging.getLevelName(stream_handler.level)}")
+            logger.warning(
+                f"use print level: {logging.getLevelName(stream_handler.level)}"
+            )
 
 
 def log_execution(func):
