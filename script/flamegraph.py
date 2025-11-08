@@ -26,8 +26,6 @@ This is a pragmatic, compatible renderer for most common cases.
 from __future__ import annotations
 import argparse
 import sys
-import math
-from collections import defaultdict
 from typing import Dict, List, Tuple, Optional
 
 Palette = str
@@ -156,7 +154,6 @@ def build_nodes(
 
 
 # Color helpers (subset, mirrors perl logic approximately)
-import random
 
 
 def namehash(name: str) -> float:
@@ -315,7 +312,7 @@ def render_svg(
 
     # Header & styles
     out = []
-    out.append(f'<?xml version="1.0" standalone="no"?>')
+    out.append('<?xml version="1.0" standalone="no"?>')
     out.append(
         f'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">'
     )

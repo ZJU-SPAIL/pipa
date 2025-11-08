@@ -74,6 +74,7 @@ class BottleneckAnalyzerHook(Protocol):
     """扩展点：在折叠生成前后进行分析或变换。"""
 
     def before_flush(self, record: SampleRecord) -> None: ...
+
     def after_flush(self, folded_key: str, weight: int) -> None: ...
 
 
