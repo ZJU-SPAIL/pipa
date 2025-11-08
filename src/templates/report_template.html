@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-g">
+    <title>PIPA Analysis Report</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 1em;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>PIPA Analysis Report</h1>
+    <h2>Aligned Time-Series Data (PoC)</h2>
+    <p>This table shows the time-aligned data from `perf stat` and `sar` collectors.</p>
+    {{ aligned_table }}
+</body>
+
+</html>
