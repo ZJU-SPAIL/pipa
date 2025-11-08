@@ -21,7 +21,7 @@ import re
 import sys
 import subprocess
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Protocol
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Protocol, Mapping
 from collections import defaultdict
 
 # -----------------------------
@@ -101,15 +101,28 @@ def collapse_file(
     return collapse(read_lines(path), options, hooks)
 
 
+@dataclass(frozen=True)
+class CollapsedStacks:
+    """Immutable folded stacks mapping with helpers for output."""
+
+    stacks: Mapping[str, int]
+
+    def to_lines(self) -> List[str]:
+        return [f"{k} {self.stacks[k]}" for k in sorted(self.stacks.keys())]
+
+    def save(self, output_path: str) -> None:
+        lines = self.to_lines()
+        with open(output_path, "w", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line + "\n")
+
+
 def format_collapsed(collapsed: Dict[str, int]) -> List[str]:
-    return [f"{stack} {collapsed[stack]}" for stack in sorted(collapsed.keys())]
+    return CollapsedStacks(collapsed).to_lines()
 
 
 def save_collapsed(collapsed: Dict[str, int], output_path: str) -> None:
-    lines = format_collapsed(collapsed)
-    with open(output_path, "w", encoding="utf-8") as f:
-        for line in lines:
-            f.write(line + "\n")
+    CollapsedStacks(collapsed).save(output_path)
 
 
 # -----------------------------
@@ -328,6 +341,8 @@ def collapse(
     lines: Iterable[str],
     options: CollapseOptions,
     hooks: Optional[List[BottleneckAnalyzerHook]] = None,
+    parallel: bool = False,
+    workers: int = 0,
 ) -> Dict[str, int]:
     hooks = hooks or []
     collapsed: Dict[str, int] = defaultdict(int)
