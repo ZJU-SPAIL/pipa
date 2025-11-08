@@ -183,7 +183,25 @@
 
     <script>
         var tableData = {{ table_data_json | safe }};
-        var table = new Tabulator("#interactive-table", { /* ... Tabulator 配置保持不变 ... */ });
+
+        // 动态从数据的第一行生成列定义
+        var columns = [];
+        if (tableData.length > 0) {
+            columns = Object.keys(tableData[0]).map(function (key) {
+                // 将列名首字母大写，并启用头部过滤器
+                return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+            });
+        }
+
+        // 使用完整的配置初始化 Tabulator
+        var table = new Tabulator("#interactive-table", {
+            data: tableData,
+            columns: columns,
+            layout: "fitColumns",      // 列宽自适应
+            pagination: "local",       // 启用本地分页
+            paginationSize: 15,        // 每页显示 15 行
+            paginationSizeSelector: [10, 15, 25, 50, 100], // 可选分页大小
+        });
     </script>
 </body>
 
