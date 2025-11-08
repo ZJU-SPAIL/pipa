@@ -15,6 +15,12 @@ class ExecutionError(Exception):
     pass
 
 
+class PerfPermissionError(ExecutionError):
+    """Raised when perf execution fails due to kernel permission settings."""
+
+    pass
+
+
 def run_command(
     command: str, timeout: Optional[int] = None, env: Optional[Dict[str, str]] = None
 ) -> str:

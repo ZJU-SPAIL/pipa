@@ -4,7 +4,7 @@ import pytest
 import subprocess
 import time
 from src.collector import start_perf_stat, stop_perf_stat, start_sar, stop_sar
-from src.executor import ExecutionError
+from src.executor import ExecutionError, PerfPermissionError
 
 # Mark this whole file as 'integration' tests.
 # We can run only unit tests with `pytest -m "not integration"`.
@@ -78,7 +78,7 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
 
 def test_collect_perf_stat_system_mode_integration(temp_output_file):
     """
-    Tests the 'system' (-a) mode with the new start/stop pattern.
+    Tests the 'system' (-a) mode. Skips if perf permissions are insufficient.
     """
     events = [["cpu-clock", "page-faults"]]
     proc = None
@@ -93,18 +93,18 @@ def test_collect_perf_stat_system_mode_integration(temp_output_file):
         time.sleep(1)
 
     except ExecutionError as e:
-        if "perf command not found" in str(e) or "Permission denied" in str(e):
-            pytest.fail(
-                "perf tool is not available or permissions are insufficient. "
-                f"Skipping integration test. Error: {e}"
-            )
+        if "perf command not found" in str(e):
+            pytest.fail(f"perf tool is not available. Error: {e}")
         else:
             raise
     finally:
         if proc:
-            stop_perf_stat(proc, str(temp_output_file), timeout=5)
+            try:
+                stop_perf_stat(proc, str(temp_output_file), timeout=5)
+            except PerfPermissionError as e:
+                # 如果捕获到我们自定义的权限错误，就跳过测试
+                pytest.skip(f"Skipping due to perf permission error: {e}")
 
-    # Verification
     report_content = temp_output_file.read_text()
     assert "Performance counter stats for 'system wide'" in report_content
     assert "cpu-clock" in report_content.lower()
