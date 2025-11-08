@@ -1,9 +1,9 @@
 import click
 
-from src.commands.analyze import analyze
-from src.commands.calibrate import calibrate
-from src.commands.sample import sample
-from src.logger_setup import setup_logging
+from .commands.analyze import analyze
+from .commands.calibrate import calibrate
+from .commands.sample import sample
+from .logger_setup import setup_logging
 
 
 @click.group()
@@ -21,8 +21,6 @@ def cli(verbose: int):
     setup_logging(verbose)
 
 
-# Register commands from submodules
-# 从子模块中注册命令
 cli.add_command(calibrate)
 cli.add_command(sample)
 cli.add_command(analyze)

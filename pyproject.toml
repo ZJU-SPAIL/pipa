@@ -1,27 +1,29 @@
-[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "pipa"
 version = "0.1.0"
 description = "Performance Analytics & Calibration Engine"
 requires-python = ">=3.10"
-dependencies = ["click", "pyyaml", "pandas", "tabulate"]
-
-[project.optional-dependencies]
-dev = [
-    "black",
-    "flake8",
-    "isort",
-    "flake8-black",
-    "pytest",
-    "pre-commit",
-    "pip-tools",
+dependencies = [
+    "click~=8.3",
+    "pyyaml~=6.0",
+    "pandas~=2.3",
+    "numpy~=2.3",
+    "tabulate~=0.9",
+    "Jinja2~=3.1",
+    "plotly~=6.4",
+    "markdown-it-py~=4.0",
+    "black~=25.9",
+    "flake8~=7.3",
+    "flake8-black~=0.4",
+    "isort~=7.0",
+    "pytest~=8.4",
+    "pytest-cov~=7.0",
+    "pre-commit~=4.3",
+    "pip-tools~=7.5",
 ]
 
 [project.scripts]
-pipa = "pipa:cli"
+pipa = "src.pipa:cli"
 
 [tool.black]
 line-length = 120
