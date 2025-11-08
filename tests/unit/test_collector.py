@@ -1,7 +1,13 @@
 import subprocess
 from typing import cast
 import pytest
-from src.collector import collect_cpu_utilization, start_perf_stat, stop_perf_stat
+from src.collector import (
+    collect_cpu_utilization,
+    start_perf_stat,
+    stop_perf_stat,
+    start_sar,
+    stop_sar,
+)
 from src.executor import ExecutionError
 
 # This is a sample output from `LC_ALL=C sar -u 1 5`
@@ -231,3 +237,75 @@ def test_stop_perf_stat_timeout(tmp_path):
     # 验证超时时也会写入文件
     assert temp_file.exists()
     assert temp_file.read_text() == "partial data"
+
+
+# --- Unit tests for start_sar and stop_sar ---
+class MockSarPopen:
+    def __init__(
+        self,
+        pid=123,
+        stdout_data="sar output data",
+        stderr_data="perf data",
+        should_timeout=False,
+        returncode=0,
+    ):
+        self.pid = pid
+        self._stdout_data = stdout_data
+        self._stderr_data = stderr_data
+        self._should_timeout = should_timeout
+        self.killed = False
+        self.returncode = returncode
+
+    def send_signal(self, sig):
+        """Mock send_signal method."""
+        pass
+
+    def communicate(self, timeout=None):
+        if self._should_timeout and not self.killed:
+            raise subprocess.TimeoutExpired("cmd", timeout or 0)
+        return (self._stdout_data, self._stderr_data)
+
+    def kill(self):
+        self.killed = True
+
+    def poll(self):
+        return None
+
+
+def test_start_sar_command_construction(monkeypatch):
+    """Tests that the sar command is constructed correctly."""
+    called_command = []
+
+    def mock_popen(command_list, **kwargs):
+        called_command.extend(command_list)
+
+        class MockSarPopen:
+            pid = 123
+
+        return MockSarPopen()
+
+    monkeypatch.setattr("subprocess.Popen", mock_popen)
+
+    start_sar(duration=10, interval=2, output_file="dummy.txt")
+
+    assert "sar" in called_command
+    assert "-A" in called_command
+    assert "2" in called_command  # interval
+    assert "5" in called_command  # count = duration // interval
+
+
+def test_start_sar_skips_if_duration_too_short():
+    """Tests that sar is skipped if duration is less than interval."""
+    proc = start_sar(duration=1, interval=2, output_file="dummy.txt")
+    assert proc is None
+
+
+def test_stop_sar_success(monkeypatch, tmp_path):
+    """Tests stop_sar success path with mocked process."""
+    mock_proc = MockSarPopen(stdout_data="sar output data")
+    temp_file = tmp_path / "sar_output.txt"
+
+    content = stop_sar(cast(subprocess.Popen, mock_proc), str(temp_file), duration=5)
+
+    assert content == "sar output data"
+    assert temp_file.read_text() == "sar output data"

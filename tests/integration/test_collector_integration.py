@@ -3,7 +3,7 @@
 import pytest
 import subprocess
 import time
-from src.collector import start_perf_stat, stop_perf_stat
+from src.collector import start_perf_stat, stop_perf_stat, start_sar, stop_sar
 from src.executor import ExecutionError
 
 # Mark this whole file as 'integration' tests.
@@ -109,3 +109,39 @@ def test_collect_perf_stat_system_mode_integration(temp_output_file):
     assert "Performance counter stats for 'system wide'" in report_content
     assert "cpu-clock" in report_content.lower()
     assert "page-faults" in report_content.lower()
+
+
+def test_sar_integration(temp_output_file):
+    """
+    Tests the full start/stop cycle of the sar collector.
+    """
+    proc = None
+    duration = 2
+    interval = 1
+
+    try:
+        proc = start_sar(
+            duration=duration, interval=interval, output_file=str(temp_output_file)
+        )
+        assert proc is not None, "start_sar should return a process handle."
+
+        content = stop_sar(proc, str(temp_output_file), duration=duration)
+
+        assert content is not None
+        assert "Linux" in content
+        assert "CPU" in content
+        assert "%usr" in content
+
+    except ExecutionError as e:
+        if "sar command not found" in str(e):
+            pytest.fail(f"sar tool is not available, skipping integration test: {e}")
+        else:
+            raise
+    finally:
+        if proc and proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=5)
+
+    report_content = temp_output_file.read_text()
+    assert "Linux" in report_content
+    assert "CPU" in report_content

@@ -1,6 +1,8 @@
 # src/collector.py
 
 import logging
+import os
+import shlex
 import signal
 import subprocess
 from typing import Optional, Union
@@ -177,3 +179,69 @@ def stop_perf_stat(
                 log.error(f"Failed to write perf stat output to {output_file}: {e}")
 
         return stderr_output or "Process killed, no output captured."
+
+
+def start_sar(
+    duration: int,
+    interval: int,
+    output_file: str,
+) -> Optional[subprocess.Popen]:
+    """
+    Starts `sar -A` in the background to collect all system activities.
+    在后台启动 `sar -A` 以收集所有系统活动。
+    """
+    count = duration // interval
+    if count <= 0:
+        log.warning(
+            f"Duration ({duration}) is less than interval ({interval}), skipping sar."
+        )
+        return None
+
+    command = f"sar -A {interval} {count}"
+
+    log.info(f"Starting background sar: {command}")
+    try:
+        env = os.environ.copy()
+        env["LC_ALL"] = "C"
+        proc = subprocess.Popen(
+            shlex.split(command),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+        )
+        return proc
+    except FileNotFoundError:
+        raise ExecutionError("Command not found: sar")
+
+
+def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optional[str]:
+    """
+    Waits for the sar process to finish, captures its output, and saves to file.
+    等待 sar 进程结束，捕获其输出，并保存到文件。
+
+    :param proc: The sar subprocess.
+    :param output_file: File to save the output.
+    :param duration: The duration sar was supposed to run for timeout calculation.
+    """
+    log.info(f"Waiting for sar (PID: {proc.pid}) to finish...")
+    timeout = duration + 15
+    try:
+        stdout_data, stderr_data = proc.communicate(timeout=timeout)
+
+        if proc.returncode != 0:
+            log.error(
+                f"sar process exited with error code {proc.returncode}"
+                ". Stderr: {stderr_data}"
+            )
+
+        with open(output_file, "w") as f:
+            f.write(stdout_data)
+        log.info(f"sar report saved to {output_file}")
+
+        return stdout_data
+    except subprocess.TimeoutExpired:
+        log.warning("sar process did not terminate as expected. Killing it...")
+        proc.kill()
+        stdout_data, _ = proc.communicate()
+        return stdout_data
