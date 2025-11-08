@@ -1,4 +1,5 @@
 import logging
+import platform
 import shutil
 import subprocess
 import tempfile
@@ -9,7 +10,7 @@ from typing import List, Optional
 import yaml
 
 from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
-from src.config_loader import load_workload_config
+from src.config_loader import load_events_config, load_workload_config
 from src.executor import ExecutionError, run_command, run_in_background
 from src.static_collector import collect_all_static_info
 
@@ -51,6 +52,15 @@ def run_sampling(
     else:
         log.info("Skipping static system information collection as requested.")
         static_info = None
+
+    host_arch = platform.machine()
+    cpu_model_name = static_info.get("cpu_info", {}).get("Model_Name", "") if static_info else ""
+    log.info(f"检测到主机架构: {host_arch}, CPU 型号: '{cpu_model_name or '未知'}'")
+    try:
+        events_config = load_events_config(host_arch, cpu_model_name)
+    except Exception as e:
+        log.error(f"加载 perf 事件配置失败: {e}", exc_info=True)
+        raise
 
     work_dir = Path(tempfile.mkdtemp(prefix="pipa_sample_"))
     log.info(f"Created temporary working directory: {work_dir}")
@@ -165,10 +175,22 @@ def run_sampling(
 
                 if collector_name == "perf_stat":
                     output_file = level_dir / "perf_stat.txt"
+                    profile_name = collector_conf.get("events_profile")
+                    if not profile_name:
+                        log.warning("perf_stat collector is missing 'events_profile'. Skipping.")
+                        continue
+
+                    event_groups = events_config.get(profile_name)
+                    if not event_groups:
+                        log.warning(
+                            f"Event profile '{profile_name}' not found in loaded "
+                            f"'{host_arch}' events config. Skipping perf_stat."
+                        )
+                        continue
                     perf_args = {
                         "output_file": str(output_file),
                         "mode": collector_conf.get("mode", "system"),
-                        "event_groups": collector_conf.get("event_groups", []),
+                        "event_groups": event_groups,
                         "all_threads": collector_conf.get("all_threads", False),
                         "interval": collector_conf.get("interval"),
                     }

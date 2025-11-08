@@ -1,0 +1,14 @@
+# ARM64 (aarch64) 架构的 perf 事件集
+cpu_basic:
+  # 核心流水线指标 (Core Pipeline Metrics)
+  - ["cpu-cycles", "instructions", "branch-instructions", "branch-misses"]
+  # L1 数据缓存 (L1 Data Cache)
+  - ["l1d_cache_refill", "l1d_cache"]
+  # L1 指令缓存 (L1 Instruction Cache)
+  - ["l1i_cache_refill", "l1i_cache"]
+  # 末级缓存 (LLC - Last Level Cache)
+  - ["ll_cache_miss_rd", "ll_cache_rd"]
+  # TLB (Translation Lookaside Buffer)
+  - ["dTLB-load-misses", "iTLB-load-misses"]
+  # 软件事件 (Software Events)
+  - ["context-switches", "cpu-migrations", "page-faults"]

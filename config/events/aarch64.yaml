@@ -1,0 +1,7 @@
+# 通用 ARM64 (aarch64) 架构的基础 perf 事件集
+# 作为在找不到特定型号配置文件时的回退选项
+cpu_basic:
+  - ["cpu-cycles", "instructions"]
+  - ["cache-references", "cache-misses"]
+  - ["branch-instructions", "branch-misses"]
+  - ["context-switches", "cpu-migrations", "page-faults"]
