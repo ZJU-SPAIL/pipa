@@ -10,3 +10,6 @@ dist/
 .python_*
 *.pipa
 report.html
+.coverage
+coverage.xml
+junit-report.xml
