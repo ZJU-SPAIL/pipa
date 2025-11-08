@@ -42,10 +42,7 @@ collectors:
       all_threads: true
       duration: 10
       interval: 1000
-      event_groups:
-        - ["cycles", "instructions"]
-        - ["cache-references", "cache-misses"]
-        - ["branch-instructions", "branch-misses"]
+      events_profile: "cpu_basic"
     - name: sar_cpu
       enabled: true
       duration: 10

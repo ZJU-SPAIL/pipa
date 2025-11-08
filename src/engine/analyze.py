@@ -11,6 +11,7 @@ from markdown_it import MarkdownIt
 from src.engine.rules import calculate_context_metrics, format_rules_to_html_tree, load_rules, run_rules_engine
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
+from src.utils import get_project_root
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +88,9 @@ def generate_report(level_dir: Path, report_path: Path):
         log.warning("No time-series data available to generate plots or tables.")
 
     all_dataframes = {"perf": df_perf, **results_sar}
-    rules = load_rules(Path("config/rules/decision_tree.yaml"))
+    project_root = get_project_root()
+    rules_path = project_root / "config/rules/decision_tree.yaml"
+    rules = load_rules(rules_path)
     context = calculate_context_metrics(all_dataframes, static_info_data)
     findings = run_rules_engine(all_dataframes, rules, context)
     md = MarkdownIt()
