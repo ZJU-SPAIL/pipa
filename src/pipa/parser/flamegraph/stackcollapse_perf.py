@@ -34,6 +34,7 @@ FRAME_RE = re.compile(r"^\s*([0-9A-Fa-fx]+)\s*(.+) \((.*)\)\s*$")
 FRAME_NOIP_RE = re.compile(r"^\s*(.+) \((.*)\)\s*$")
 ADDR_OFFSET_RE = re.compile(r"^(.+)\+0x([0-9a-fA-F]+)$")
 
+
 # -----------------------------
 # 数据结构（封装与接口）
 # -----------------------------
@@ -44,6 +45,7 @@ class Frame:
     dso: str
     srcline: Optional[str] = None
 
+
 @dataclass
 class SampleRecord:
     comm: Optional[str] = None
@@ -52,6 +54,7 @@ class SampleRecord:
     event: Optional[str] = None
     period: Optional[int] = None
     frames: List[Frame] = field(default_factory=list)
+
 
 @dataclass
 class CollapseOptions:
@@ -66,14 +69,18 @@ class CollapseOptions:
     context: bool = False
     srcline: bool = False
 
+
 class BottleneckAnalyzerHook(Protocol):
     """扩展点：在折叠生成前后进行分析或变换。"""
+
     def before_flush(self, record: SampleRecord) -> None: ...
     def after_flush(self, folded_key: str, weight: int) -> None: ...
+
 
 # -----------------------------
 # I/O 与便捷接口
 # -----------------------------
+
 
 def read_lines(path: str) -> Iterator[str]:
     if path == "-":
@@ -85,7 +92,11 @@ def read_lines(path: str) -> Iterator[str]:
                 yield line.rstrip("\n")
 
 
-def collapse_file(path: str, options: CollapseOptions, hooks: Optional[List[BottleneckAnalyzerHook]] = None) -> Dict[str, int]:
+def collapse_file(
+    path: str,
+    options: CollapseOptions,
+    hooks: Optional[List[BottleneckAnalyzerHook]] = None,
+) -> Dict[str, int]:
     return collapse(read_lines(path), options, hooks)
 
 
@@ -99,9 +110,11 @@ def save_collapsed(collapsed: Dict[str, int], output_path: str) -> None:
         for line in lines:
             f.write(line + "\n")
 
+
 # -----------------------------
 # 解析器：头/帧解析与记录构建（纯逻辑）
 # -----------------------------
+
 
 def is_kernel_dso(dso: str) -> bool:
     if not dso:
@@ -147,7 +160,9 @@ def run_addr2line(pc: str, mod: str, include_context: bool) -> Optional[str]:
         return None
 
 
-def parse_header(line: str) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int], Optional[str]]:
+def parse_header(
+    line: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[int], Optional[str]]:
     m = HEADER_PERL_HEAD_RE.match(line)
     if not m:
         return None, None, None, None, None
@@ -191,11 +206,19 @@ def parse_frame(line: str) -> Optional[Frame]:
         sym = "[unknown]"
     return Frame(ip=ip, symbol=sym, dso=dso, srcline=None)
 
+
 # -----------------------------
 # 构建器：折叠键生成（纯逻辑）
 # -----------------------------
 
-def build_frame_name(symbol: str, dso: str, annotate_kernel: bool, annotate_jit: bool, include_addrs: bool) -> str:
+
+def build_frame_name(
+    symbol: str,
+    dso: str,
+    annotate_kernel: bool,
+    annotate_jit: bool,
+    include_addrs: bool,
+) -> str:
     name = symbol if include_addrs else strip_addr_offset(symbol)
     if annotate_kernel and is_kernel_dso(dso):
         if not name.endswith("_[k]"):
@@ -213,8 +236,12 @@ def normalize_symbol(sym: str) -> str:
     return sym
 
 
-def expand_inline(ip: str, dso: str, do_inline: bool, include_context: bool) -> Optional[List[str]]:
-    if not (do_inline and ip and dso and dso not in ("[unknown]", "[unknown] (deleted)")):
+def expand_inline(
+    ip: str, dso: str, do_inline: bool, include_context: bool
+) -> Optional[List[str]]:
+    if not (
+        do_inline and ip and dso and dso not in ("[unknown]", "[unknown] (deleted)")
+    ):
         return None
     inlined = run_addr2line(ip, dso, include_context)
     return inlined.split(";") if inlined else None
@@ -232,12 +259,22 @@ def build_folded_key(record: SampleRecord, options: CollapseOptions) -> Tuple[st
 
     parts: List[str] = [annotate_proc]
     for frame in record.frames[::-1]:
-        inline_parts = expand_inline(frame.ip, frame.dso, options.do_inline, options.context)
+        inline_parts = expand_inline(
+            frame.ip, frame.dso, options.do_inline, options.context
+        )
         if inline_parts:
             for part in inline_parts:
-                parts.append(build_frame_name(part, frame.dso, annotate_kernel, annotate_jit, options.addrs))
+                parts.append(
+                    build_frame_name(
+                        part, frame.dso, annotate_kernel, annotate_jit, options.addrs
+                    )
+                )
             continue
-        sym_disp = f"{frame.symbol}:{frame.srcline}" if options.srcline and frame.srcline else frame.symbol
+        sym_disp = (
+            f"{frame.symbol}:{frame.srcline}"
+            if options.srcline and frame.srcline
+            else frame.symbol
+        )
         # 与历史脚本一致：先替换分号，再按 '->' 拆分；未知符号替换发生在去引号与去括号之前
         sym_disp = sym_disp.replace(";", ":")
         seq = [p for p in sym_disp.split("->") if p]
@@ -260,19 +297,37 @@ def build_folded_key(record: SampleRecord, options: CollapseOptions) -> Tuple[st
             normalized_seq.append(func)
         if normalized_seq:
             for func in normalized_seq[::-1]:
-                parts.append(build_frame_name(func, frame.dso or "", annotate_kernel, annotate_jit, options.addrs))
+                parts.append(
+                    build_frame_name(
+                        func,
+                        frame.dso or "",
+                        annotate_kernel,
+                        annotate_jit,
+                        options.addrs,
+                    )
+                )
             continue
-        parts.append(build_frame_name(sym_disp, frame.dso or "", annotate_kernel, annotate_jit, options.addrs))
+        parts.append(
+            build_frame_name(
+                sym_disp, frame.dso or "", annotate_kernel, annotate_jit, options.addrs
+            )
+        )
 
     key = ";".join(parts)
     period = record.period if record.period is not None else 1
     return key, int(period)
 
+
 # -----------------------------
 # 主流程：读取 -> 解析 -> 构建 -> 输出（可插入 Hook）
 # -----------------------------
 
-def collapse(lines: Iterable[str], options: CollapseOptions, hooks: Optional[List[BottleneckAnalyzerHook]] = None) -> Dict[str, int]:
+
+def collapse(
+    lines: Iterable[str],
+    options: CollapseOptions,
+    hooks: Optional[List[BottleneckAnalyzerHook]] = None,
+) -> Dict[str, int]:
     hooks = hooks or []
     collapsed: Dict[str, int] = defaultdict(int)
     first_event: Optional[str] = None
@@ -315,7 +370,9 @@ def collapse(lines: Iterable[str], options: CollapseOptions, hooks: Optional[Lis
         comm, pid, tid, period, event = parse_header(line)
         if comm is not None:
             flush_record()
-            current = SampleRecord(comm=comm, pid=pid, tid=tid, period=period, event=event)
+            current = SampleRecord(
+                comm=comm, pid=pid, tid=tid, period=period, event=event
+            )
             continue
         frame = parse_frame(line)
         if frame:
@@ -325,4 +382,3 @@ def collapse(lines: Iterable[str], options: CollapseOptions, hooks: Optional[Lis
 
     flush_record()
     return collapsed
-

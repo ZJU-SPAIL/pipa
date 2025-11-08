@@ -35,7 +35,9 @@ Palette = str
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(add_help=True)
-    p.add_argument("infile", nargs="?", default="-", help="folded stacks input (default: stdin)")
+    p.add_argument(
+        "infile", nargs="?", default="-", help="folded stacks input (default: stdin)"
+    )
     p.add_argument("--title", default="Flame Graph")
     p.add_argument("--width", type=int, default=1200)
     p.add_argument("--height", type=int, default=16)
@@ -59,7 +61,9 @@ def read_lines(path: str):
                 yield line.rstrip("\n")
 
 
-def parse_folded(lines: List[str], reverse: bool, flamechart: bool) -> Tuple[List[str], float]:
+def parse_folded(
+    lines: List[str], reverse: bool, flamechart: bool
+) -> Tuple[List[str], float]:
     # Reverse semantics mirror flamegraph.pl: reverse stack order before sorting/processing
     data: List[str] = []
     for raw in lines:
@@ -75,7 +79,9 @@ def parse_folded(lines: List[str], reverse: bool, flamechart: bool) -> Tuple[Lis
             parts2 = stack.rsplit(" ", 1)
             if len(parts2) == 2:
                 stack2, samples2 = parts2
-                data.append(";".join(reversed(stack2.split(";"))) + f" {samples} {samples2}")
+                data.append(
+                    ";".join(reversed(stack2.split(";"))) + f" {samples} {samples2}"
+                )
             else:
                 data.append(";".join(reversed(stack.split(";"))) + f" {samples}")
         else:
@@ -98,7 +104,9 @@ def parse_folded(lines: List[str], reverse: bool, flamechart: bool) -> Tuple[Lis
     return sorted_data, total_time
 
 
-def build_nodes(sorted_data: List[str], flamechart: bool) -> Tuple[Dict[str, Dict[str, float]], float, float]:
+def build_nodes(
+    sorted_data: List[str], flamechart: bool
+) -> Tuple[Dict[str, Dict[str, float]], float, float]:
     Node: Dict[str, Dict[str, float]] = {}
     Tmp: Dict[str, Dict[str, float]] = {}
 
@@ -150,6 +158,7 @@ def build_nodes(sorted_data: List[str], flamechart: bool) -> Tuple[Dict[str, Dic
 # Color helpers (subset, mirrors perl logic approximately)
 import random
 
+
 def namehash(name: str) -> float:
     vector = 0.0
     weight = 1.0
@@ -172,25 +181,28 @@ def re_sub_module(name: str) -> str:
     if "`" in name:
         idx = name.find("`")
         if idx > 0:
-            return name[idx+1:]
+            return name[idx + 1 :]
     return name
 
 
 def random_namehash(name: str) -> float:
     # deterministic RNG from name
-    h = sum((i+1) * ord(c) for i, c in enumerate(name)) & 0xFFFFFFFF
-    rnd = (1103515245 * h + 12345) & 0x7fffffff
+    h = sum((i + 1) * ord(c) for i, c in enumerate(name)) & 0xFFFFFFFF
+    rnd = (1103515245 * h + 12345) & 0x7FFFFFFF
     return (rnd % 100000) / 100000.0
 
 
-def color(colors: Palette, func: str, hashed: bool = False, randomize: bool = False) -> str:
+def color(
+    colors: Palette, func: str, hashed: bool = False, randomize: bool = False
+) -> str:
     if hashed:
         v1 = namehash(func)
         v2 = namehash(func[::-1])
         v3 = v2
     elif randomize:
         v1 = random_namehash(func)
-        v2 = random_namehash(func + "@"); v3 = random_namehash("@" + func)
+        v2 = random_namehash(func + "@")
+        v3 = random_namehash("@" + func)
     else:
         v1 = random_namehash(func)
         v2 = random_namehash(func)
@@ -205,31 +217,43 @@ def color(colors: Palette, func: str, hashed: bool = False, randomize: bool = Fa
         b = int(55 * v2)
         return rgb(r, g, b)
     if colors == "mem":
-        r = 0; g = 190 + int(50 * v2); b = int(210 * v1)
+        r = 0
+        g = 190 + int(50 * v2)
+        b = int(210 * v1)
         return rgb(r, g, b)
     if colors == "io":
-        r = 80 + int(60 * v1); g = r; b = 190 + int(55 * v2)
+        r = 80 + int(60 * v1)
+        g = r
+        b = 190 + int(55 * v2)
         return rgb(r, g, b)
     if colors == "red":
-        r = 200 + int(55 * v1); x = 50 + int(80 * v1)
+        r = 200 + int(55 * v1)
+        x = 50 + int(80 * v1)
         return rgb(r, x, x)
     if colors == "green":
-        g = 200 + int(55 * v1); x = 50 + int(60 * v1)
+        g = 200 + int(55 * v1)
+        x = 50 + int(60 * v1)
         return rgb(x, g, x)
     if colors == "blue":
-        b = 205 + int(50 * v1); x = 80 + int(60 * v1)
+        b = 205 + int(50 * v1)
+        x = 80 + int(60 * v1)
         return rgb(x, x, b)
     if colors == "yellow":
-        x = 175 + int(55 * v1); b = 50 + int(20 * v1)
+        x = 175 + int(55 * v1)
+        b = 50 + int(20 * v1)
         return rgb(x, x, b)
     if colors == "purple":
-        x = 190 + int(65 * v1); g = 80 + int(60 * v1)
+        x = 190 + int(65 * v1)
+        g = 80 + int(60 * v1)
         return rgb(x, g, x)
     if colors == "aqua":
-        r = 50 + int(60 * v1); g = 165 + int(55 * v1); b = 165 + int(55 * v1)
+        r = 50 + int(60 * v1)
+        g = 165 + int(55 * v1)
+        b = 165 + int(55 * v1)
         return rgb(r, g, b)
     if colors == "orange":
-        r = 190 + int(65 * v1); g = 90 + int(65 * v1)
+        r = 190 + int(65 * v1)
+        g = 90 + int(65 * v1)
         return rgb(r, g, 0)
     # default
     return rgb(0, 0, 0)
@@ -246,7 +270,12 @@ def color_scale(value: float, maxv: float, negate: bool = False) -> str:
     return f"rgb({r},{g},{b})"
 
 
-def render_svg(Node: Dict[str, Dict[str, float]], total_time: float, args: argparse.Namespace, maxdelta: float) -> str:
+def render_svg(
+    Node: Dict[str, Dict[str, float]],
+    total_time: float,
+    args: argparse.Namespace,
+    maxdelta: float,
+) -> str:
     fontsize = args.fontsize
     frameheight = args.height
     xpad = 10
@@ -257,15 +286,17 @@ def render_svg(Node: Dict[str, Dict[str, float]], total_time: float, args: argpa
     # prune small blocks and find max depth
     widthpertime = (args.width - 2 * xpad) / (total_time if total_time else 1.0)
     minwidth_s = args.minwidth
-    if isinstance(minwidth_s, str) and minwidth_s.endswith('%'):
-        minwidth_time = (total_time * float(minwidth_s[:-1]) / 100.0) if total_time else 0
+    if isinstance(minwidth_s, str) and minwidth_s.endswith("%"):
+        minwidth_time = (
+            (total_time * float(minwidth_s[:-1]) / 100.0) if total_time else 0
+        )
     else:
         minwidth_time = float(minwidth_s) / widthpertime
 
     depthmax = 0
     keys = list(Node.keys())
     for k in keys:
-        func, depth_s, etime_s = k.split(';')
+        func, depth_s, etime_s = k.split(";")
         depth = int(depth_s)
         stime = Node[k]["stime"]
         etime = float(etime_s) if func != "" or depth != 0 else total_time
@@ -276,27 +307,46 @@ def render_svg(Node: Dict[str, Dict[str, float]], total_time: float, args: argpa
             depthmax = depth
 
     imageheight = ((depthmax + 1) * frameheight) + ypad1 + ypad2
-    title = args.title if not args.inverted else "Icicle Graph" if args.title == "Flame Graph" else args.title
+    title = (
+        args.title
+        if not args.inverted
+        else "Icicle Graph" if args.title == "Flame Graph" else args.title
+    )
 
     # Header & styles
     out = []
-    out.append(f"<?xml version=\"1.0\" standalone=\"no\"?>")
-    out.append(f"<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">")
-    out.append(f"<svg version=\"1.1\" width=\"{args.width}\" height=\"{imageheight}\" viewBox=\"0 0 {args.width} {imageheight}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">")
-    out.append("<defs><linearGradient id=\"background\" y1=\"0\" y2=\"1\" x1=\"0\" x2=\"0\"><stop stop-color=\"#eeeeee\" offset=\"5%\" /><stop stop-color=\"#eeeeb0\" offset=\"95%\" /></linearGradient></defs>")
-    out.append("<style type=\"text/css\"> text { font-family:Verdana; font-size:%dpx; fill:rgb(0,0,0);} #frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; } .hide{display:none;} .parent{opacity:0.5;} </style>" % fontsize)
-    out.append(f"<rect x=\"0\" y=\"0\" width=\"{args.width}\" height=\"{imageheight}\" fill=\"url(#background)\"/>")
-    out.append(f"<text id=\"title\" x=\"{args.width//2}\" y=\"{int(fontsize*2)}\">{title}</text>")
-    out.append(f"<text id=\"details\" x=\"{xpad}\" y=\"{imageheight - (ypad2//2)}\"> </text>")
+    out.append(f'<?xml version="1.0" standalone="no"?>')
+    out.append(
+        f'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">'
+    )
+    out.append(
+        f'<svg version="1.1" width="{args.width}" height="{imageheight}" viewBox="0 0 {args.width} {imageheight}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+    )
+    out.append(
+        '<defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%" /><stop stop-color="#eeeeb0" offset="95%" /></linearGradient></defs>'
+    )
+    out.append(
+        '<style type="text/css"> text { font-family:Verdana; font-size:%dpx; fill:rgb(0,0,0);} #frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; } .hide{display:none;} .parent{opacity:0.5;} </style>'
+        % fontsize
+    )
+    out.append(
+        f'<rect x="0" y="0" width="{args.width}" height="{imageheight}" fill="url(#background)"/>'
+    )
+    out.append(
+        f'<text id="title" x="{args.width//2}" y="{int(fontsize*2)}">{title}</text>'
+    )
+    out.append(f'<text id="details" x="{xpad}" y="{imageheight - (ypad2//2)}"> </text>')
 
     # Interactivity JS (trimmed but functional: hover details)
-    out.append("<script type=\"text/ecmascript\"><![CDATA[\n'use strict';\nvar details;\nfunction init(){details=document.getElementById('details').firstChild;}\nfunction find_child(n,t){var c=n.getElementsByTagName(t);return c.length?c[0]:null;}\nfunction over(e){var t=find_child(e,'title');if(t)details.nodeValue=t.firstChild.nodeValue;}\nfunction out(e){details.nodeValue=' ';}\n]]></script>")
+    out.append(
+        "<script type=\"text/ecmascript\"><![CDATA[\n'use strict';\nvar details;\nfunction init(){details=document.getElementById('details').firstChild;}\nfunction find_child(n,t){var c=n.getElementsByTagName(t);return c.length?c[0]:null;}\nfunction over(e){var t=find_child(e,'title');if(t)details.nodeValue=t.firstChild.nodeValue;}\nfunction out(e){details.nodeValue=' ';}\n]]></script>"
+    )
 
     # Frames group
-    out.append("<g id=\"frames\">")
+    out.append('<g id="frames">')
 
     for k, node in Node.items():
-        func, depth_s, etime_s = k.split(';')
+        func, depth_s, etime_s = k.split(";")
         depth = int(depth_s)
         stime = node["stime"]
         etime = float(etime_s) if func != "" or depth != 0 else total_time
@@ -308,10 +358,19 @@ def render_svg(Node: Dict[str, Dict[str, float]], total_time: float, args: argpa
         else:
             y1 = ypad1 + depth * frameheight
             y2 = ypad1 + (depth + 1) * frameheight - 1
-        samples = (etime - stime)
+        samples = etime - stime
         pct = 0.0 if total_time == 0 else (100.0 * samples / total_time)
-        escaped = (func.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;'))
-        info = f"{escaped} ({samples:.0f} {args.countname}, {pct:.2f}%)" if func or depth else f"all ({samples:.0f} {args.countname}, 100%)"
+        escaped = (
+            func.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
+        info = (
+            f"{escaped} ({samples:.0f} {args.countname}, {pct:.2f}%)"
+            if func or depth
+            else f"all ({samples:.0f} {args.countname}, 100%)"
+        )
         title_tag = f"<title>{info}</title>"
 
         # Color selection (no palette file in this port)
@@ -322,7 +381,9 @@ def render_svg(Node: Dict[str, Dict[str, float]], total_time: float, args: argpa
             fill = color(args.colors, func)
 
         width = max(0.1, x2 - x1)
-        out.append(f"<g onmouseover=\"over(this)\" onmouseout=\"out(this)\">{title_tag}<rect x=\"{x1:.1f}\" y=\"{y1}\" width=\"{width:.1f}\" height=\"{(y2-y1):.1f}\" fill=\"{fill}\" rx=\"2\" ry=\"2\"/><text x=\"{x1+3:.2f}\" y=\"{(y1+y2)//2 + 3}\">{truncate_label(func, width, args.fontsize)}</text></g>")
+        out.append(
+            f'<g onmouseover="over(this)" onmouseout="out(this)">{title_tag}<rect x="{x1:.1f}" y="{y1}" width="{width:.1f}" height="{(y2-y1):.1f}" fill="{fill}" rx="2" ry="2"/><text x="{x1+3:.2f}" y="{(y1+y2)//2 + 3}">{truncate_label(func, width, args.fontsize)}</text></g>'
+        )
 
     out.append("</g>")
     out.append("</svg>")
@@ -345,11 +406,16 @@ def truncate_label(func: str, width_px: float, fontsize: float) -> str:
 
 
 def escape_text(s: str) -> str:
-    return s.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def re_strip_annotation(s: str) -> str:
-    if s.endswith(" _[k]") or s.endswith(" _[i]") or s.endswith(" _[j]") or s.endswith(" _[w]"):
+    if (
+        s.endswith(" _[k]")
+        or s.endswith(" _[i]")
+        or s.endswith(" _[j]")
+        or s.endswith(" _[w]")
+    ):
         return s[:-5]
     return s
 
