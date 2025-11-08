@@ -1,33 +1,33 @@
 - name: "PIPA 根因分析"
-  precondition: "True" # 顶级入口
+  precondition: "True"
   sub_rules:
     # ==========================================================
     # ON-CPU 分支
     # ==========================================================
     - name: "ON-CPU 瓶颈"
-      precondition: "'cpu' in df and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) > 75"
-      finding: "初步诊断：系统瓶颈为 **ON-CPU**，总 CPU 利用率高达 **{total_cpu:.2f}%**。"
+      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) > 75"
+      finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。"
       sub_rules:
         # --- TMA 分析 (占位符) ---
         - name: "微架构瓶颈：前端受限"
-          precondition: "'tma' in df and tma['Frontend_Bound'] > 0.2" # 依赖：TMA 采集器
-          finding: "微架构分析：CPU 前端受限（占比 **{tma_frontend:.2f}%**），指令获取效率低下。"
+          precondition: "'tma' in df and not df['tma'].empty and tma['Frontend_Bound'].mean() > 0.2" # 依赖：TMA 采集器
+          finding: "微架构分析：CPU 前端受限（占比 <strong>{tma_frontend:.2f}%</strong>），指令获取效率低下。"
           sub_rules:
             - name: "根因：指令缓存未命中"
-              precondition: "tma['ICache_Misses'] > 0.1"
-              finding: "根因定位：前端受限的主要原因是 **指令缓存（ICache）未命中率高**。建议优化代码局部性。"
+              precondition: "tma['ICache_Misses'].mean() > 0.1"
+              finding: "根因定位：前端受限的主要原因是 <strong>指令缓存（ICache）未命中率高</strong>。建议优化代码局部性。"
 
         # --- 系统性能分析 ---
         - name: "高上下文切换"
-          precondition: "'proc_cswch' in df and 'cswch_per_s' in df['proc_cswch'] and df['proc_cswch']['cswch_per_s'].mean() > 100000"
-          finding: "系统分析：上下文切换过于频繁 (平均 **{avg_cswch:.0f}/s**)，可能由线程数过多或锁竞争导致。"
+          precondition: "'proc_cswch' in df and not df['proc_cswch'].empty and df['proc_cswch']['cswch_per_s'].mean() > 100000"
+          finding: "系统分析：上下文切换过于频繁 (平均 <strong>{avg_cswch:.0f}/s</strong>)，可能由线程数过多或锁竞争导致。"
 
     # ==========================================================
     # OFF-CPU 分支
     # ==========================================================
     - name: "OFF-CPU 瓶颈"
-      precondition: "'cpu' in df and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) <= 75"
-      finding: "初步诊断：系统瓶颈为 **OFF-CPU**，CPU 有大量时间在等待外部资源。"
+      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) <= 75"
+      finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
       sub_rules:
         # --- 磁盘分析 ---
         - name: "磁盘 IO 瓶颈"

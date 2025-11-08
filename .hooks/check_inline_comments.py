@@ -15,6 +15,31 @@ class InlineCommentRemover(ast.NodeVisitor):
         self.lines_to_remove = set()
         self.modified = False
 
+    def _is_comment_in_string(self, line: str, comment_pos: int) -> bool:
+        """Check if the comment position is inside a string literal"""
+        before_comment = line[:comment_pos]
+        single_q = before_comment.count("'") - before_comment.count("\\'")
+        double_q = before_comment.count('"') - before_comment.count('\\"')
+        return single_q % 2 != 0 or double_q % 2 != 0
+
+    def _remove_comment_from_line(self, line: str) -> tuple[str, bool]:
+        """
+        Remove comment from a line. Returns (modified_line, is_comment_only).
+        Returns original line and False if no comment found or comment is in string.
+        """
+        comment_pos = line.find("#")
+        if comment_pos == -1:
+            return line, False
+
+        if self._is_comment_in_string(line, comment_pos):
+            return line, False
+
+        before_comment = line[:comment_pos].rstrip()
+        if before_comment:
+            return before_comment, False
+        else:
+            return "", True
+
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Visit function definitions"""
         if not node.body:
@@ -34,19 +59,13 @@ class InlineCommentRemover(ast.NodeVisitor):
             if not stripped or stripped.startswith('"""') or stripped.startswith("'''"):
                 continue
 
-            comment_pos = line.find("#")
-            if comment_pos != -1:
-                before_comment = line[:comment_pos]
-                single_q = before_comment.count("'") - before_comment.count("\\'")
-                double_q = before_comment.count('"') - before_comment.count('\\"')
-
-                if single_q % 2 == 0 and double_q % 2 == 0:
-                    if before_comment.strip():
-                        self.lines[line_num] = before_comment.rstrip()
-                        self.modified = True
-                    else:
-                        self.lines_to_remove.add(line_num)
-                        self.modified = True
+            modified_line, is_comment_only = self._remove_comment_from_line(line)
+            if modified_line != line:
+                if is_comment_only:
+                    self.lines_to_remove.add(line_num)
+                else:
+                    self.lines[line_num] = modified_line
+                self.modified = True
 
         self.generic_visit(node)
 
