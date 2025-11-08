@@ -26,7 +26,7 @@ if [ "$MODE" = "counting" ] || [ "$MODE" = "" ]; then
   sadf -d $WORKSPACE/sar.dat -- -A > $WORKSPACE/sar.csv
 elif [ "$MODE" = "profiling" ]; then
   # Execute profiling mode commands
-  perf script -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.script
+  perf script -i $WORKSPACE/perf.data -I --show-kernel-path --header > $WORKSPACE/perf.script
   perf report -i $WORKSPACE/perf.data -I --header > $WORKSPACE/perf.report
   perf buildid-list -i $WORKSPACE/perf.data > $WORKSPACE/perf.buildid
 else

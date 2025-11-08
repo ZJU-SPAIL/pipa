@@ -38,7 +38,7 @@ if [ "$MODE" = "counting" ] || [ "$MODE" = "" ]; then
   kill -9 $sar_pid
 elif [ "$MODE" = "profiling" ]; then
   # Execute profiling mode commands
-  perf record -e '{cycles,instructions}:S' -g -a -F 997 -o $WORKSPACE/perf.data
+  perf record -e '{cycles,instructions}:S' -g -a --call-graph dwarf -N -F 997 -o $WORKSPACE/perf.data
 else
   # Invalid parameter
   echo "Invalid parameter. Usage: $0 [counting|profiling]"
