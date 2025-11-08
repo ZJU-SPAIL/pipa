@@ -10,14 +10,26 @@ requires-python = ">=3.10"
 dependencies = ["click", "pyyaml", "pandas"]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "flake8-black", "pytest", "pre-commit", "pip-tools"]
+dev = [
+    "black",
+    "flake8",
+    "isort",
+    "flake8-black",
+    "pytest",
+    "pre-commit",
+    "pip-tools",
+]
 
 [project.scripts]
 pipa = "pipa:cli"
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ["py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

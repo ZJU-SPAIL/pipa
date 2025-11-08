@@ -1,6 +1,8 @@
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
+
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
@@ -102,9 +104,7 @@ class TestSarParser:
         ]
         for block in expected_blocks:
             assert block in results, f"Block '{block}' is missing from parse results"
-            assert isinstance(
-                results[block], pd.DataFrame
-            ), f"Block '{block}' is not a DataFrame"
+            assert isinstance(results[block], pd.DataFrame), f"Block '{block}' is not a DataFrame"
             assert not results[block].empty, f"Block '{block}' DataFrame is empty"
 
         # 2. Deep dive validation on key DataFrames

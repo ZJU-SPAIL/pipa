@@ -34,9 +34,7 @@ def setup_logging(verbosity: int):
 
     # Create a formatter
     # 创建一个格式化器
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
 
     # Add the handler to the root logger

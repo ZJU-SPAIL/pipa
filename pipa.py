@@ -1,8 +1,9 @@
 import click
+
+from src.commands.analyze import analyze
 from src.commands.calibrate import calibrate
 from src.commands.sample import sample
 from src.logger_setup import setup_logging
-from src.commands.analyze import analyze
 
 
 @click.group()

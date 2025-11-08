@@ -1,7 +1,8 @@
+import shutil
+from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
-from pathlib import Path
-import shutil
 
 from src.commands.sample import sample
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
@@ -48,9 +49,7 @@ def live_sample_output_dir(tmp_path_factory) -> Path:
     # 解压归档文件以供测试使用
     # .pipa 文件实际上是 gztar 格式，需要明确指定格式
     # 使用 filter='data' 以避免 Python 3.14 的废弃警告
-    shutil.unpack_archive(
-        pipa_archive_path, unpacked_dir, format="gztar", filter="data"
-    )
+    shutil.unpack_archive(pipa_archive_path, unpacked_dir, format="gztar", filter="data")
 
     # 在解压后的目录中找到第一个 level 目录 (例如 "intensity_1")
     level_dir = next(d for d in unpacked_dir.iterdir() if d.is_dir())

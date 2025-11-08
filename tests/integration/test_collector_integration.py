@@ -1,9 +1,11 @@
 # tests/integration/test_collector_integration.py
 
-import pytest
 import subprocess
 import time
-from src.collector import start_perf_stat, stop_perf_stat, start_sar, stop_sar
+
+import pytest
+
+from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
 from src.executor import ExecutionError, PerfPermissionError
 
 # Mark this whole file as 'integration' tests.
@@ -60,8 +62,7 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
     except ExecutionError as e:
         if "perf command not found" in str(e) or "Permission denied" in str(e):
             pytest.fail(
-                "perf tool is not available or permissions are insufficient. "
-                f"Skipping integration test. Error: {e}"
+                "perf tool is not available or permissions are insufficient. " f"Skipping integration test. Error: {e}"
             )
         else:
             raise
@@ -120,9 +121,7 @@ def test_sar_integration(temp_output_file):
     interval = 1
 
     try:
-        proc = start_sar(
-            duration=duration, interval=interval, output_file=str(temp_output_file)
-        )
+        proc = start_sar(duration=duration, interval=interval, output_file=str(temp_output_file))
         assert proc is not None, "start_sar should return a process handle."
 
         content = stop_sar(proc, str(temp_output_file), duration=duration)

@@ -1,15 +1,17 @@
 import logging
-from pathlib import Path
+import shutil
 import subprocess
+import tempfile
 import time
+from pathlib import Path
 from typing import List, Optional
+
+import yaml
+
 from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
 from src.config_loader import load_workload_config
 from src.executor import ExecutionError, run_command, run_in_background
 from src.static_collector import collect_all_static_info
-import yaml
-import tempfile
-import shutil
 
 log = logging.getLogger(__name__)
 
@@ -74,18 +76,14 @@ def run_sampling(
                 config = yaml.safe_load(f)
 
             load_levels_map = {
-                level: conf.get("intensity")
-                for level, conf in config.get("calibrated_parameters", {}).items()
+                level: conf.get("intensity") for level, conf in config.get("calibrated_parameters", {}).items()
             }
             if not load_levels_map:
                 raise ValueError("Config is missing 'calibrated_parameters'.")
 
         elif workload_name and intensities:
             # --- 直接模式 ---
-            log.info(
-                f"Running in DIRECT mode for workload '{workload_name}' "
-                f"with intensities: {intensities}"
-            )
+            log.info(f"Running in DIRECT mode for workload '{workload_name}' " f"with intensities: {intensities}")
             config = load_workload_config(workload_name)
 
             # 构造一个与校准模式兼容的 map
@@ -101,9 +99,7 @@ def run_sampling(
                 config = load_workload_config(workload_name)
             else:
                 # 如果没提供，使用默认配置
-                log.info(
-                    "No workload specified, using default collector configuration."
-                )
+                log.info("No workload specified, using default collector configuration.")
                 config = {
                     "workload_name": "default",
                     "collectors": {
@@ -153,9 +149,7 @@ def run_sampling(
                 driver = config.get("benchmark_driver", {})
                 command_template = driver.get("command_template")
                 if not command_template:
-                    raise ValueError(
-                        "Missing 'command_template' in benchmark_driver config."
-                    )
+                    raise ValueError("Missing 'command_template' in benchmark_driver config.")
 
                 # 启动压测
                 benchmark_cmd = command_template.format(intensity=intensity)
@@ -171,10 +165,7 @@ def run_sampling(
                         target_pid = pid_output
                         log.info(f"Target PID(s) for '{level}' are: {target_pid}")
                     except (ExecutionError, ValueError, IndexError) as e:
-                        log.warning(
-                            f"Could not determine target PID: {e}."
-                            " Some collectors may fail."
-                        )
+                        log.warning(f"Could not determine target PID: {e}." " Some collectors may fail.")
 
             # 启动压测
             log.info(f"Starting Phase 1: Macro-Metrics Collection for '{level}'...")
@@ -202,9 +193,7 @@ def run_sampling(
                     }
                     if perf_args["mode"] == "pid":
                         if not target_pid:
-                            log.warning(
-                                "Skipping perf_stat in pid mode: target_pid not found."
-                            )
+                            log.warning("Skipping perf_stat in pid mode: target_pid not found.")
                             continue
                         perf_args["target_pid"] = target_pid
                     proc = start_perf_stat(**perf_args)
@@ -226,40 +215,27 @@ def run_sampling(
                         "output_file": output_file,
                         "duration": collector_conf.get("duration", 60),
                     }
-                    macro_duration = max(
-                        macro_duration, collector_conf.get("duration", 60)
-                    )
+                    macro_duration = max(macro_duration, collector_conf.get("duration", 60))
 
             # 如果提供了 duration_override，则覆盖计算出的 macro_duration
             if duration_override is not None:
                 macro_duration = duration_override
-                log.info(
-                    f"Duration overridden to {duration_override} seconds "
-                    f"via --duration option."
-                )
+                log.info(f"Duration overridden to {duration_override} seconds " f"via --duration option.")
 
             if running_macro_collectors:
-                log.info(
-                    f"Macro-metrics collection running for {macro_duration} seconds..."
-                )
+                log.info(f"Macro-metrics collection running for {macro_duration} seconds...")
                 time.sleep(macro_duration)
 
                 # --- 关键！在依附模式下，我们不停止任何压测进程 ---
                 if not attach_pids and benchmark_proc is not None:
                     # --- 主动模式的清理逻辑 ---
                     if benchmark_proc.poll() is None:
-                        log.info(
-                            f"Stopping benchmark process "
-                            f"(PID: {benchmark_proc.pid})..."
-                        )
+                        log.info(f"Stopping benchmark process " f"(PID: {benchmark_proc.pid})...")
                         benchmark_proc.terminate()
                         try:
                             benchmark_proc.wait(timeout=10)
                         except subprocess.TimeoutExpired:
-                            log.warning(
-                                "Benchmark process did not terminate gracefully."
-                                " Killing it..."
-                            )
+                            log.warning("Benchmark process did not terminate gracefully." " Killing it...")
                             benchmark_proc.kill()
                             benchmark_proc.wait()
 
@@ -271,21 +247,15 @@ def run_sampling(
                     duration = collector_context["duration"]
 
                     if output_file is None:
-                        log.warning(
-                            f"Collector '{name}' (PID: {pid}) has no output file,"
-                            " skipping stop logic."
-                        )
+                        log.warning(f"Collector '{name}' (PID: {pid}) has no output file," " skipping stop logic.")
                         continue
 
                     wait_timeout = duration + 15
                     if name == "perf_stat":
-                        content = stop_perf_stat(
-                            proc, str(output_file), timeout=wait_timeout
-                        )
+                        content = stop_perf_stat(proc, str(output_file), timeout=wait_timeout)
                         if content:
                             log.debug(
-                                f"--- perf_stat.txt content for '{level}' ---\n"
-                                f"{content}\n--------------------"
+                                f"--- perf_stat.txt content for '{level}' ---\n" f"{content}\n--------------------"
                             )
                     elif name == "sar_cpu":
                         stop_sar(proc, str(output_file), duration=duration)
@@ -299,9 +269,7 @@ def run_sampling(
         # --- 4. 打包归档 ---
         log.info(f"Archiving results from {work_dir} to {output_path}...")
         archive_base_name = str(output_path.with_suffix(""))
-        archive_path_with_ext = shutil.make_archive(
-            base_name=archive_base_name, format="gztar", root_dir=work_dir
-        )
+        archive_path_with_ext = shutil.make_archive(base_name=archive_base_name, format="gztar", root_dir=work_dir)
 
         final_archive_path = Path(archive_path_with_ext)
         final_archive_path.rename(output_path)
