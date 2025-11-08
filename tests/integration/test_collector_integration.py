@@ -1,9 +1,11 @@
 # tests/integration/test_collector_integration.py
 
-import pytest
 import subprocess
 import time
-from src.collector import start_perf_stat, stop_perf_stat, start_sar, stop_sar
+
+import pytest
+
+from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
 from src.executor import ExecutionError, PerfPermissionError
 
 # Mark this whole file as 'integration' tests.
@@ -21,17 +23,12 @@ def temp_output_file(tmp_path):
 @pytest.fixture
 def target_process():
     """A pytest fixture to provide a simple, short-lived target process."""
-    # Start a simple process in the background
-    # 在后台启动一个简单的进程
     proc = subprocess.Popen(["sleep", "2"])
 
-    # Give it a moment to start
     time.sleep(0.1)
 
     yield proc.pid
 
-    # Teardown: ensure the process is terminated
-    # 收尾：确保进程被终止
     if proc.poll() is None:
         proc.terminate()
         proc.wait()
@@ -51,17 +48,14 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
             output_file=str(temp_output_file),
             event_groups=events,
         )
-        # Ensure the process was actually started
         assert proc is not None, "start_perf_stat should return a process handle."
 
-        # Simulate sampling duration
         time.sleep(1)
 
     except ExecutionError as e:
         if "perf command not found" in str(e) or "Permission denied" in str(e):
             pytest.fail(
-                "perf tool is not available or permissions are insufficient. "
-                f"Skipping integration test. Error: {e}"
+                "perf tool is not available or permissions are insufficient. " f"Skipping integration test. Error: {e}"
             )
         else:
             raise
@@ -69,7 +63,6 @@ def test_collect_perf_stat_pid_mode_integration(target_process, temp_output_file
         if proc:
             stop_perf_stat(proc, str(temp_output_file), timeout=5)
 
-    # Verification
     report_content = temp_output_file.read_text()
     assert "Performance counter stats for process id" in report_content
     assert "cycles" in report_content.lower()
@@ -102,7 +95,6 @@ def test_collect_perf_stat_system_mode_integration(temp_output_file):
             try:
                 stop_perf_stat(proc, str(temp_output_file), timeout=5)
             except PerfPermissionError as e:
-                # 如果捕获到我们自定义的权限错误，就跳过测试
                 pytest.skip(f"Skipping due to perf permission error: {e}")
 
     report_content = temp_output_file.read_text()
@@ -120,9 +112,7 @@ def test_sar_integration(temp_output_file):
     interval = 1
 
     try:
-        proc = start_sar(
-            duration=duration, interval=interval, output_file=str(temp_output_file)
-        )
+        proc = start_sar(duration=duration, interval=interval, output_file=str(temp_output_file))
         assert proc is not None, "start_sar should return a process handle."
 
         content = stop_sar(proc, str(temp_output_file), duration=duration)

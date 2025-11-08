@@ -1,6 +1,8 @@
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
+
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
@@ -34,42 +36,34 @@ class TestPerfStatParser:
         df = parse_perf_stat_timeseries(complex_perf_content)
 
         assert not df.empty
-        assert df.shape == (6, 4)  # 6 rows, 4 columns
+        assert df.shape == (6, 4)
         assert list(df.columns) == ["timestamp", "value", "unit", "event_name"]
 
-        # 1. Test standard line
         cycles_row = df[df["event_name"] == "cycles"].iloc[0]
         assert cycles_row["value"] == 36416323183
         assert cycles_row["unit"] == ""
 
-        # 2. Test '<not counted>' case
         cache_miss_row = df[df["event_name"] == "cache-misses"].iloc[0]
-        assert pd.isna(cache_miss_row["value"])  # Value should be NaN
+        assert pd.isna(cache_miss_row["value"])
         assert cache_miss_row["unit"] == ""
 
-        # 3. Test complex name and unit case
         energy_row = df[df["event_name"] == "power/energy-cores/"].iloc[0]
         assert energy_row["value"] == 12345
         assert energy_row["unit"] == "Joules"
 
-        # 4. Test event name with a dash
         l1_row = df[df["event_name"] == "L1-dcache-loads"].iloc[0]
         assert l1_row["value"] == 59861356776
         assert l1_row["unit"] == ""
 
-        # 5. NEW: Test floating point value with GHz unit
-        ghz_row = df[df["event_name"] == ""].iloc[0]  # GHz line has empty event_name
-        # Find the row with GHz unit
+        ghz_row = df[df["event_name"] == ""].iloc[0]
         ghz_rows = df[df["unit"] == "GHz"]
         assert len(ghz_rows) > 0
         ghz_row = ghz_rows.iloc[0]
         assert ghz_row["value"] == pytest.approx(2.430)
         assert ghz_row["unit"] == "GHz"
 
-        # 6. NEW: Test percentage value
         branch_miss_row = df[df["event_name"] == "branch-misses"].iloc[0]
         assert branch_miss_row["value"] == pytest.approx(2.00)
-        # Percentage symbol is part of value, not unit
         assert branch_miss_row["unit"] == ""
 
     @pytest.mark.parametrize("bad_content", ["", "# Just a comment"])
@@ -86,7 +80,6 @@ class TestSarParser:
         """
         results = parse_sar_timeseries(comprehensive_sar_content)
 
-        # 1. Assert that all expected blocks are present and not empty
         expected_blocks = [
             "cpu",
             "proc_cswch",
@@ -102,30 +95,23 @@ class TestSarParser:
         ]
         for block in expected_blocks:
             assert block in results, f"Block '{block}' is missing from parse results"
-            assert isinstance(
-                results[block], pd.DataFrame
-            ), f"Block '{block}' is not a DataFrame"
+            assert isinstance(results[block], pd.DataFrame), f"Block '{block}' is not a DataFrame"
             assert not results[block].empty, f"Block '{block}' DataFrame is empty"
 
-        # 2. Deep dive validation on key DataFrames
-        # Validate CPU block (only 'all' rows are parsed by current logic, let's verify)
         df_cpu = results["cpu"]
         assert df_cpu[df_cpu["CPU"] == "all"].shape[0] > 0
         assert pd.api.types.is_numeric_dtype(df_cpu["pct_usr"])
 
-        # Validate Memory block
         df_mem = results["memory_util"]
         assert "kbmemused" in df_mem.columns
         assert pd.api.types.is_numeric_dtype(df_mem["kbmemused"])
 
-        # Validate Device I/O block
         df_dev = results["device_io"]
         assert "DEV" in df_dev.columns
         assert pd.api.types.is_numeric_dtype(df_dev["tps"])
         assert "sda" in df_dev["DEV"].unique()
         assert "zram0" in df_dev["DEV"].unique()
 
-        # Validate Network block
         df_net = results["network_dev"]
         assert "IFACE" in df_net.columns
         assert pd.api.types.is_numeric_dtype(df_net["rxpck_per_s"])

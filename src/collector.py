@@ -6,13 +6,13 @@ import shlex
 import signal
 import subprocess
 from typing import Optional, Union
+
 from .executor import (
     ExecutionError,
     PerfPermissionError,
     run_command,
     run_in_background,
 )
-
 
 log = logging.getLogger(__name__)
 
@@ -27,14 +27,9 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
     :return: The average total CPU utilization (%user + %system).
     :raises ExecutionError: If sar command fails or output is unparsable.
     """
-    # sar -u [interval] [count]
-    # We collect 'duration' samples at 'interval' second intervals.
-    # 我们以 'interval' 秒为间隔，收集 'duration' 个样本。
     count = duration // interval
     command = f"sar -u {interval} {count}"
 
-    # Define the environment we need
-    # 定义我们需要的环境
     env = {"LC_ALL": "C"}
 
     output = ""
@@ -43,8 +38,6 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
         output = run_command(command, env=env)
         lines = output.strip().splitlines()
 
-        # Find the "Average:" line, which contains the final summary.
-        # 寻找包含最终摘要的 "Average:" 行。
         avg_line = None
         for line in reversed(lines):
             if line.strip().startswith("Average:"):
@@ -57,8 +50,6 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
         log.debug(f"Line being parsed is: '{avg_line.strip()}'")
 
         parts = avg_line.split()
-        # Expected format: Average: all %user %nice %system ...
-        # parts index:      0        1    2     3     4
         if len(parts) < 5 or parts[1] != "all":
             raise ExecutionError("Unexpected format for 'Average:' line in sar output.")
 
@@ -71,14 +62,9 @@ def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
 
     except (ValueError, IndexError) as e:
         log.error(f"Failed to parse CPU utilization from sar output: {e}")
-        debug_info = (
-            "Failed to parse sar 'Average:' line. "
-            f"Raw sar output:\n---\n{output}\n---"
-        )
+        debug_info = "Failed to parse sar 'Average:' line. " f"Raw sar output:\n---\n{output}\n---"
         raise ExecutionError(debug_info)
     except ExecutionError:
-        # Re-raise ExecutionError to propagate command failures
-        # 重新抛出 ExecutionError 以传递命令失败信息
         raise
 
 
@@ -109,7 +95,6 @@ def start_perf_stat(
         log.warning("No perf event groups specified. Skipping perf stat.")
         return None
 
-    # --- 1. 构建 target 参数 (使用字典派发) ---
     target_flag_builders = {
         "pid": lambda: f"-p {target_pid}" if target_pid else None,
         "cpu": lambda: f"-C {target_cpus}" if target_cpus else None,
@@ -129,7 +114,6 @@ def start_perf_stat(
             events_str = ",".join(group)
             events_flags.append(f"-e {{{events_str}}}")
 
-    # 对于后台模式，我们不能附加 sleep 子命令
     command_parts = [
         "perf",
         "stat",
@@ -145,9 +129,7 @@ def start_perf_stat(
 
 
 # 修改 stop_perf_stat 函数的签名和实现
-def stop_perf_stat(
-    proc: subprocess.Popen, output_file: str, timeout: int
-) -> Optional[str]:
+def stop_perf_stat(proc: subprocess.Popen, output_file: str, timeout: int) -> Optional[str]:
     """
     Stops perf stat, captures its stderr, writes to file, and returns the content.
     停止 perf stat，捕获其 stderr，写入文件，并返回内容。
@@ -157,7 +139,6 @@ def stop_perf_stat(
 
     log.info("Waiting for perf stat to finish and output results...")
     try:
-        # 1. 等待进程结束，并一次性读取所有 stderr
         _, stderr_output = proc.communicate(timeout=timeout)
         if "perf_event_paranoid" in stderr_output:
             error_msg = (
@@ -171,7 +152,6 @@ def stop_perf_stat(
             raise PerfPermissionError(error_msg)
         log.info("perf stat process stopped and output captured.")
 
-        # 2. 实现"双向输出"：写入文件
         try:
             with open(output_file, "w") as f:
                 f.write(stderr_output)
@@ -179,16 +159,13 @@ def stop_perf_stat(
         except IOError as e:
             log.error(f"Failed to write perf stat report to {output_file}: {e}")
 
-        # 3. 实现“双向输出”：返回内容
         return stderr_output
 
     except subprocess.TimeoutExpired:
         log.warning("perf stat process did not respond to SIGINT. Killing it...")
         proc.kill()
-        # 尝试最后一次捕获输出
         _, stderr_output = proc.communicate()
 
-        # 即使超时，也要尝试写入文件
         if stderr_output:
             try:
                 with open(output_file, "w") as f:
@@ -211,9 +188,7 @@ def start_sar(
     """
     count = duration // interval
     if count <= 0:
-        log.warning(
-            f"Duration ({duration}) is less than interval ({interval}), skipping sar."
-        )
+        log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
         return None
 
     command = f"sar -A {interval} {count}"
@@ -249,10 +224,7 @@ def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optiona
         stdout_data, stderr_data = proc.communicate(timeout=timeout)
 
         if proc.returncode != 0:
-            log.error(
-                f"sar process exited with error code {proc.returncode}"
-                ". Stderr: {stderr_data}"
-            )
+            log.error(f"sar process exited with error code {proc.returncode}" ". Stderr: {stderr_data}")
 
         with open(output_file, "w") as f:
             f.write(stdout_data)

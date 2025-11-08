@@ -1,5 +1,6 @@
 import io
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 import pandas as pd
 
 BLOCK_DEFINITIONS = {
@@ -51,9 +52,7 @@ def parse_sar_timeseries(content: str) -> Dict[str, pd.DataFrame]:
     :return: A dictionary where keys are block names (e.g., 'cpu', 'io')
              and values are the corresponding DataFrames.
     """
-    all_blocks: Dict[str, List[Dict[str, Any]]] = {
-        name: [] for name in BLOCK_DEFINITIONS
-    }
+    all_blocks: Dict[str, List[Dict[str, Any]]] = {name: [] for name in BLOCK_DEFINITIONS}
     current_block_type: str | None = None
     headers: List[str] = []
 

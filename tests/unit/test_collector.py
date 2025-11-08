@@ -1,11 +1,13 @@
 import subprocess
 from typing import cast
+
 import pytest
+
 from src.collector import (
     collect_cpu_utilization,
     start_perf_stat,
-    stop_perf_stat,
     start_sar,
+    stop_perf_stat,
     stop_sar,
 )
 from src.executor import ExecutionError
@@ -38,14 +40,8 @@ def test_collect_cpu_utilization_success(monkeypatch):
     Tests successful parsing of normal sar output by reading the Average line.
     测试通过读取 Average 行，成功解析正常的 sar 输出。
     """
-    monkeypatch.setattr(
-        "src.collector.run_command", lambda command, env: SAR_OUTPUT_NORMAL
-    )
+    monkeypatch.setattr("src.collector.run_command", lambda command, env: SAR_OUTPUT_NORMAL)
 
-    # The new logic directly parses the Average line.
-    # 新的逻辑直接解析 Average 行。
-    # Expected result is %user (15.00) + %system (7.50)
-    # 期望的结果是 %user (15.00) + %system (7.50)
     expected_avg = 22.5
 
     avg_util = collect_cpu_utilization(duration=2)
@@ -58,12 +54,8 @@ def test_collect_cpu_utilization_no_average_line(monkeypatch):
     Tests that an error is raised if the "Average:" line is not found.
     测试在找不到 "Average:" 行时是否会引发错误。
     """
-    monkeypatch.setattr(
-        "src.collector.run_command", lambda command, env: SAR_OUTPUT_NO_AVERAGE
-    )
+    monkeypatch.setattr("src.collector.run_command", lambda command, env: SAR_OUTPUT_NO_AVERAGE)
 
-    # We expect this to raise an ExecutionError with the new error message.
-    # 我们期望这里会引发一个带有新错误信息的 ExecutionError。
     with pytest.raises(ExecutionError, match="Could not find 'Average:' line"):
         collect_cpu_utilization(duration=1)
 
@@ -112,20 +104,16 @@ PERF_OUTPUT_NORMAL = """
         ("system", {"interval": 1000}, "-I 1000"),
     ],
 )
-def test_start_perf_stat_command_construction(
-    monkeypatch, mode, kwargs_for_call, expected_flag_part
-):
+def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call, expected_flag_part):
     """
     Tests that the perf stat command is constructed correctly for all modes
     by the new start_perf_stat function.
     """
     called_command = []
 
-    # Mock run_in_background to capture the command
     def mock_run_in_background(command):
         called_command.append(command)
 
-        # Return a dummy Popen-like object
         class MockPopen:
             pass
 
@@ -144,10 +132,8 @@ def test_start_perf_stat_command_construction(
 
     assert "perf stat" in final_command
     assert expected_flag_part in final_command
-    # assert "-o /tmp/perf.txt" in final_command
     assert "--append" not in final_command
     assert "-e {cycles}" in final_command
-    # Most importantly, ensure 'sleep' is NOT in the command
     assert "sleep" not in final_command
 
 
@@ -159,16 +145,12 @@ def test_start_perf_stat_command_construction(
         ("cpu", {}, "Missing required parameter for perf stat mode 'cpu'."),
     ],
 )
-def test_start_perf_stat_raises_value_error_for_invalid_params(
-    mode, kwargs, expected_error_msg
-):
+def test_start_perf_stat_raises_value_error_for_invalid_params(mode, kwargs, expected_error_msg):
     """
     Tests that ValueError is raised for invalid mode or missing parameters.
     """
     with pytest.raises(ValueError, match=expected_error_msg):
-        start_perf_stat(
-            mode=mode, output_file="dummy.txt", event_groups=[["cycles"]], **kwargs
-        )
+        start_perf_stat(mode=mode, output_file="dummy.txt", event_groups=[["cycles"]], **kwargs)
 
 
 class MockPopen:
@@ -215,9 +197,7 @@ def test_stop_perf_stat_success(monkeypatch, tmp_path):
 
     monkeypatch.setattr("builtins.open", mock_open)
 
-    content = stop_perf_stat(
-        cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5
-    )
+    content = stop_perf_stat(cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5)
 
     assert content == "cycles: 100"
     assert written_content[0] == "cycles: 100"
@@ -229,13 +209,10 @@ def test_stop_perf_stat_timeout(tmp_path):
     mock_proc = MockPopen(should_timeout=True, stderr_data="partial data")
     temp_file = tmp_path / "perf_output.txt"
 
-    content = stop_perf_stat(
-        cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5
-    )
+    content = stop_perf_stat(cast(subprocess.Popen, mock_proc), str(temp_file), timeout=5)
 
     assert mock_proc.killed is True
     assert content == "partial data"
-    # 验证超时时也会写入文件
     assert temp_file.exists()
     assert temp_file.read_text() == "partial data"
 
@@ -291,8 +268,8 @@ def test_start_sar_command_construction(monkeypatch):
 
     assert "sar" in called_command
     assert "-A" in called_command
-    assert "2" in called_command  # interval
-    assert "5" in called_command  # count = duration // interval
+    assert "2" in called_command
+    assert "5" in called_command
 
 
 def test_start_sar_skips_if_duration_too_short():

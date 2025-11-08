@@ -12,17 +12,13 @@ from src.executor import ExecutionError, run_command, run_in_background
 log = logging.getLogger(__name__)
 
 
-def _run_benchmark_and_measure_cpu(
-    command_template: str, intensity: int, duration: int
-) -> float:
+def _run_benchmark_and_measure_cpu(command_template: str, intensity: int, duration: int) -> float:
     """
     A helper to run benchmark at a given intensity and measure CPU usage.
     一个辅助函数，用于在给定强度下运行基准测试并测量CPU使用率。
     """
     benchmark_cmd = command_template.format(intensity=intensity)
     benchmark_proc = run_in_background(benchmark_cmd)
-    # Give benchmark a moment to ramp up
-    # 给基准测试一些预热时间
     time.sleep(5)
 
     cpu_usage = 0
@@ -31,18 +27,14 @@ def _run_benchmark_and_measure_cpu(
     finally:
         if benchmark_proc.poll() is None:
             log.debug(f"Terminating benchmark process (PID: {benchmark_proc.pid})...")
-            benchmark_proc.terminate()  # 1. Send SIGTERM (polite request)
+            benchmark_proc.terminate()
             try:
-                # 2. Wait gracefully for a few seconds
                 benchmark_proc.wait(timeout=10)
                 log.debug("Benchmark process terminated gracefully.")
             except subprocess.TimeoutExpired:
-                # 3. If it's still alive, force kill it
-                log.warning(
-                    "Benchmark process did not terminate gracefully. Killing it..."
-                )
-                benchmark_proc.kill()  # 4. Send SIGKILL (forceful command)
-                benchmark_proc.wait()  # 5. Reap the killed process
+                log.warning("Benchmark process did not terminate gracefully. Killing it...")
+                benchmark_proc.kill()
+                benchmark_proc.wait()
                 log.warning("Benchmark process killed.")
     return cpu_usage
 
@@ -64,13 +56,8 @@ def run_calibration(workload: str, output_config_path: str):
 
         min_intensity = driver["intensity_variable"]["min"]
         max_intensity = driver["intensity_variable"]["max"]
-        log.info(
-            f"\n  [Probe] Testing with max intensity ({max_intensity}) "
-            "to find CPU ceiling..."
-        )
-        max_achievable_cpu = _run_benchmark_and_measure_cpu(
-            driver["command_template"], max_intensity, duration=15
-        )
+        log.info(f"\n  [Probe] Testing with max intensity ({max_intensity}) " "to find CPU ceiling...")
+        max_achievable_cpu = _run_benchmark_and_measure_cpu(driver["command_template"], max_intensity, duration=15)
         log.info(f"  -> Maximum achievable CPU utilization: {max_achievable_cpu:.2f}%")
 
         if max_achievable_cpu < 1.0:
@@ -84,16 +71,12 @@ def run_calibration(workload: str, output_config_path: str):
 
         for intensity in range(min_intensity, max_intensity + 1, step_coarse):
             log.info(f"    [Coarse Scan] Testing intensity: {intensity}")
-            cpu_usage = _run_benchmark_and_measure_cpu(
-                driver["command_template"], intensity, duration=10
-            )
+            cpu_usage = _run_benchmark_and_measure_cpu(driver["command_template"], intensity, duration=10)
             log.info(f"    -> Observed CPU: {cpu_usage:.2f}%")
             performance_map.append({"intensity": intensity, "cpu": cpu_usage})
 
         if max_intensity not in [p["intensity"] for p in performance_map]:
-            performance_map.append(
-                {"intensity": max_intensity, "cpu": max_achievable_cpu}
-            )
+            performance_map.append({"intensity": max_intensity, "cpu": max_achievable_cpu})
 
         log.info("\n  -> Finding globally optimal monotonic triplet...")
         best_triplet = None
@@ -136,9 +119,7 @@ def run_calibration(workload: str, output_config_path: str):
 
         log.info("  -> Found optimal coarse points:")
         for name, point in best_triplet.items():
-            log.info(
-                f"    - {name}: intensity={point['intensity']}, cpu={point['cpu']:.2f}%"
-            )
+            log.info(f"    - {name}: intensity={point['intensity']}, cpu={point['cpu']:.2f}%")
 
         calibrated_intensities = {}
         last_intensity = 0
@@ -147,38 +128,27 @@ def run_calibration(workload: str, output_config_path: str):
         level_order = ["low", "medium", "high"]
         for i, level_name in enumerate(level_order):
             coarse_point = best_triplet[level_name]
-            search_min = max(
-                last_intensity + 1, coarse_point["intensity"] - step_coarse // 2
-            )
+            search_min = max(last_intensity + 1, coarse_point["intensity"] - step_coarse // 2)
 
             if i + 1 < len(level_order):
-                next_level_coarse_intensity = best_triplet[level_order[i + 1]][
-                    "intensity"
-                ]
+                next_level_coarse_intensity = best_triplet[level_order[i + 1]]["intensity"]
                 search_max = min(
                     max_intensity,
                     coarse_point["intensity"] + step_coarse // 2,
                     next_level_coarse_intensity - 1,
                 )
             else:
-                search_max = min(
-                    max_intensity, coarse_point["intensity"] + step_coarse // 2
-                )
+                search_max = min(max_intensity, coarse_point["intensity"] + step_coarse // 2)
             search_min = min(search_min, search_max)
 
-            log.info(
-                f"\n  -> Fine-tuning for '{level_name}' "
-                f"in range [{search_min}, {search_max}]..."
-            )
+            log.info(f"\n  -> Fine-tuning for '{level_name}' " f"in range [{search_min}, {search_max}]...")
 
             best_point = None
             min_distance = float("inf")
 
             for intensity in range(search_min, search_max + 1):
                 log.info(f"    [Fine Scan] Testing intensity: {intensity}")
-                cpu_usage = _run_benchmark_and_measure_cpu(
-                    driver["command_template"], intensity, duration=10
-                )
+                cpu_usage = _run_benchmark_and_measure_cpu(driver["command_template"], intensity, duration=10)
                 log.info(f"    -> Observed CPU: {cpu_usage:.2f}%")
 
                 if cpu_usage <= last_cpu:
@@ -193,14 +163,9 @@ def run_calibration(workload: str, output_config_path: str):
                 calibrated_intensities[level_name] = best_point["intensity"]
                 last_intensity = best_point["intensity"]
                 last_cpu = best_point["cpu"]
-                log.info(
-                    f"  -> Best fine-tuned intensity for"
-                    f" '{level_name}': {best_point['intensity']}"
-                )
+                log.info(f"  -> Best fine-tuned intensity for" f" '{level_name}': {best_point['intensity']}")
             else:
-                log.warning(
-                    f"  -> Could not fine-tune for '{level_name}', using coarse value."
-                )
+                log.warning(f"  -> Could not fine-tune for '{level_name}', using coarse value.")
                 calibrated_intensities[level_name] = coarse_point["intensity"]
                 last_intensity = coarse_point["intensity"]
                 last_cpu = coarse_point["cpu"]
@@ -212,8 +177,7 @@ def run_calibration(workload: str, output_config_path: str):
         calibrated_config = {
             "workload_name": workload,
             "calibrated_parameters": {
-                level: {"intensity": intensity}
-                for level, intensity in calibrated_intensities.items()
+                level: {"intensity": intensity} for level, intensity in calibrated_intensities.items()
             },
             "benchmark_driver": driver,
             "commands": workload_config["commands"],
@@ -225,7 +189,6 @@ def run_calibration(workload: str, output_config_path: str):
 
     except (ConfigError, ExecutionError, ValueError, RuntimeError, IOError) as e:
         log.error(f"❌ Calibration failed: {e}")
-        # Re-raise to be caught by the CLI layer
         raise
 
     log.info("🔧 Calibration finished.")
