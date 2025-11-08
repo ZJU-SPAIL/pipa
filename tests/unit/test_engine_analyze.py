@@ -3,7 +3,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.engine.analyze import run_analysis_poc
+# 修正：导入新的函数名
+from src.engine.analyze import generate_report
 
 MOCK_PERF_DATA = """
 0.001     1000      cycles
@@ -20,8 +21,8 @@ MOCK_SAR_DATA = """
 
 
 @pytest.fixture
-def poc_test_dir(tmp_path: Path) -> Path:
-    """Creates a temporary directory structure mimicking a sample run."""
+def sample_test_dir(tmp_path: Path) -> Path:
+    """Creates a temporary directory with mock data files."""
     level_dir = tmp_path / "intensity_1"
     level_dir.mkdir()
     (level_dir / "perf_stat.txt").write_text(MOCK_PERF_DATA)
@@ -29,11 +30,13 @@ def poc_test_dir(tmp_path: Path) -> Path:
     return level_dir
 
 
-def test_run_analysis_poc_success(poc_test_dir):
+def test_generate_report_returns_correct_dataframe(sample_test_dir):
     """
-    Tests that run_analysis_poc correctly parses, aligns, and returns a DataFrame.
+    Tests that generate_report correctly parses, aligns, and returns a DataFrame.
+    This test focuses on the data processing logic, ignoring the HTML output.
     """
-    result_df = run_analysis_poc(poc_test_dir)
+    fake_report_path = sample_test_dir / "fake_report.html"
+    result_df = generate_report(sample_test_dir, fake_report_path)
 
     assert isinstance(result_df, pd.DataFrame)
     assert not result_df.empty
