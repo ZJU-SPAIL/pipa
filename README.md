@@ -50,13 +50,13 @@ _适用于未知工作负载，自动发现最佳配置。_
 
 ```bash
 # 1. Calibrate to find optimal parameters
-python pipa.py calibrate --workload mysql --output-config mysql_calibrated.yaml
+pipa calibrate --workload mysql --output-config mysql_calibrated.yaml
 
 # 2. Run automated sampling based on the calibrated plan
-python pipa.py sample --config mysql_calibrated.yaml --output results.pipa
+pipa sample --config mysql_calibrated.yaml --output results.pipa
 
-# 3. Analyze the results (Coming Soon)
-python pipa.py analyze --input results.pipa --output report.html
+# 3. Analyze the results and generate the final report
+pipa analyze --input results.pipa --output report.html
 ```
 
 #### Scenario 2: Direct Sampling Mode (直接采样模式)

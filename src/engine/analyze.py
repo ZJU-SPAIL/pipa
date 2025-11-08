@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -15,12 +14,12 @@ from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 log = logging.getLogger(__name__)
 
 
-def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
+def generate_report(level_dir: Path, report_path: Path):
     """
-    Runs the PoC for data alignment, generates insights and interactive plots,
-    and optionally creates an HTML report.
+    Analyzes sampling data, generates insights and interactive plots,
+    and creates a self-contained HTML report.
     """
-    log.info(f"--- Running Analysis PoC on directory: {level_dir} ---")
+    log.info(f"--- Generating analysis report from directory: {level_dir} ---")
 
     perf_file = level_dir / "perf_stat.txt"
     sar_file = level_dir / "sar_cpu.txt"
@@ -68,7 +67,7 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     columns_to_drop = ["timestamp_dt", "timestamp_float", "CPU"]
     merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
 
-    if html_report_path:
+    if report_path:
         all_dataframes = {"perf": df_perf, **results_sar}
         rules = load_rules(Path("config/rules/decision_tree.yaml"))
 
@@ -94,7 +93,7 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
         plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
         df_for_table = merged_df.round(2).replace([np.inf, -np.inf], "Infinity").fillna("N/A")
         table_json_data = df_for_table.to_json(orient="records")
-        log.info(f"Generating HTML report at: {html_report_path}")
+        log.info(f"Generating HTML report at: {report_path}")
         env = Environment(loader=FileSystemLoader("src/templates"))
 
         md = MarkdownIt()
@@ -108,7 +107,7 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
             decision_tree_html=decision_tree_html,
             findings_for_tree_html=findings_for_tree_html,
         )
-        with open(html_report_path, "w") as f:
+        with open(report_path, "w") as f:
             f.write(html_content)
         log.info("✅ HTML report with insights generated successfully.")
 
