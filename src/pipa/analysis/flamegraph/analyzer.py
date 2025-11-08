@@ -1,17 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Folded stacks analyzer.
-
-Provides high-level analytics on folded stacks mapping produced by flamegraph
-collapse step. Focus on purity and reusability.
-
-Key concepts:
-- A folded key is like: "proc;root;...;leaf"
-- We consider two scopes when attributing cost to symbols:
-  * inclusive: any occurrence of the symbol in the stack adds the full weight
-  * leaf: only when the symbol is at the leaf (last frame)
-- We also support prefix filtering by process name to isolate one workload.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,6 +11,7 @@ from typing import (
     Callable,
     Mapping,
     Pattern,
+    Sequence,
 )
 import re
 
@@ -62,7 +50,6 @@ class SymbolFilter:
     exclude_suffixes: Tuple[str, ...] = ()
 
     def matches(self, symbol: str) -> bool:
-        # include logic: if includes provided, must match at least one
         if self.include_prefixes or self.include_suffixes:
             ok = False
             if self.include_prefixes and any(
@@ -75,7 +62,6 @@ class SymbolFilter:
                 ok = True
             if not ok:
                 return False
-        # exclude logic
         if self.exclude_prefixes and any(
             symbol.startswith(p) for p in self.exclude_prefixes
         ):
@@ -89,17 +75,11 @@ class SymbolFilter:
 
 class FoldedAnalyzer:
     def __init__(self, stacks: Dict[str, int]) -> None:
-        # Copy into a new dict to avoid external mutation surprises
         self._stacks: Dict[str, int] = dict(stacks)
         self._total_weight: int = sum(self._stacks.values())
 
     @classmethod
-    def from_collapsed(cls, collapsed: "Mapping[str, int]") -> "FoldedAnalyzer":
-        """Create analyzer from a collapsed mapping-like object.
-
-        Accepts any Mapping (including dict or lightweight wrappers) to keep
-        the parser and analyzer decoupled at the type level.
-        """
+    def from_collapsed(cls, collapsed: Mapping[str, int]) -> "FoldedAnalyzer":
         return cls(dict(collapsed))
 
     @property
@@ -109,9 +89,6 @@ class FoldedAnalyzer:
     def iter_items(self) -> Iterable[Tuple[str, int]]:
         return self._stacks.items()
 
-    # -------------------------
-    # Top-K primitives
-    # -------------------------
     def topk_stacks(
         self, k: int = 20, key: Optional[Callable[[Tuple[str, int]], int]] = None
     ) -> List[StackStat]:
@@ -130,7 +107,6 @@ class FoldedAnalyzer:
         proc_regex: Optional[Pattern[str]] = None,
         filters: Optional[SymbolFilter] = None,
     ) -> Dict[str, Tuple[int, int]]:
-        """Return mapping: symbol -> (inclusive, leaf)."""
         acc: Dict[str, Tuple[int, int]] = {}
         for stack, weight in self._stacks.items():
             frames = stack.split(Separator)
@@ -142,14 +118,12 @@ class FoldedAnalyzer:
             if proc_regex is not None and re.search(proc_regex, proc) is None:
                 continue
             syms = frames[1:]
-            # inclusive attribution: all frames except the first process token
             for sym in syms:
                 if filters and not filters.matches(sym):
                     continue
                 inc, leaf = acc.get(sym, (0, 0))
                 inc += weight
                 acc[sym] = (inc, leaf)
-            # leaf attribution: last frame only if exists
             if syms:
                 leaf_sym = syms[-1]
                 if not filters or filters.matches(leaf_sym):
@@ -205,9 +179,6 @@ class FoldedAnalyzer:
         val = stats[symbol].leaf if by == "leaf" else stats[symbol].inclusive
         return float(val) / float(self._total_weight)
 
-    # -------------------------
-    # Children (callees) distribution under a symbol
-    # -------------------------
     def children_hotspots(
         self,
         parent_symbol: str,
@@ -215,11 +186,6 @@ class FoldedAnalyzer:
         proc_regex: Optional[Pattern[str]] = None,
         filters: Optional[SymbolFilter] = None,
     ) -> List[SymbolStat]:
-        """Compute hotspots of direct children under a given parent symbol.
-
-        For each stack where ...;parent;child;..., we attribute the stack weight
-        to the child (inclusive). Leaf count increments when child is also leaf.
-        """
         acc: Dict[str, Tuple[int, int]] = {}
         for stack, weight in self._stacks.items():
             frames = stack.split(Separator)
@@ -248,3 +214,60 @@ class FoldedAnalyzer:
         ]
         stats.sort(key=lambda x: (x.inclusive, x.leaf), reverse=True)
         return stats
+
+    # Subset helpers
+    def _subset_by_predicate(
+        self, pred: Callable[[List[str]], bool]
+    ) -> "FoldedAnalyzer":
+        subset: Dict[str, int] = {}
+        for stack, weight in self._stacks.items():
+            frames = stack.split(Separator)
+            if len(frames) < 2:
+                continue
+            syms = frames[1:]
+            if pred(syms):
+                subset[stack] = subset.get(stack, 0) + weight
+        return FoldedAnalyzer(subset)
+
+    def subset_by_path_prefix(self, prefix: Sequence[str]) -> "FoldedAnalyzer":
+        prefix = tuple(prefix)
+        return self._subset_by_predicate(
+            lambda syms: len(syms) >= len(prefix)
+            and syms[: len(prefix)] == list(prefix)
+        )
+
+    def subset_by_path_suffix(self, suffix: Sequence[str]) -> "FoldedAnalyzer":
+        suffix = tuple(suffix)
+        return self._subset_by_predicate(
+            lambda syms: len(syms) >= len(suffix)
+            and syms[-len(suffix) :] == list(suffix)
+        )
+
+    def subset_by_symbol(
+        self, symbol: str, contains_fallback: bool = True
+    ) -> "FoldedAnalyzer":
+        subset: Dict[str, int] = {}
+        for stack, weight in self._stacks.items():
+            frames = stack.split(Separator)
+            if len(frames) < 2:
+                continue
+            syms = frames[1:]
+            if symbol in syms:
+                subset[stack] = subset.get(stack, 0) + weight
+            elif contains_fallback and symbol in stack:
+                subset[stack] = subset.get(stack, 0) + weight
+        return FoldedAnalyzer(subset)
+
+    def filter_stacks_by_prefixes(
+        self, prefixes: Sequence[str], k: int = 1000
+    ) -> List[StackStat]:
+        top = self.topk_stacks(k)
+
+        def keep(stack: str) -> bool:
+            syms = stack.split(Separator)[1:]
+            for p in prefixes:
+                if any(s.startswith(p) for s in syms):
+                    return True
+            return False
+
+        return [s for s in top if keep(s.stack)]
