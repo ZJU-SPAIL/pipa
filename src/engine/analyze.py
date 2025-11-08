@@ -5,7 +5,9 @@ from typing import Optional
 import pandas as pd
 import plotly.express as px
 from jinja2 import Environment, FileSystemLoader
+from markdown_it import MarkdownIt
 
+from src.engine.rules import load_rules, run_rules_engine
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
@@ -14,9 +16,8 @@ log = logging.getLogger(__name__)
 
 def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     """
-    Runs the PoC for data alignment and optionally generates an HTML report.
-    :param level_dir: The path to a specific level directory (e.g., 'intensity_8')
-                      containing the collector output files.
+    Runs the PoC for data alignment, generates insights and interactive plots,
+    and optionally creates an HTML report.
     """
     log.info(f"--- Running Analysis PoC on directory: {level_dir} ---")
 
@@ -67,6 +68,11 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
 
     if html_report_path:
+        all_dataframes = {"perf": df_perf, **results_sar}
+        rules = load_rules(Path("config/rules/decision_tree.yaml"))
+        findings = run_rules_engine(all_dataframes, rules)
+        log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
+
         log.info("Generating interactive plot...")
         fig = px.line(
             merged_df,
@@ -79,13 +85,18 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
 
         log.info(f"Generating HTML report at: {html_report_path}")
         env = Environment(loader=FileSystemLoader("src/templates"))
+
+        md = MarkdownIt()
+        env.filters["markdown"] = lambda text: md.render(text)
+
         template = env.get_template("report_template.html")
         html_content = template.render(
             interactive_plot=plot_div,
             aligned_table=merged_df.to_html(index=False, classes="table", border=0),
+            findings=findings,
         )
         with open(html_report_path, "w") as f:
             f.write(html_content)
-        log.info("✅ HTML report with interactive plot generated successfully.")
+        log.info("✅ HTML report with insights generated successfully.")
 
     return merged_df
