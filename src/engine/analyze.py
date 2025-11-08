@@ -26,6 +26,7 @@ def generate_report(level_dir: Path, report_path: Path):
 
     static_info_str = ""
     static_info_path = level_dir.parent / "static_info.yaml"
+    static_info_data = {}
     try:
         with open(static_info_path, "r") as f:
             static_info_data = yaml.safe_load(f)
@@ -87,7 +88,7 @@ def generate_report(level_dir: Path, report_path: Path):
 
     all_dataframes = {"perf": df_perf, **results_sar}
     rules = load_rules(Path("config/rules/decision_tree.yaml"))
-    context = calculate_context_metrics(all_dataframes)
+    context = calculate_context_metrics(all_dataframes, static_info_data)
     findings = run_rules_engine(all_dataframes, rules, context)
     md = MarkdownIt()
     decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)

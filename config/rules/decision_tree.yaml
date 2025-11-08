@@ -41,6 +41,5 @@
 
         # --- 调度分析 ---
         - name: "系统负载过高"
-          # 注意：num_cpu 需要从 static_info 中获取, 此处暂时硬编码
-          precondition: "'load_queue' in df and 'ldavg-1' in df['load_queue'] and df['load_queue']['ldavg-1'].mean() / 32 > 0.8"
+          precondition: "'load_queue' in df and 'ldavg-1' in df['load_queue'] and 'num_cpu' in locals() and num_cpu > 0 and df['load_queue']['ldavg-1'].mean() / num_cpu > 0.8"
           finding: "调度分析：系统平均负载过高 (1分钟平均负载 **{avg_load1:.2f}**)，大量进程处于运行或等待运行状态。"
