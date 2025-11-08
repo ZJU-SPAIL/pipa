@@ -42,10 +42,6 @@ def test_collect_cpu_utilization_success(monkeypatch):
     """
     monkeypatch.setattr("src.collector.run_command", lambda command, env: SAR_OUTPUT_NORMAL)
 
-    # The new logic directly parses the Average line.
-    # 新的逻辑直接解析 Average 行。
-    # Expected result is %user (15.00) + %system (7.50)
-    # 期望的结果是 %user (15.00) + %system (7.50)
     expected_avg = 22.5
 
     avg_util = collect_cpu_utilization(duration=2)
@@ -60,8 +56,6 @@ def test_collect_cpu_utilization_no_average_line(monkeypatch):
     """
     monkeypatch.setattr("src.collector.run_command", lambda command, env: SAR_OUTPUT_NO_AVERAGE)
 
-    # We expect this to raise an ExecutionError with the new error message.
-    # 我们期望这里会引发一个带有新错误信息的 ExecutionError。
     with pytest.raises(ExecutionError, match="Could not find 'Average:' line"):
         collect_cpu_utilization(duration=1)
 
@@ -117,11 +111,9 @@ def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call
     """
     called_command = []
 
-    # Mock run_in_background to capture the command
     def mock_run_in_background(command):
         called_command.append(command)
 
-        # Return a dummy Popen-like object
         class MockPopen:
             pass
 
@@ -140,10 +132,8 @@ def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call
 
     assert "perf stat" in final_command
     assert expected_flag_part in final_command
-    # assert "-o /tmp/perf.txt" in final_command
     assert "--append" not in final_command
     assert "-e {cycles}" in final_command
-    # Most importantly, ensure 'sleep' is NOT in the command
     assert "sleep" not in final_command
 
 
@@ -223,7 +213,6 @@ def test_stop_perf_stat_timeout(tmp_path):
 
     assert mock_proc.killed is True
     assert content == "partial data"
-    # 验证超时时也会写入文件
     assert temp_file.exists()
     assert temp_file.read_text() == "partial data"
 
@@ -279,8 +268,8 @@ def test_start_sar_command_construction(monkeypatch):
 
     assert "sar" in called_command
     assert "-A" in called_command
-    assert "2" in called_command  # interval
-    assert "5" in called_command  # count = duration // interval
+    assert "2" in called_command
+    assert "5" in called_command
 
 
 def test_start_sar_skips_if_duration_too_short():

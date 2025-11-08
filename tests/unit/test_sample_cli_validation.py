@@ -145,9 +145,8 @@ class TestSampleCLIParameterValidation:
             )
             assert result.exit_code == 0
             assert mock_run.called
-            # Verify intensities were parsed correctly
             call_args = mock_run.call_args
-            assert call_args[0][3] == [8, 16]  # intensities parameter
+            assert call_args[0][3] == [8, 16]
 
     def test_valid_attach_mode(self):
         """Test valid attach mode invocation."""
@@ -167,8 +166,8 @@ class TestSampleCLIParameterValidation:
             assert result.exit_code == 0
             assert mock_run.called
             call_args = mock_run.call_args
-            assert call_args[0][4] == "12345"  # attach_pids parameter
-            assert call_args[0][5] == 30  # duration parameter
+            assert call_args[0][4] == "12345"
+            assert call_args[0][5] == 30
 
     def test_no_static_info_flag(self):
         """Test that --no-static-info flag is passed correctly."""
@@ -189,4 +188,4 @@ class TestSampleCLIParameterValidation:
             assert result.exit_code == 0
             assert mock_run.called
             call_args = mock_run.call_args
-            assert call_args[0][6] is True  # no_static_info parameter
+            assert call_args[0][6] is True

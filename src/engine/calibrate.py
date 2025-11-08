@@ -19,8 +19,6 @@ def _run_benchmark_and_measure_cpu(command_template: str, intensity: int, durati
     """
     benchmark_cmd = command_template.format(intensity=intensity)
     benchmark_proc = run_in_background(benchmark_cmd)
-    # Give benchmark a moment to ramp up
-    # 给基准测试一些预热时间
     time.sleep(5)
 
     cpu_usage = 0
@@ -29,16 +27,14 @@ def _run_benchmark_and_measure_cpu(command_template: str, intensity: int, durati
     finally:
         if benchmark_proc.poll() is None:
             log.debug(f"Terminating benchmark process (PID: {benchmark_proc.pid})...")
-            benchmark_proc.terminate()  # 1. Send SIGTERM (polite request)
+            benchmark_proc.terminate()
             try:
-                # 2. Wait gracefully for a few seconds
                 benchmark_proc.wait(timeout=10)
                 log.debug("Benchmark process terminated gracefully.")
             except subprocess.TimeoutExpired:
-                # 3. If it's still alive, force kill it
                 log.warning("Benchmark process did not terminate gracefully. Killing it...")
-                benchmark_proc.kill()  # 4. Send SIGKILL (forceful command)
-                benchmark_proc.wait()  # 5. Reap the killed process
+                benchmark_proc.kill()
+                benchmark_proc.wait()
                 log.warning("Benchmark process killed.")
     return cpu_usage
 
@@ -193,7 +189,6 @@ def run_calibration(workload: str, output_config_path: str):
 
     except (ConfigError, ExecutionError, ValueError, RuntimeError, IOError) as e:
         log.error(f"❌ Calibration failed: {e}")
-        # Re-raise to be caught by the CLI layer
         raise
 
     log.info("🔧 Calibration finished.")

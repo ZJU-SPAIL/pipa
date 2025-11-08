@@ -24,11 +24,7 @@ def _resolve_shell_commands(node):
     elif isinstance(node, str) and node.startswith("$(") and node.endswith(")"):
         command = node[2:-1]
         try:
-            # Execute the command and get the output
-            # 执行命令并获取输出
             result = subprocess.check_output(command, shell=True, text=True).strip()
-            # Try to convert to int/float if possible
-            # 尝试转换为整数/浮点数
             try:
                 return int(result)
             except ValueError:
@@ -60,11 +56,7 @@ def load_workload_config(workload_name: str) -> dict:
     except yaml.YAMLError as e:
         raise ConfigError(f"Error parsing YAML file {config_path}: {e}")
 
-    # 在返回前，解析 shell 命令
     resolved_config = _resolve_shell_commands(config)
-
-    # TODO: Add validation logic here in the future
-    # (e.g., check for required keys like 'commands', 'benchmark_driver')
 
     if not isinstance(resolved_config, dict):
         raise ConfigError("Top level of a workload config must be a dictionary.")

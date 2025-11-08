@@ -24,3 +24,12 @@ repos:
     hooks:
       - id: flake8
         additional_dependencies: ["flake8-black"]
+
+  - repo: local
+    hooks:
+      - id: check-inline-comments
+        name: Check for inline comments in functions
+        entry: python .hooks/check_inline_comments.py
+        language: python
+        types: [python]
+        stages: [commit]

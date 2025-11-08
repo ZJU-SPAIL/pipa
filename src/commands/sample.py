@@ -63,15 +63,12 @@ def sample(
     no_static_info: bool,
 ):
     """Runs sampling in calibrated, direct, or passive attach mode."""
-    # --- 参数校验 ---
     is_calibrated_mode = bool(config_path_str)
     is_direct_mode = bool(intensity_str)
     is_attach_mode = bool(attach_pid_str)
 
-    # 1. 统计激活了多少种模式
     mode_count = sum([is_calibrated_mode, is_direct_mode, is_attach_mode])
 
-    # 2. 检查模式的互斥性与存在性
     if mode_count > 1:
         raise click.UsageError(
             "Modes are mutually exclusive. Please use only one of: " "--config, --intensity, or --attach-to-pid."
@@ -79,14 +76,12 @@ def sample(
     if mode_count == 0:
         raise click.UsageError("You must specify a mode: --config, --intensity, or --attach-to-pid.")
 
-    # 3. 检查每种模式的依赖参数是否完备
     if is_direct_mode and not workload_name:
         raise click.UsageError("--workload is required when using --intensity.")
 
     if is_attach_mode and not duration:
         raise click.UsageError("--duration is required when using --attach-to-pid.")
 
-    # 校验 direct 模式的参数完备性
     if is_direct_mode and not (intensity_str and workload_name):
         raise click.UsageError("--workload and --intensity must be provided together for direct mode.")
 
@@ -100,7 +95,6 @@ def sample(
         except ValueError:
             raise click.UsageError("--intensity must be a number or comma-separated numbers.")
 
-    # 解析 attach_pid_str
     attach_pids = attach_pid_str if attach_pid_str else None
 
     try:

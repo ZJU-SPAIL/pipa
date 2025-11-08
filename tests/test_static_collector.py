@@ -80,21 +80,15 @@ def test_collect_all_static_info_success(monkeypatch):
 
     result = collect_all_static_info()
 
-    # 1. OS Info 结构验证 (Key=Value)
     assert result["os_info"]["NAME"] == "Ubuntu"
 
-    # 3. CPU Info 结构验证 (Key: Value)
     assert result["cpu_info"]["CPUs_Count"] == 8
 
-    # 5. Disk Info 结构验证 (df 和 lsblk)
-    # Filesystem_Usage 应该包含 MOCK_DF_INFO 中的两条数据
     assert len(result["disk_info"]["Filesystem_Usage"]) == 2
-    # 检查第一条数据的内容
     assert result["disk_info"]["Filesystem_Usage"][0]["Filesystem"] == "/dev/mapper/openEuler-root"
     assert result["disk_info"]["Filesystem_Usage"][0]["Size"] == "98G"
     assert "sda" in result["disk_info"]["Block_Devices_Raw"][1]
 
-    # 7. NUMA Info 结构验证 (Key: Value)
     assert result["numa_info"]["available"] == "2 nodes (0-1)"
 
 
@@ -106,13 +100,10 @@ def test_collect_all_static_info_with_failures(monkeypatch):
     def mock_run_command_with_errors(command, **kwargs):
         if "os-release" in command:
             return MOCK_OS_INFO
-        # Simulate failure for lscpu (ExecutionError)
         if "lscpu" in command:
             return "Error collecting CPU info: ExecutionError('lscpu failed to run')"
-        # Simulate failure for df -h
         if "df -h" == command:
             raise ExecutionError("df permission denied")
-        # Ensure lsblk still works
         if "lsblk" == command:
             return MOCK_LSBLK_INFO
         return MOCK_KERNEL_INFO
@@ -121,13 +112,9 @@ def test_collect_all_static_info_with_failures(monkeypatch):
 
     result = collect_all_static_info()
 
-    # 2. Check a totally failed command (lscpu)
     assert result["cpu_info"]["error"].startswith("Error collecting CPU info: ExecutionError")
 
-    # 3. Check Disk Info (Partial Failure - df failed, lsblk succeeded)
-    # df -h 失败，Filesystem_Usage 应该返回空列表
     assert result["disk_info"]["Filesystem_Usage"] == []
-    # 检查 lsblk 成功
     assert "sda" in result["disk_info"]["Block_Devices_Raw"][1]
 
 
@@ -138,7 +125,6 @@ def test_get_numa_info_command_not_found(monkeypatch):
 
     def mock_fail(command):
         if "numactl" in command:
-            # 抛出 ExecutionError
             raise ExecutionError("numactl not installed or failed")
         return ""
 
@@ -146,6 +132,5 @@ def test_get_numa_info_command_not_found(monkeypatch):
 
     result = get_numa_info()
 
-    # 检查返回的字典是否包含预期的 'error' 键
     assert "error" in result
     assert "'numactl' command failed or not found" in result["error"]
