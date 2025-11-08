@@ -8,7 +8,7 @@ import plotly.express as px
 from jinja2 import Environment, FileSystemLoader
 from markdown_it import MarkdownIt
 
-from src.engine.rules import load_rules, run_rules_engine
+from src.engine.rules import calculate_context_metrics, format_rules_to_html_tree, load_rules, run_rules_engine
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
@@ -71,9 +71,13 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     if html_report_path:
         all_dataframes = {"perf": df_perf, **results_sar}
         rules = load_rules(Path("config/rules/decision_tree.yaml"))
-        findings = run_rules_engine(all_dataframes, rules)
-        log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
 
+        context = calculate_context_metrics(all_dataframes)
+
+        findings = run_rules_engine(all_dataframes, rules, context)
+        log.info(f"规则引擎找到了 {len(findings)} 条洞察。")
+        md = MarkdownIt()
+        decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
         log.info("Generating interactive plot...")
         columns_to_plot = [
             col for col in merged_df.columns if pd.api.types.is_numeric_dtype(merged_df[col]) and "timestamp" not in col
@@ -101,6 +105,8 @@ def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
             interactive_plot=plot_div,
             table_data_json=table_json_data,
             findings=findings,
+            decision_tree_html=decision_tree_html,
+            findings_for_tree_html=findings_for_tree_html,
         )
         with open(html_report_path, "w") as f:
             f.write(html_content)

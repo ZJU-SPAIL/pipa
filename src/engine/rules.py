@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 import yaml
+from markdown_it import MarkdownIt
 
 log = logging.getLogger(__name__)
 
@@ -37,14 +38,91 @@ def _evaluate_node(
         log.debug(f"评估规则 '{rule_node.get('name', 'Unnamed')}' 时出错: {e}")
 
 
-def run_rules_engine(df_dict: Dict[str, pd.DataFrame], rules_config: List[Dict[str, Any]]) -> List[str]:
-    """
-    在一个 DataFrame 字典上执行一组层次化的规则。
-    """
+def run_rules_engine(
+    df_dict: Dict[str, pd.DataFrame], rules_config: List[Dict[str, Any]], context: Dict[str, Any]
+) -> List[str]:
+    """在一个 DataFrame 字典上执行一组层次化的规则。"""
     findings: List[str] = []
     if not df_dict or not rules_config:
         return findings
 
+    for root_rule in rules_config:
+        _evaluate_node(root_rule, df_dict, context, findings)
+
+    return findings
+
+
+def _format_rule_to_html_list(
+    rule_node: Dict[str, Any],
+    df_dict: Dict[str, pd.DataFrame],
+    context: Dict[str, Any],
+    md: MarkdownIt,
+) -> tuple[str, str]:
+    """
+    递归地将节点转换为HTML <li>，并单独返回其finding HTML。
+    返回 (li_html_string, finding_html_string)。
+    """
+    is_active_node = False
+    try:
+        if eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context}):
+            is_active_node = True
+    except Exception:
+        is_active_node = False
+
+    finding_html = ""
+    if is_active_node and (finding_template := rule_node.get("finding")):
+        try:
+            formatted_finding = finding_template.format(**context)
+            finding_html = f"<div class='finding-box'>{md.render(formatted_finding)}</div>"
+        except KeyError as e:
+            finding_html = f"<div class='finding-box error'>数据缺失: {e}</div>"
+
+    active_class = "active-node" if is_active_node else ""
+    li_html = f"<li class='{active_class}'><span>{rule_node['name']}</span>"
+
+    all_child_findings = []
+    if sub_rules := rule_node.get("sub_rules"):
+        li_html += "<ul>"
+        for sub_rule in sub_rules:
+            sub_li_html, sub_finding_html = _format_rule_to_html_list(sub_rule, df_dict, context, md)
+            li_html += sub_li_html
+            if sub_finding_html:
+                all_child_findings.append(sub_finding_html)
+        li_html += "</ul>"
+
+    li_html += "</li>"
+
+    final_finding_html = finding_html + "".join(all_child_findings)
+
+    return li_html, final_finding_html
+
+
+def format_rules_to_html_tree(
+    rules_config: List[Dict[str, Any]],
+    df_dict: Dict[str, pd.DataFrame],
+    context: Dict[str, Any],
+    md: MarkdownIt,
+) -> tuple[str, str]:
+    """将整个规则配置转换为一个树状图HTML和一个结论HTML。"""
+    if not rules_config:
+        return "", ""
+
+    tree_html_parts = []
+    findings_html_parts = []
+
+    for root_rule in rules_config:
+        tree_html, findings_html = _format_rule_to_html_list(root_rule, df_dict, context, md)
+        tree_html_parts.append(tree_html)
+        findings_html_parts.append(findings_html)
+
+    full_tree_html = f'<div class="tree"><ul>{"".join(tree_html_parts)}</ul></div>'
+    full_findings_html = "".join(findings_html_parts)
+
+    return full_tree_html, full_findings_html
+
+
+def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+    """从 DataFrame 字典中预先计算所有衍生指标。"""
     context: Dict[str, Any] = {}
     df_cpu = df_dict.get("cpu")
     if df_cpu is not None and not df_cpu.empty:
@@ -67,8 +145,4 @@ def run_rules_engine(df_dict: Dict[str, pd.DataFrame], rules_config: List[Dict[s
     df_load = df_dict.get("load_queue")
     if df_load is not None and not df_load.empty:
         context["avg_load1"] = df_load.get("ldavg-1", pd.Series(0)).mean()
-
-    for root_rule in rules_config:
-        _evaluate_node(root_rule, df_dict, context, findings)
-
-    return findings
+    return context
