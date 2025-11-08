@@ -354,7 +354,9 @@ def collapse(
 
     state = _CollapseState()
 
-    def should_pass_event_filter(state_obj: _CollapseState, event: Optional[str]) -> bool:
+    def should_pass_event_filter(
+        state_obj: _CollapseState, event: Optional[str]
+    ) -> bool:
         ef = options.event_filter or state_obj.first_event
         # 设置默认过滤事件为首次出现的事件
         if not options.event_filter and state_obj.first_event is None and event:
