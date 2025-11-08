@@ -217,6 +217,11 @@
       <button class="tab-button" onclick="openTab(event, 'rawdata')">
         Raw Aligned Data
       </button>
+      {% if static_info_str %}
+      <button class="tab-button" onclick="openTab(event, 'system')">
+        System Information
+      </button>
+      {% endif %}
     </div>
 
     <!-- Tab Content -->
@@ -237,6 +242,13 @@
       <h2>Raw Aligned Data (Interactive)</h2>
       <div id="interactive-table"></div>
     </div>
+
+    {% if static_info_str %}
+    <div id="system" class="tab-pane">
+      <h2>System Information</h2>
+      <pre><code>{{ static_info_str }}</code></pre>
+    </div>
+    {% endif %}
 
     <script>
             // --- Tabulator Table Script ---
