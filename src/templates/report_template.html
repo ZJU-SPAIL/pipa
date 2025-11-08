@@ -1,208 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>PIPA Analysis Report</title>
-    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+    <link
+      href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css"
+      rel="stylesheet"
+    />
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"
+    ></script>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 2em;
-        }
+      body {
+        font-family: sans-serif;
+        margin: 2em auto;
+        max-width: 1600px;
+      }
 
-        h1,
-        h2 {
-            color: #333;
-        }
+      .tab-buttons {
+        overflow: hidden;
+        border-bottom: 1px solid #ccc;
+        margin-bottom: 20px;
+      }
 
-        .tabulator {
-            border: 1px solid #ddd;
-            margin-top: 1em;
-        }
+      .tab-buttons button {
+        background-color: inherit;
+        float: left;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+        font-size: 17px;
+      }
 
-        /* --- 新的决策树容器布局 --- */
-        .decision-tree-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            align-items: start;
-            margin-bottom: 2em;
-        }
+      .tab-buttons button:hover {
+        background-color: #f1f1f1;
+      }
 
-        .finding-box {
-            background-color: #fbeaea;
-            border: 1px solid #e25050;
-            padding: 15px;
-            border-radius: 5px;
-            font-size: 13px;
-            margin-top: 20px;
-        }
+      .tab-buttons button.active {
+        background-color: #ccc;
+        border-bottom: 2px solid #e25050;
+      }
 
-        .finding-box p {
-            margin: 0;
-        }
+      .tab-pane {
+        display: none;
+        padding: 6px 12px;
+        border-top: none;
+      }
 
-        .finding-box strong {
-            color: #c04040;
-        }
+      #explorer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
 
-        /* --- Tree Visualization Styles --- */
-        .tree ul {
-            padding-top: 20px;
-            position: relative;
-            white-space: nowrap;
-            text-align: center;
-        }
+      #plot {
+        width: 100%;
+        min-height: 1000px;
+      }
+      #interactive-table {
+        margin-left: 0;
+        margin-right: auto;
+      }
 
-        .tree li {
-            display: inline-block;
-            vertical-align: top;
-            text-align: center;
-            list-style-type: none;
-            position: relative;
-            padding: 20px 5px 0 5px;
-        }
+      h1,
+      h2 {
+        color: #333;
+      }
 
-        /* ... (所有 .tree li::before, ::after 等连接线样式保持不变) ... */
-        .tree li::before,
-        .tree li::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 50%;
-            border-top: 1px solid #ccc;
-            width: 50%;
-            height: 20px;
-        }
+      .tabulator {
+        border: 1px solid #ddd;
+        margin-top: 1em;
+      }
 
-        .tree li::after {
-            right: auto;
-            left: 50%;
-            border-left: 1px solid #ccc;
-        }
+      /* --- 新的决策树容器布局 --- */
+      .decision-tree-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+        align-items: start;
+        margin-bottom: 2em;
+      }
 
-        .tree li:only-child::after,
-        .tree li:only-child::before {
-            display: none;
-        }
+      .finding-box {
+        background-color: #fbeaea;
+        border: 1px solid #e25050;
+        padding: 15px;
+        border-radius: 5px;
+        font-size: 13px;
+        margin-top: 20px;
+      }
 
-        .tree li:only-child {
-            padding-top: 0;
-        }
+      .finding-box p {
+        margin: 0;
+      }
 
-        .tree li:first-child::before,
-        .tree li:last-child::after {
-            border: 0 none;
-        }
+      .finding-box strong {
+        color: #c04040;
+      }
 
-        .tree li:last-child::before {
-            border-right: 1px solid #ccc;
-            border-radius: 0 5px 0 0;
-        }
+      /* --- Tree Visualization Styles --- */
+      .tree ul {
+        padding-top: 20px;
+        position: relative;
+        white-space: nowrap;
+        text-align: center;
+      }
 
-        .tree li:first-child::after {
-            border-radius: 5px 0 0 0;
-        }
+      .tree li {
+        display: inline-block;
+        vertical-align: top;
+        text-align: center;
+        list-style-type: none;
+        position: relative;
+        padding: 20px 5px 0 5px;
+      }
 
-        .tree ul ul::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            border-left: 1px solid #ccc;
-            width: 0;
-            height: 20px;
-        }
+      .tree li::before,
+      .tree li::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 1px solid #ccc;
+        width: 50%;
+        height: 20px;
+      }
 
-        .tree li span {
-            border: 1px solid #ccc;
-            padding: 5px 10px;
-            text-decoration: none;
-            color: #666;
-            font-family: arial, verdana, tahoma;
-            font-size: 11px;
-            display: inline-block;
-            border-radius: 5px;
-            transition: all 0.5s;
-            cursor: pointer;
-        }
+      .tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 1px solid #ccc;
+      }
 
-        .tree li span:hover,
-        .tree li span:hover+ul li span {
-            background: #c8e4f8;
-            color: #000;
-            border: 1px solid #94a0b4;
-        }
+      .tree li:only-child::after,
+      .tree li:only-child::before {
+        display: none;
+      }
 
-        .tree li span:hover+ul li::after,
-        .tree li span:hover+ul li::before,
-        .tree li span:hover+ul ul::before {
-            border-color: #94a0b4;
-        }
+      .tree li:only-child {
+        padding-top: 0;
+      }
 
-        /* --- 高亮激活的节点 --- */
-        .tree li.active-node>span {
-            background: #e25050;
-            color: #fff;
-            border-color: #e25050;
-        }
+      .tree li:first-child::before,
+      .tree li:last-child::after {
+        border: 0 none;
+      }
+
+      .tree li:last-child::before {
+        border-right: 1px solid #ccc;
+        border-radius: 0 5px 0 0;
+      }
+
+      .tree li:first-child::after {
+        border-radius: 5px 0 0 0;
+      }
+
+      .tree ul ul::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 1px solid #ccc;
+        width: 0;
+        height: 20px;
+      }
+
+      .tree li span {
+        border: 1px solid #ccc;
+        padding: 5px 10px;
+        text-decoration: none;
+        color: #666;
+        font-family: arial, verdana, tahoma;
+        font-size: 11px;
+        display: inline-block;
+        border-radius: 5px;
+        transition: all 0.5s;
+        cursor: pointer;
+      }
+
+      .tree li span:hover,
+      .tree li span:hover + ul li span {
+        background: #c8e4f8;
+        color: #000;
+        border: 1px solid #94a0b4;
+      }
+
+      .tree li span:hover + ul li::after,
+      .tree li span:hover + ul li::before,
+      .tree li span:hover + ul ul::before {
+        border-color: #94a0b4;
+      }
+
+      /* --- 高亮激活的节点 --- */
+      .tree li.active-node > span {
+        background: #e25050;
+        color: #fff;
+        border-color: #e25050;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <h1>PIPA Analysis Report</h1>
 
-    <h2>Decision Tree Visualization</h2>
-    <div class="decision-tree-container">
-        <div class="tree-wrapper">
-            {{ decision_tree_html | safe }}
-        </div>
-        <div class="findings-wrapper">
-            {{ findings_for_tree_html | safe }}
-        </div>
+    <!-- Tab Buttons -->
+    <div class="tab-buttons">
+      <button class="tab-button" onclick="openTab(event, 'analysis')">
+        Analysis & Insights
+      </button>
+      <button class="tab-button" onclick="openTab(event, 'explorer')">
+        Metrics Explorer
+      </button>
+      <button class="tab-button" onclick="openTab(event, 'rawdata')">
+        Raw Aligned Data
+      </button>
     </div>
 
-    {% if findings %}
-    <h2>Key Findings & Insights</h2>
-    <ul>
-        {% for finding in findings %}
-        <li>{{ finding | markdown | safe }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-
-    <h2>Time-Series Visualization</h2>
-    <div id="plot">
-        {{ interactive_plot }}
+    <!-- Tab Content -->
+    <div id="analysis" class="tab-pane">
+      <h2>Decision Tree Visualization</h2>
+      <div class="decision-tree-container">
+        <div class="tree-wrapper">{{ decision_tree_html | safe }}</div>
+        <div class="findings-wrapper">{{ findings_for_tree_html | safe }}</div>
+      </div>
     </div>
 
-    <h2>Raw Aligned Data (Interactive)</h2>
-    <div id="interactive-table"></div>
+    <div id="explorer" class="tab-pane">
+      <h2>Time-Series Visualization</h2>
+      <div id="plot">{{ interactive_plot | safe }}</div>
+    </div>
+
+    <div id="rawdata" class="tab-pane">
+      <h2>Raw Aligned Data (Interactive)</h2>
+      <div id="interactive-table"></div>
+    </div>
 
     <script>
-        var tableData = {{ table_data_json | safe }};
-
-        // 动态从数据的第一行生成列定义
-        var columns = [];
-        if (tableData.length > 0) {
-            columns = Object.keys(tableData[0]).map(function (key) {
-                // 将列名首字母大写，并启用头部过滤器
-                return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+            // --- Tabulator Table Script ---
+            var tableData = {{ table_data_json | safe }};
+            var columns = [];
+            if (tableData.length > 0) {
+                columns = Object.keys(tableData[0]).map(function (key) {
+                    return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+                });
+            }
+      var table = new Tabulator("#interactive-table", {
+                data: tableData,
+                columns: columns,
+                layout: "fitDataTable",   // 修改此行
+                pagination: "local",
+                paginationSize: 15,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
             });
-        }
 
-        // 使用完整的配置初始化 Tabulator
-        var table = new Tabulator("#interactive-table", {
-            data: tableData,
-            columns: columns,
-            layout: "fitColumns",      // 列宽自适应
-            pagination: "local",       // 启用本地分页
-            paginationSize: 15,        // 每页显示 15 行
-            paginationSizeSelector: [10, 15, 25, 50, 100], // 可选分页大小
-        });
+              // --- Tab Switching Logic ---
+              function openTab(evt, tabName) {
+                  var i, tabcontent, tablinks;
+                  tabcontent = document.getElementsByClassName("tab-pane");
+                  for (i = 0; i < tabcontent.length; i++) {
+                      tabcontent[i].style.display = "none";
+                  }
+                  tablinks = document.getElementsByClassName("tab-button");
+                  for (i = 0; i < tablinks.length; i++) {
+                      tablinks[i].className = tablinks[i].className.replace(" active", "");
+                  }
+                  var activeTab = document.getElementById(tabName);
+                  activeTab.style.display = "block";
+                  evt.currentTarget.className += " active";
+
+                  // --- 核心修复：使用 Plotly.Plots.resize 强制重绘 ---
+                  if (tabName === 'explorer') {
+                      // 将重绘操作推迟到 DOM 更新的下一个事件循环，确保容器已完全可见
+                      setTimeout(function() {
+                          var plotDiv = document.getElementById('plot');
+                          // 检查 Plotly 对象和绘图 div 是否存在
+                          if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
+                              Plotly.Plots.resize(plotDiv);
+                          }
+                      }, 0);
+                  }
+              }
+
+            // Get the element with id="defaultOpen" and click on it
+            document.querySelector(".tab-button").click();
     </script>
-</body>
-
+  </body>
 </html>
