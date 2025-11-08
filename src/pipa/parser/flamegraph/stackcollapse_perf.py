@@ -346,55 +346,57 @@ def collapse(
 ) -> Dict[str, int]:
     hooks = hooks or []
     collapsed: Dict[str, int] = defaultdict(int)
-    first_event: Optional[str] = None
 
-    current = SampleRecord()
+    @dataclass
+    class _CollapseState:
+        first_event: Optional[str] = None
+        current: SampleRecord = field(default_factory=SampleRecord)
 
-    def should_pass_event_filter(event: Optional[str]) -> bool:
-        nonlocal first_event
-        ef = options.event_filter or first_event
+    state = _CollapseState()
+
+    def should_pass_event_filter(state_obj: _CollapseState, event: Optional[str]) -> bool:
+        ef = options.event_filter or state_obj.first_event
         # 设置默认过滤事件为首次出现的事件
-        if not options.event_filter and first_event is None and event:
-            first_event = event
-            ef = first_event
+        if not options.event_filter and state_obj.first_event is None and event:
+            state_obj.first_event = event
+            ef = state_obj.first_event
         if ef and event and event != ef:
             return False
         return True
 
-    def flush_record() -> None:
-        nonlocal current
-        if not current.frames and not current.comm:
-            current = SampleRecord()
+    def flush_record(state_obj: _CollapseState) -> None:
+        if not state_obj.current.frames and not state_obj.current.comm:
+            state_obj.current = SampleRecord()
             return
-        if not should_pass_event_filter(current.event):
-            current = SampleRecord()
+        if not should_pass_event_filter(state_obj, state_obj.current.event):
+            state_obj.current = SampleRecord()
             return
         for h in hooks:
-            h.before_flush(current)
-        key, weight = build_folded_key(current, options)
+            h.before_flush(state_obj.current)
+        key, weight = build_folded_key(state_obj.current, options)
         collapsed[key] += weight
         for h in hooks:
             h.after_flush(key, weight)
-        current = SampleRecord()
+        state_obj.current = SampleRecord()
 
     for raw in lines:
         line = raw.rstrip()
         if not line:
-            flush_record()
-            current = SampleRecord()
+            flush_record(state)
+            state.current = SampleRecord()
             continue
         comm, pid, tid, period, event = parse_header(line)
         if comm is not None:
-            flush_record()
-            current = SampleRecord(
+            flush_record(state)
+            state.current = SampleRecord(
                 comm=comm, pid=pid, tid=tid, period=period, event=event
             )
             continue
         frame = parse_frame(line)
         if frame:
-            current.frames.append(frame)
+            state.current.frames.append(frame)
             continue
         # 其他行忽略
 
-    flush_record()
+    flush_record(state)
     return collapsed
