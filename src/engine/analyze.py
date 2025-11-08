@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
+from jinja2 import Environment, FileSystemLoader
 
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
 from src.parsers.sar_timeseries_parser import parse_sar_timeseries
@@ -9,11 +11,9 @@ from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 log = logging.getLogger(__name__)
 
 
-def run_analysis_poc(level_dir: Path):
+def run_analysis_poc(level_dir: Path, html_report_path: Optional[Path] = None):
     """
-    Runs the Proof of Concept for time-series data alignment.
-    运行一个时序数据对齐的 PoC (Proof of Concept)。
-
+    Runs the PoC for data alignment and optionally generates an HTML report.
     :param level_dir: The path to a specific level directory (e.g., 'intensity_8')
                       containing the collector output files.
     """
@@ -61,5 +61,17 @@ def run_analysis_poc(level_dir: Path):
         direction="nearest",
     )
 
-    log.info("--- Analysis PoC Complete. Returning merged DataFrame. ---")
+    log.info("--- Analysis PoC Complete. ---")
+    columns_to_drop = ["timestamp_dt", "timestamp_float", "CPU"]
+    merged_df.drop(columns=[col for col in columns_to_drop if col in merged_df.columns], inplace=True)
+
+    if html_report_path:
+        log.info(f"Generating HTML report at: {html_report_path}")
+        env = Environment(loader=FileSystemLoader("src/templates"))
+        template = env.get_template("report_template.html")
+        html_content = template.render(aligned_table=merged_df.to_html(index=False, classes="table", border=0))
+        with open(html_report_path, "w") as f:
+            f.write(html_content)
+        log.info("✅ HTML report generated successfully.")
+
     return merged_df

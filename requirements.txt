@@ -37,6 +37,10 @@ iniconfig==2.3.0
     # via pytest
 isort==7.0.0
     # via -r requirements.in
+jinja2==3.1.6
+    # via -r requirements.in
+markupsafe==3.0.3
+    # via jinja2
 mccabe==0.7.0
     # via flake8
 mypy-extensions==1.1.0
