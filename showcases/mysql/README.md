@@ -17,21 +17,14 @@
 
 这是一个典型的、手动的性能分析场景：
 
-**第 1 步: 加载环境**
-_每次打开新终端时，都需要执行此操作以加载所有路径。_
-
-```bash
-source showcases/mysql/env.sh
-```
-
-**第 2 步: 启动 MySQL 服务**
+**第 1 步: 启动 MySQL 服务**
 
 ```bash
 ./showcases/mysql/start_mysql.sh
 # 输出: ✅ MySQL 服务器已在运行，PID: 12345
 ```
 
-**第 3 步: 施加负载**
+**第 2 步: 施加负载**
 _在后台启动 Sysbench 压测，模拟生产负载。_
 
 ```bash
@@ -39,7 +32,7 @@ _在后台启动 Sysbench 压测，模拟生产负载。_
 ./showcases/mysql/run_sysbench.sh 32 &
 ```
 
-**第 4 步: 使用 Pipa 进行快照！**
+**第 3 步: 使用 Pipa 进行快照！**
 _这是核心步骤。我们告诉 Pipa 去观察正在运行的 `mysqld` 进程。_
 
 ```bash

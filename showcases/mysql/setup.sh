@@ -151,9 +151,23 @@ fi
 # --- 完成 ---
 touch "$SUCCESS_FLAG"
 log "✅ MySQL Showcase 环境准备完成！"
-log "配置文件: $MY_CNF_PATH"
-log "Workload 文件: $SHOWCASE_DIR/workload.yaml"
 log ""
-log "📝 后续使用步骤:"
-log "   1. source $SHOWCASE_DIR/env.sh  # 加载环境变量"
-log "   2. pipa -vv calibrate --workload $SHOWCASE_DIR/workload.yaml --output-config showcases/mysql/mysql_calibrated.yaml"
+log "--- 🚀 快速开始：一个典型的分析流程 ---"
+log "你可以直接复制并粘贴以下命令来体验 Pipa:"
+log ''
+log '1. 启动服务并施加负载 (后台运行):'
+log '   ./showcases/mysql/start_mysql.sh && ./showcases/mysql/run_sysbench.sh 32 &'
+log ''
+log '2. 对 MySQL 进行 60 秒的性能快照:'
+log '   MYSQL_PID=$(pgrep -x mysqld) && pipa sample \'
+log '       --attach-to-pid "${MYSQL_PID}" \'
+log '       --duration 60 \'
+log '       --collectors-config showcases/mysql/mysql_collectors.yaml \'
+log '       --output mysql_snapshot.pipa'
+log ''
+log '3. 分析快照并生成报告:'
+log '   pipa analyze --input mysql_snapshot.pipa --output report.html'
+log ''
+log '4. (完成后) 清理环境:'
+log '   pkill sysbench; ./showcases/mysql/stop_mysql.sh'
+log "-------------------------------------------"
