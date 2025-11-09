@@ -1,45 +1,65 @@
-- name: "PIPA 根因分析"
-  precondition: "True"
-  sub_rules:
-    # ==========================================================
-    # ON-CPU 分支
-    # ==========================================================
-    - name: "ON-CPU 瓶颈"
-      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['%user'].mean() + df['cpu']['%system'].mean()) > 75"
-      finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。"
-      sub_rules:
-        # --- TMA 分析 (占位符) ---
-        - name: "微架构瓶颈：前端受限"
-          precondition: "'tma' in df and not df['tma'].empty and tma['Frontend_Bound'].mean() > 0.2" # 依赖：TMA 采集器
-          finding: "微架构分析：CPU 前端受限（占比 <strong>{tma_frontend:.2f}%</strong>），指令获取效率低下。"
-          sub_rules:
-            - name: "根因：指令缓存未命中"
-              precondition: "tma['ICache_Misses'].mean() > 0.1"
-              finding: "根因定位：前端受限的主要原因是 <strong>指令缓存（ICache）未命中率高</strong>。建议优化代码局部性。"
+# ==========================================================
+# PIPA 决策树 v2 (可配置 & 扩展版)
+# ==========================================================
 
-        # --- 系统性能分析 ---
-        - name: "高上下文切换"
-          precondition: "'proc_cswch' in df and not df['proc_cswch'].empty and df['proc_cswch']['cswch_per_s'].mean() > 100000"
-          finding: "系统分析：上下文切换过于频繁 (平均 <strong>{avg_cswch:.0f}/s</strong>)，可能由线程数过多或锁竞争导致。"
+# --- 1. 可配置阈值区 (Config) ---
+config:
+  # ON-CPU / OFF-CPU 分界线
+  ON_CPU_THRESHOLD_PERCENT: 75
 
-    # ==========================================================
-    # OFF-CPU 分支
-    # ==========================================================
-    - name: "OFF-CPU 瓶颈"
-      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['%user'].mean() + df['cpu']['%system'].mean()) <= 75"
-      finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
-      sub_rules:
-        # --- 磁盘分析 ---
-        - name: "磁盘 IO 瓶颈"
-          precondition: "'device_io' in df and 'tps' in df['device_io'] and df['device_io']['tps'].sum() > 800"
-          finding: "IO 分析：磁盘 IOPS 繁忙 (总计 **{total_tps:.0f}/s**)，可能是 IO 瓶颈。"
+  # TMA Level 1 阈值
+  IPC_LOW_THRESHOLD: 1.0
+  IPC_VERY_LOW_THRESHOLD: 0.7
+  BRANCH_MISS_RATE_HIGH_PERCENT: 5.0
+  L3_CACHE_MISS_RATE_HIGH_PERCENT: 3.0 # LLC miss rate
 
-        # --- 内存分析 ---
-        - name: "内存交换频繁"
-          precondition: "'paging' in df and 'pswpin_per_s' in df['paging'] and (df['paging']['pswpin_per_s'].mean() + df['paging']['pswpout_per_s'].mean()) > 10"
-          finding: "内存分析：系统正在频繁进行 Swap 换页 (平均 **{avg_swaps:.0f}/s**)，这将导致严重的性能下降，很可能是物理内存不足。"
+  # 系统级瓶颈阈值
+  HIGH_CSWCH_RATE_PER_SEC: 100000
+  HIGH_LOAD_AVG_RATIO_TO_CPU: 0.8
+  HIGH_IOPS_THRESHOLD: 800
+  HIGH_SWAP_RATE_PER_SEC: 10
 
-        # --- 调度分析 ---
-        - name: "系统负载过高"
-          precondition: "'load_queue' in df and 'ldavg-1' in df['load_queue'] and 'num_cpu' in locals() and num_cpu > 0 and df['load_queue']['ldavg-1'].mean() / num_cpu > 0.8"
-          finding: "调度分析：系统平均负载过高 (1分钟平均负载 **{avg_load1:.2f}**)，大量进程处于运行或等待运行状态。"
+# --- 2. 规则定义区 (Rules) ---
+rules:
+  - name: "PIPA 根因分析"
+    precondition: "True"
+    sub_rules:
+      # ===================== ON-CPU 分支 =====================
+      - name: "ON-CPU 瓶颈"
+        precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
+        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。"
+        sub_rules:
+          - name: "微架构瓶颈 (TMA L1)"
+            precondition: "ipc < IPC_LOW_THRESHOLD"
+            finding: "微架构分析：CPU 效率低下 (IPC = <strong>{ipc:.2f}</strong>)，表明存在指令流水线停顿。"
+            sub_rules:
+              - name: "前端瓶颈 (Frontend Bound)"
+                precondition: "branch_miss_rate > BRANCH_MISS_RATE_HIGH_PERCENT"
+                finding: "根因推断：<strong>前端瓶颈</strong>。分支预测失败率过高 (<strong>{branch_miss_rate:.2f}%</strong>)，导致 CPU 无法有效获取指令。"
+              - name: "后端瓶颈 (Backend Bound)"
+                precondition: "l3_cache_miss_rate > L3_CACHE_MISS_RATE_HIGH_PERCENT"
+                finding: "根因推断：<strong>后端瓶颈</strong>。末级缓存(L3)未命中率过高 (<strong>{l3_cache_miss_rate:.2f}%</strong>)，CPU 大量时间在等待内存数据。"
+              - name: "混合瓶颈或核心受限 (Bad Speculation / Core Bound)"
+                precondition: "True"
+                finding: "可能原因：<strong>核心受限</strong>或<strong>错误推测</strong>。若 IPC 极低 (<strong>< {IPC_VERY_LOW_THRESHOLD}</strong>)，则可能是核心资源耗尽；否则，可能是分支预测失败导致的错误推测惩罚。"
+          - name: "系统级瓶颈"
+            precondition: "True"
+            sub_rules:
+              - name: "高上下文切换"
+                precondition: "avg_cswch > HIGH_CSWCH_RATE_PER_SEC"
+                finding: "系统分析：上下文切换过于频繁 (平均 <strong>{avg_cswch:.0f}/s</strong>)，可能由线程数过多或锁竞争导致。"
+
+      # ===================== OFF-CPU 分支 =====================
+      - name: "OFF-CPU 瓶颈"
+        precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
+        finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
+        sub_rules:
+          - name: "磁盘 IO 瓶颈"
+            precondition: "total_tps > HIGH_IOPS_THRESHOLD"
+            finding: "IO 分析：磁盘 IOPS 繁忙 (总计 **{total_tps:.0f}/s**)，可能是 IO 瓶颈。"
+          - name: "内存交换频繁"
+            precondition: "avg_swaps > HIGH_SWAP_RATE_PER_SEC"
+            finding: "内存分析：系统正在频繁进行 Swap 换页 (平均 **{avg_swaps:.0f}/s**)，很可能是物理内存不足。"
+          - name: "系统负载过高"
+            precondition: "avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU"
+            finding: "调度分析：系统平均负载过高 (1分钟平均负载 **{avg_load1:.2f}**)，大量进程处于运行或等待运行状态。"

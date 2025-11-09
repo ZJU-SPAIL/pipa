@@ -108,8 +108,10 @@ def generate_report(level_dir: Path, report_path: Path):
     all_dataframes = {"perf": df_perf, **results_sar}
     project_root = get_project_root()
     rules_path = project_root / "config/rules/decision_tree.yaml"
-    rules = load_rules(rules_path)
+    rules, rule_configs = load_rules(rules_path)
     context = calculate_context_metrics(all_dataframes, static_info_data)
+    context.update(rule_configs)
+
     findings = run_rules_engine(all_dataframes, rules, context)
     md = MarkdownIt()
     decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
