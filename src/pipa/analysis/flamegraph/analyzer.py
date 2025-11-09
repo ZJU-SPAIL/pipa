@@ -119,7 +119,10 @@ class FoldedAnalyzer:
             inc, leaf = dso_acc.get(leaf_dso, (0, 0))
             leaf += weight
             dso_acc[leaf_dso] = (inc, leaf)
-        stats = [DSOStat(dso=d, inclusive=inc, leaf=leaf) for d, (inc, leaf) in dso_acc.items()]
+        stats = [
+            DSOStat(dso=d, inclusive=inc, leaf=leaf)
+            for d, (inc, leaf) in dso_acc.items()
+        ]
         stats.sort(key=lambda x: (x.inclusive, x.leaf), reverse=True)
         return stats
 
