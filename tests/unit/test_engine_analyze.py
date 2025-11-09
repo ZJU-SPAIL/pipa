@@ -79,6 +79,8 @@ def test_generate_report_with_all_data(mock_level_dir, mock_dependencies, tmp_pa
     sar_content += "testhost;1;13:00:00;-1;25.5;10.1;64.4\n"
     (mock_level_dir / "sar_cpu.csv").write_text(sar_content)
 
+    (mock_level_dir / "perf.data").write_text("")
+
     report_path = tmp_path / "report.html"
 
     result = generate_report(mock_level_dir, report_path)
@@ -111,6 +113,24 @@ def test_generate_report_missing_perf_data(mock_level_dir, mock_dependencies, tm
 
     assert any("perf_stat.txt not found" in w for w in warnings)
     assert "plots" in call_kwargs
+
+
+def test_generate_report_missing_perf_data_file(mock_level_dir, mock_dependencies, tmp_path):
+    """Test report generation when perf.data is missing."""
+    (mock_level_dir / "perf_stat.txt").write_text("1.000000000;0;cycles;1000000")
+
+    sar_content = "#hostname;interval;timestamp;CPU;%user;%system;%idle\n"
+    sar_content += "testhost;1;13:00:00;-1;25.5;10.1;64.4\n"
+    (mock_level_dir / "sar_cpu.csv").write_text(sar_content)
+
+    report_path = tmp_path / "report.html"
+
+    generate_report(mock_level_dir, report_path)
+
+    call_kwargs = mock_dependencies["template"].render.call_args.kwargs
+    warnings = call_kwargs["warnings"]
+
+    assert any("perf.data not found" in w for w in warnings)
 
 
 def test_generate_report_missing_sar_data(mock_level_dir, mock_dependencies, tmp_path):
