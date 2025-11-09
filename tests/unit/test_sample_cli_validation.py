@@ -1,5 +1,5 @@
 """
-Unit tests for the simplified, attach-only sample command CLI.
+Unit tests for the new two-phase sample command CLI.
 """
 
 from unittest.mock import patch
@@ -10,64 +10,75 @@ from src.commands.sample import sample
 
 
 class TestSampleCLIParameterValidation:
-    """Test the parameter validation logic for the attach-only CLI."""
-
     @patch("src.commands.sample.run_sampling")
-    def test_valid_attach_mode_invocation(self, mock_run):
-        """Test a valid, standard invocation."""
+    def test_valid_default_invocation(self, mock_run):
+        """Test a standard invocation using all defaults."""
         runner = CliRunner()
         result = runner.invoke(
             sample,
-            [
-                "--attach-to-pid",
-                "12345",
-                "--duration",
-                "30",
-                "--output",
-                "out.pipa",
-            ],
+            ["--attach-to-pid", "12345", "--output", "out.pipa"],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
         mock_run.assert_called_once()
         call_args = mock_run.call_args.kwargs
+
         assert call_args["attach_pids"] == "12345"
-        assert call_args["duration"] == 30
-        assert call_args["collectors_config_path"] is None
+        assert call_args["duration_stat"] == 60
+        assert call_args["duration_record"] == 60
+        assert call_args["run_stat_phase"] is True
+        assert call_args["run_record_phase"] is True
 
     @patch("src.commands.sample.run_sampling")
-    def test_with_custom_collectors_config(self, mock_run, tmp_path):
-        """Test that --collectors-config path is passed correctly."""
+    def test_disabling_phases(self, mock_run):
+        """Test the --no-stat and --no-record flags."""
         runner = CliRunner()
-        config_file = tmp_path / "my_collectors.yaml"
-        config_file.touch()
+        runner.invoke(
+            sample,
+            ["--attach-to-pid", "123", "--output", "out.pipa", "--no-record"],
+            catch_exceptions=False,
+        )
+        assert mock_run.call_args.kwargs["run_record_phase"] is False
 
+        runner.invoke(
+            sample,
+            ["--attach-to-pid", "123", "--output", "out.pipa", "--no-stat"],
+            catch_exceptions=False,
+        )
+        assert mock_run.call_args.kwargs["run_stat_phase"] is False
+
+    def test_disabling_both_phases_is_an_error(self):
+        """Test that using both --no-stat and --no-record fails."""
+        runner = CliRunner()
+        result = runner.invoke(
+            sample,
+            ["--attach-to-pid", "123", "--output", "out.pipa", "--no-stat", "--no-record"],
+        )
+        assert result.exit_code != 0
+        assert "cannot specify both" in result.output.lower()
+
+    @patch("src.commands.sample.run_sampling")
+    def test_expert_overrides_are_passed_correctly(self, mock_run):
+        """Test that all optional override parameters are passed to the engine."""
+        runner = CliRunner()
         result = runner.invoke(
             sample,
             [
                 "--attach-to-pid",
-                "12345",
-                "--duration",
-                "30",
+                "123",
                 "--output",
                 "out.pipa",
-                "--collectors-config",
-                str(config_file),
+                "--duration-stat",
+                "10",
+                "--perf-stat-interval",
+                "500",
+                "--perf-events",
+                "my-event",
             ],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        mock_run.assert_called_once()
         call_args = mock_run.call_args.kwargs
-        assert call_args["collectors_config_path"] == str(config_file)
-
-    def test_missing_required_options(self):
-        """Test that missing required options cause a failure."""
-        runner = CliRunner()
-        result1 = runner.invoke(sample, ["--duration", "30", "--output", "out.pipa"])
-        assert result1.exit_code != 0
-        assert "missing option" in result1.output.lower()
-
-        result2 = runner.invoke(sample, ["--attach-to-pid", "12345", "--output", "out.pipa"])
-        assert result2.exit_code != 0
-        assert "missing option" in result2.output.lower()
+        assert call_args["duration_stat"] == 10
+        assert call_args["perf_stat_interval"] == 500
+        assert call_args["perf_events_override"] == "my-event"

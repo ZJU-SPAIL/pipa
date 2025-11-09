@@ -2,8 +2,6 @@ import subprocess
 from typing import cast
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.collector import (
     start_perf_stat,
     start_sar,
@@ -12,24 +10,40 @@ from src.collector import (
 )
 
 
-@pytest.mark.parametrize(
-    "mode, kwargs_for_call, expected_flag_part",
-    [
-        ("pid", {"target_pid": 999}, "-p 999"),
-        ("cpu", {"target_cpus": "0-3,7"}, "-C 0-3,7"),
-        ("system", {}, "-a"),
-        ("system", {"interval": 1000}, "-I 1000"),
-    ],
-)
-def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call, expected_flag_part):
-    mock_popen = MagicMock()
-    monkeypatch.setattr("src.collector.subprocess.Popen", mock_popen)
-    base_args = {"output_file": "/tmp/perf.txt", "event_groups": [["cycles"]]}
-    start_perf_stat(mode=mode, **base_args, **kwargs_for_call)
+@patch("src.collector.platform.machine", return_value="x86_64")
+@patch("src.collector.subprocess.Popen")
+def test_start_perf_stat_uses_defaults(mock_popen, mock_machine):
+    """Test that start_perf_stat correctly uses default values and builds the command."""
+    start_perf_stat(target_pid="999")
+
     mock_popen.assert_called_once()
     final_command = " ".join(mock_popen.call_args[0][0])
+
     assert "perf stat" in final_command
-    assert expected_flag_part in final_command
+    assert "-p 999" in final_command
+    assert "-I 1000" in final_command
+    assert "-A" in final_command
+    assert "cycles,instructions" in final_command
+
+
+@patch("src.collector.platform.machine", return_value="aarch64")
+@patch("src.collector.subprocess.Popen")
+def test_start_perf_stat_uses_aarch64_events(mock_popen, mock_machine):
+    """Test that start_perf_stat switches to aarch64 events based on architecture."""
+    start_perf_stat(target_pid="999")
+    final_command = " ".join(mock_popen.call_args[0][0])
+    assert "cpu-cycles,instructions" in final_command
+
+
+@patch("src.collector.subprocess.Popen")
+def test_start_perf_stat_with_overrides(mock_popen):
+    """Test that overrides for interval and events work correctly."""
+    start_perf_stat(target_pid="999", interval=500, events_override_str="my_event1,my_event2")
+
+    final_command = " ".join(mock_popen.call_args[0][0])
+    assert "-I 500" in final_command
+    assert "my_event1,my_event2" in final_command
+    assert "cycles" not in final_command
 
 
 class MockPopen:
@@ -63,9 +77,8 @@ def test_stop_perf_stat_success(tmp_path):
     assert temp_file.read_text() == "cycles: 100"
 
 
-def test_start_sar_command_construction(monkeypatch):
-    mock_popen = MagicMock()
-    monkeypatch.setattr("subprocess.Popen", mock_popen)
+@patch("subprocess.Popen")
+def test_start_sar_command_construction(mock_popen):
     start_sar(duration=10, interval=2, output_bin_file="dummy.bin")
     mock_popen.assert_called_once()
     called_args = mock_popen.call_args.args[0]
