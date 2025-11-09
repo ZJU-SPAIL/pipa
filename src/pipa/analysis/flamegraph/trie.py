@@ -38,7 +38,9 @@ class Trie:
     total: int = 0  # 所有样本权重之和
 
     @classmethod
-    def from_collapsed(cls, collapsed: Mapping[str, int], separator: str = SEPARATOR) -> "Trie":
+    def from_collapsed(
+        cls, collapsed: Mapping[str, int], separator: str = SEPARATOR
+    ) -> "Trie":
         """
         由折叠栈映射构建 Trie。
         - key 形如："comm pid/tid;f1;f2;f3"
@@ -94,7 +96,9 @@ class Trie:
     # -----------------------
     # 基础遍历与统计工具
     # -----------------------
-    def _sum_subtree_leaf_within_depth(self, node: TrieNode, max_depth: Optional[int]) -> int:
+    def _sum_subtree_leaf_within_depth(
+        self, node: TrieNode, max_depth: Optional[int]
+    ) -> int:
         """在 node 子树内，统计距离 node 深度<=max_depth 的叶子权重之和。
         - max_depth is None 表示不限制深度，直接返回 node.count（等价于全部叶子之和）
         - max_depth == 0 表示仅 node 自身作为叶子的计数（即 node.leaf_count）
@@ -111,7 +115,9 @@ class Trie:
             total += self._sum_subtree_leaf_within_depth(child, max_depth - 1)
         return total
 
-    def _find_nodes(self, predicate: Callable[[str], bool]) -> List[Tuple[TrieNode, List[str]]]:
+    def _find_nodes(
+        self, predicate: Callable[[str], bool]
+    ) -> List[Tuple[TrieNode, List[str]]]:
         """查找满足条件的节点，返回 (node, path) 列表，path 不含 root。"""
         results: List[Tuple[TrieNode, List[str]]] = []
         path: List[str] = []
@@ -136,7 +142,6 @@ class Trie:
         path: List[str] = []
 
         def dfs(n: TrieNode) -> None:
-            nonlocal path
             if n is not self.root:
                 path.append(n.name)
                 if n.leaf_count:
@@ -178,7 +183,9 @@ class Trie:
             dfs(c)
         results: List[Tuple[str, int, int, float, float]] = []
         for sym, (inc, leaf) in acc.items():
-            results.append((sym, inc, leaf, (inc / total) * 100.0, (leaf / total) * 100.0))
+            results.append(
+                (sym, inc, leaf, (inc / total) * 100.0, (leaf / total) * 100.0)
+            )
         results.sort(key=lambda x: (x[1], x[2]), reverse=True)
         return results
 
@@ -197,12 +204,13 @@ class Trie:
         """
         if not symbol:
             return []
-        pred: Callable[[str], bool]
-        if fuzzy:
-            pred = lambda name: symbol in name
-        else:
-            pred = lambda name: name == symbol
-        matches = self._find_nodes(pred)
+
+        def _predicate(name: str) -> bool:
+            if fuzzy:
+                return symbol in name
+            return name == symbol
+
+        matches = self._find_nodes(_predicate)
         if not matches:
             return []
         denom = self.total if self.total > 0 else 1
@@ -239,6 +247,7 @@ class Trie:
         - 返回：若 start_symbol 为 None，则返回整个森林的列表；否则返回匹配列表（可能多个）
         节点字段：{name, count, leaf_count, children: [...]}，children 已按 count 降序
         """
+
         def sort_children_by_count(node: TrieNode) -> List[TrieNode]:
             # 稳定排序：count desc，然后名称 asc 以获得确定性
             return sorted(node.children.values(), key=lambda n: (-n.count, n.name))
@@ -264,7 +273,12 @@ class Trie:
             return [build(r, k) for r in roots]
 
         # 否则从匹配到的节点导出（可能多个）
-        matches = self._find_nodes((lambda nm: start_symbol in nm) if fuzzy else (lambda nm: nm == start_symbol))
+        def _start_match(nm: str) -> bool:
+            if fuzzy:
+                return start_symbol in nm  # type: ignore[arg-type]
+            return nm == start_symbol  # type: ignore[arg-type]
+
+        matches = self._find_nodes(_start_match)
         if not matches:
             return []
         # 稳定排序：按节点 inclusive(desc) 再 name
@@ -274,7 +288,10 @@ class Trie:
 
 # 便捷函数
 
-def build_trie_from_collapsed(collapsed: Mapping[str, int], separator: str = SEPARATOR) -> Trie:
+
+def build_trie_from_collapsed(
+    collapsed: Mapping[str, int], separator: str = SEPARATOR
+) -> Trie:
     return Trie.from_collapsed(collapsed, separator)
 
 

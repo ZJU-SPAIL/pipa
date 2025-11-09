@@ -49,7 +49,7 @@ class SymbolShare:
     inclusive: int
     leaf: int
     inclusive_pct: float  # percentage in [0,100]
-    leaf_pct: float       # percentage in [0,100]
+    leaf_pct: float  # percentage in [0,100]
 
 
 @dataclass(frozen=True)
