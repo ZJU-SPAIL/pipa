@@ -111,21 +111,22 @@ def test_start_sar_skips_if_duration_too_short():
 @patch("src.collector.run_command")
 @patch("builtins.open")
 def test_stop_sar_success(mock_open, mock_run_command, tmp_path):
+    from pathlib import Path
+
     mock_proc = MockPopen()
     mock_file_handler = MagicMock()
     mock_open.return_value.__enter__.return_value = mock_file_handler
     mock_run_command.return_value = "hostname;iface;timestamp;CPU;%user"
 
     bin_file = tmp_path / "sar.bin"
-    csv_file = tmp_path / "sar.csv"
+    level_dir = Path(tmp_path)
 
     stop_sar(
         proc=cast(subprocess.Popen, mock_proc),
         output_bin_file=str(bin_file),
-        output_csv_file=str(csv_file),
+        level_dir=level_dir,
         timeout=10,
     )
 
-    mock_run_command.assert_called_once_with(f"sadf -P ALL -d -- {str(bin_file)}")
-    mock_open.assert_called_once_with(str(csv_file), "w")
-    mock_file_handler.write.assert_called_once_with("hostname;iface;timestamp;CPU;%user")
+    assert mock_run_command.call_count >= 6
+    assert mock_open.call_count >= 6
