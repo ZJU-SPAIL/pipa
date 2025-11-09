@@ -46,7 +46,9 @@ def generate_report(level_dir: Path, report_path: Path):
             analysis_warnings.append("perf_stat.txt is empty.")
     except FileNotFoundError:
         analysis_warnings.append("perf_stat.txt not found. Perf-related analysis will be skipped.")
-
+    perf_data_path = level_dir / "perf.data"
+    if not perf_data_path.exists():
+        analysis_warnings.append("perf.data not found. Flame graph generation will not be possible for this snapshot.")
     df_sar = pd.DataFrame()
     try:
         sar_csv_path = level_dir / "sar_cpu.csv"
