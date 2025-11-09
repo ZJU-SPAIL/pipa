@@ -8,7 +8,6 @@ from typing import Optional
 
 import click
 
-# 即将从 collector.py 导入，我们先在这里占位
 from src.collector import (
     start_perf_record,
     start_perf_stat,
@@ -24,6 +23,7 @@ log = logging.getLogger(__name__)
 def run_sampling(
     output_path: Path,
     attach_pids: str,
+    system_wide: bool,
     duration_stat: int,
     duration_record: int,
     run_stat_phase: bool,
@@ -40,22 +40,27 @@ def run_sampling(
     """
     total_duration = (duration_stat if run_stat_phase else 0) + (duration_record if run_record_phase else 0)
     log.info("🚀 Starting standardized two-phase sampling process...")
-    log.info(f"  -> Attaching to PID(s): {attach_pids}")
+    if system_wide:
+        log.info("  -> Mode: System-Wide (all CPUs, all processes)")
+    else:
+        log.info(f"  -> Mode: Process-Specific, Attaching to PID(s): {attach_pids}")
     log.info(f"  -> Total Duration: {total_duration} seconds")
     log.info(f"  -> Output will be saved to: {output_path.name}")
-    pids_to_check = attach_pids.split(",")
-    for pid_str in pids_to_check:
-        try:
-            pid = int(pid_str)
-            if pid <= 0:
-                raise ValueError
-            os.kill(pid, 0)
-        except (ValueError, ProcessLookupError):
-            raise click.UsageError(f"Process with PID '{pid_str}' does not exist.")
-        except PermissionError:
-            raise click.UsageError(
-                f"No permission to attach to process with PID '{pid_str}'. " "Try running pipa with sudo."
-            )
+
+    if not system_wide:
+        pids_to_check = attach_pids.split(",")
+        for pid_str in pids_to_check:
+            try:
+                pid = int(pid_str)
+                if pid <= 0:
+                    raise ValueError
+                os.kill(pid, 0)
+            except (ValueError, ProcessLookupError):
+                raise click.UsageError(f"Process with PID '{pid_str}' does not exist.")
+            except PermissionError:
+                raise click.UsageError(
+                    f"No permission to attach to process with PID '{pid_str}'. " "Try running pipa with sudo."
+                )
 
     work_dir = Path(tempfile.mkdtemp(prefix="pipa_sample_"))
     log.info(f"Created temporary working directory: {work_dir}")
@@ -95,6 +100,7 @@ def run_sampling(
 
             perf_proc = start_perf_stat(
                 target_pid=attach_pids,
+                system_wide=system_wide,
                 interval=perf_stat_interval,
                 events_override_str=perf_events_override,
             )

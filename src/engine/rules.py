@@ -82,13 +82,19 @@ def _format_rule_to_html_list(
     li_html = f"<li class='{active_class}'><span>{rule_node['name']}</span>"
 
     all_child_findings = []
-    if sub_rules := rule_node.get("sub_rules"):
+    if is_active_node and (sub_rules := rule_node.get("sub_rules")):
         li_html += "<ul>"
         for sub_rule in sub_rules:
             sub_li_html, sub_finding_html = _format_rule_to_html_list(sub_rule, df_dict, context, md)
             li_html += sub_li_html
             if sub_finding_html:
                 all_child_findings.append(sub_finding_html)
+        li_html += "</ul>"
+    elif not is_active_node and (sub_rules := rule_node.get("sub_rules")):
+        li_html += "<ul>"
+        for sub_rule in sub_rules:
+            sub_li_html, _ = _format_rule_to_html_list(sub_rule, df_dict, context, md)
+            li_html += sub_li_html
         li_html += "</ul>"
 
     li_html += "</li>"
@@ -161,22 +167,26 @@ def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame], static_info: Dic
     if df_load is not None and not df_load.empty:
         context["avg_load1"] = df_load.get("ldavg-1", pd.Series(0)).mean()
 
-    if (df_perf := df_dict.get("perf")) is not None and not df_perf.empty:
-        df_perf_all = df_perf[df_perf["cpu"] == "all"].copy() if "cpu" in df_perf.columns else df_perf
+    if (df_perf_raw := df_dict.get("perf_raw")) is not None and not df_perf_raw.empty:
+        df_perf_all = df_perf_raw[df_perf_raw["cpu"] == "all"].copy()
+        if not df_perf_all.empty:
+            instructions = df_perf_all[df_perf_all["event_name"].isin(["instructions", "inst_retired.any"])][
+                "value"
+            ].sum()
+            cycles = df_perf_all[df_perf_all["event_name"].isin(["cycles", "cpu-cycles"])]["value"].sum()
+            if cycles > 0:
+                context["ipc"] = instructions / cycles
 
-        instructions = df_perf_all[df_perf_all["event_name"].isin(["instructions", "inst_retired.any"])]["value"].sum()
-        cycles = df_perf_all[df_perf_all["event_name"].isin(["cycles", "cpu-cycles"])]["value"].sum()
-        if cycles > 0:
-            context["ipc"] = instructions / cycles
+            branch_instructions = df_perf_all[df_perf_all["event_name"] == "branch-instructions"]["value"].sum()
+            branch_misses = df_perf_all[df_perf_all["event_name"] == "branch-misses"]["value"].sum()
+            if branch_instructions > 0:
+                context["branch_miss_rate"] = (branch_misses / branch_instructions) * 100
 
-        branch_instructions = df_perf_all[df_perf_all["event_name"] == "branch-instructions"]["value"].sum()
-        branch_misses = df_perf_all[df_perf_all["event_name"] == "branch-misses"]["value"].sum()
-        if branch_instructions > 0:
-            context["branch_miss_rate"] = (branch_misses / branch_instructions) * 100
-
-        llc_loads = df_perf_all[df_perf_all["event_name"].isin(["LLC-loads", "ll_cache_rd"])]["value"].sum()
-        llc_misses = df_perf_all[df_perf_all["event_name"].isin(["LLC-load-misses", "ll_cache_miss_rd"])]["value"].sum()
-        if llc_loads > 0:
-            context["l3_cache_miss_rate"] = (llc_misses / llc_loads) * 100
+            llc_loads = df_perf_all[df_perf_all["event_name"].isin(["LLC-loads", "ll_cache_rd"])]["value"].sum()
+            llc_misses = df_perf_all[df_perf_all["event_name"].isin(["LLC-load-misses", "ll_cache_miss_rd"])][
+                "value"
+            ].sum()
+            if llc_loads > 0:
+                context["l3_cache_miss_rate"] = (llc_misses / llc_loads) * 100
 
     return context
