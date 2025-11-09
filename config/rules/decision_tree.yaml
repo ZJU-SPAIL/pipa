@@ -5,7 +5,7 @@
     # ON-CPU 分支
     # ==========================================================
     - name: "ON-CPU 瓶颈"
-      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) > 75"
+      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['%user'].mean() + df['cpu']['%system'].mean()) > 75"
       finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。"
       sub_rules:
         # --- TMA 分析 (占位符) ---
@@ -26,7 +26,7 @@
     # OFF-CPU 分支
     # ==========================================================
     - name: "OFF-CPU 瓶颈"
-      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['pct_usr'].mean() + df['cpu']['pct_sys'].mean()) <= 75"
+      precondition: "'cpu' in df and not df['cpu'].empty and (df['cpu']['%user'].mean() + df['cpu']['%system'].mean()) <= 75"
       finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
       sub_rules:
         # --- 磁盘分析 ---

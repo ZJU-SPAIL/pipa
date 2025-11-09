@@ -100,6 +100,6 @@ def test_stop_sar_success(mock_open, mock_run_command, tmp_path):
         timeout=10,
     )
 
-    mock_run_command.assert_called_once_with(f"sadf -d -h -- {str(bin_file)}")
+    mock_run_command.assert_called_once_with(f"sadf -d -- {str(bin_file)}")
     mock_open.assert_called_once_with(str(csv_file), "w")
     mock_file_handler.write.assert_called_once_with("hostname;iface;timestamp;CPU;%user")
