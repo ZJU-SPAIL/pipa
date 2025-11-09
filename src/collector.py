@@ -60,18 +60,25 @@ def start_perf_stat(
             log.info("Using built-in x86_64 event set as default.")
             event_groups = X86_64_EVENT_SET
 
-    events_flags = [f"-e '{','.join(group)}'" for group in event_groups if group]
-
     command_parts = [
         "perf",
         "stat",
         "-p",
         target_pid,
-        *events_flags,
-        "-I",
-        str(interval or 1000),
-        "-A",
     ]
+
+    for group in event_groups:
+        if group:
+            command_parts.append("-e")
+            command_parts.append(",".join(group))
+
+    command_parts.extend(
+        [
+            "-I",
+            str(interval or 1000),
+            "-A",
+        ]
+    )
 
     log.info(f"Starting background perf stat: {' '.join(command_parts)}")
     try:
