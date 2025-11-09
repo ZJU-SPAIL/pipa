@@ -14,7 +14,7 @@ from src.collector import (
 @patch("src.collector.subprocess.Popen")
 def test_start_perf_stat_uses_defaults(mock_popen, mock_machine):
     """Test that start_perf_stat correctly uses default values and builds the command."""
-    start_perf_stat(target_pid="999")
+    start_perf_stat(target_pid="999", system_wide=False)
 
     mock_popen.assert_called_once()
     final_command = " ".join(mock_popen.call_args[0][0])
@@ -22,7 +22,6 @@ def test_start_perf_stat_uses_defaults(mock_popen, mock_machine):
     assert "perf stat" in final_command
     assert "-p 999" in final_command
     assert "-I 1000" in final_command
-    assert "-A" in final_command
     assert "cycles,instructions" in final_command
 
 
@@ -30,7 +29,7 @@ def test_start_perf_stat_uses_defaults(mock_popen, mock_machine):
 @patch("src.collector.subprocess.Popen")
 def test_start_perf_stat_uses_aarch64_events(mock_popen, mock_machine):
     """Test that start_perf_stat switches to aarch64 events based on architecture."""
-    start_perf_stat(target_pid="999")
+    start_perf_stat(target_pid="999", system_wide=False)
     final_command = " ".join(mock_popen.call_args[0][0])
     assert "cpu-cycles,instructions" in final_command
 
@@ -38,12 +37,26 @@ def test_start_perf_stat_uses_aarch64_events(mock_popen, mock_machine):
 @patch("src.collector.subprocess.Popen")
 def test_start_perf_stat_with_overrides(mock_popen):
     """Test that overrides for interval and events work correctly."""
-    start_perf_stat(target_pid="999", interval=500, events_override_str="my_event1,my_event2")
+    start_perf_stat(target_pid="999", system_wide=False, interval=500, events_override_str="my_event1,my_event2")
 
     final_command = " ".join(mock_popen.call_args[0][0])
     assert "-I 500" in final_command
     assert "my_event1,my_event2" in final_command
     assert "cycles" not in final_command
+
+
+@patch("src.collector.subprocess.Popen")
+def test_start_perf_stat_system_wide_mode(mock_popen):
+    """Test that system-wide mode correctly uses -a and -A flags."""
+    start_perf_stat(target_pid=None, system_wide=True)
+
+    mock_popen.assert_called_once()
+    final_command = " ".join(mock_popen.call_args[0][0])
+
+    assert "perf stat" in final_command
+    assert "-a" in final_command
+    assert "-A" in final_command
+    assert "-p" not in final_command
 
 
 class MockPopen:
