@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import yaml
@@ -97,42 +96,6 @@ def generate_report(level_dir: Path, report_path: Path):
             index=["timestamp", "cpu"], columns="event_name", values="value"
         ).reset_index()
 
-    merged_df = pd.DataFrame()
-    if not df_sar.empty and not df_perf.empty:
-        log.info("Both SAR and Perf data available. Performing as-of merge...")
-        df_perf = df_perf.sort_values("timestamp")
-        df_sar = df_sar.sort_values("timestamp")
-
-        df_sar["timestamp_dt"] = pd.to_datetime(
-            df_sar["timestamp"].astype(str), format="%H:%M:%S", errors="coerce"
-        ).dt.time
-
-        df_sar["sar_abs_seconds"] = df_sar["timestamp_dt"].apply(
-            lambda t: t.hour * 3600 + t.minute * 60 + t.second if pd.notnull(t) else None
-        )
-
-        sar_start_time = df_sar["sar_abs_seconds"].iloc[0]
-        df_sar["relative_seconds"] = df_sar["sar_abs_seconds"] - sar_start_time
-        df_sar["relative_seconds"] = df_sar["relative_seconds"].astype(float)
-        perf_start_time = df_perf["timestamp"].iloc[0]
-        df_perf["relative_seconds"] = df_perf["timestamp"] - perf_start_time
-
-        merged_df = pd.merge_asof(
-            left=df_sar.sort_values("relative_seconds"),
-            right=df_perf.sort_values("relative_seconds"),
-            on="relative_seconds",
-            direction="backward",
-        )
-
-    elif not df_sar.empty:
-        log.info("Only SAR data available. Using it as the primary timeseries data.")
-        merged_df = df_sar
-    elif not df_perf.empty:
-        log.info("Only Perf data available. Using it as the primary timeseries data.")
-        merged_df = df_perf
-    else:
-        log.warning("No time-series data available to generate plots or tables.")
-
     all_dataframes = {"perf": df_perf, **results_sar}
     project_root = get_project_root()
     rules_path = project_root / "config/rules/decision_tree.yaml"
@@ -142,31 +105,27 @@ def generate_report(level_dir: Path, report_path: Path):
     md = MarkdownIt()
     decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
 
-    plot_div = ""
-    table_json_data = "[]"
-    if not merged_df.empty:
-        log.info("Generating interactive plot and data table...")
-        columns_to_plot = [
-            col for col in merged_df.columns if pd.api.types.is_numeric_dtype(merged_df[col]) and "timestamp" not in col
-        ]
-        if columns_to_plot:
-            timestamp_col = next(
-                (c for c in ["timestamp", "timestamp_x"] if c in merged_df.columns),
-                None,
-            )
-            if timestamp_col:
-                fig = px.line(
-                    merged_df,
-                    x=timestamp_col,
-                    y=columns_to_plot,
-                    title="Time-Series Metrics Explorer",
-                    labels={timestamp_col: "Time", "value": "Metric Value", "variable": "Metric"},
-                )
-                fig.update_layout(autosize=True, height=600, legend_itemclick="toggleothers")
-                plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    plots = {}
+    tables = {}
+    md = MarkdownIt()
 
-        df_for_table = merged_df.round(2).replace([np.inf, -np.inf], "Infinity").fillna("N/A")
-        table_json_data = df_for_table.to_json(orient="records")
+    if not df_sar.empty:
+        log.info("Generating plot and table for SAR data...")
+        sar_cols_to_plot = [col for col in df_sar.columns if col not in ["hostname", "CPU", "timestamp"]]
+        if "timestamp" in df_sar.columns and sar_cols_to_plot:
+            fig_sar = px.line(df_sar, x="timestamp", y=sar_cols_to_plot, title="SAR CPU Metrics")
+            fig_sar.update_layout(autosize=True, height=500, legend_itemclick="toggleothers")
+            plots["sar_cpu"] = fig_sar.to_html(full_html=False, include_plotlyjs="cdn")
+        tables["sar_cpu"] = df_sar.round(2).to_json(orient="records")
+
+    if not df_perf.empty:
+        log.info("Generating plot and table for Perf data...")
+        perf_cols_to_plot = [col for col in df_perf.columns if col not in ["timestamp", "cpu"]]
+        if "timestamp" in df_perf.columns and perf_cols_to_plot:
+            fig_perf = px.line(df_perf, x="timestamp", y=perf_cols_to_plot, title="Perf Micro-Architectural Metrics")
+            fig_perf.update_layout(autosize=True, height=500, legend_itemclick="toggleothers")
+            plots["perf_stat"] = fig_perf.to_html(full_html=False, include_plotlyjs="cdn")
+        tables["perf_stat"] = df_perf.round(2).to_json(orient="records")
 
     log.info(f"Generating HTML report at: {report_path}")
     templates_dir = get_project_root() / "src/templates"
@@ -176,8 +135,8 @@ def generate_report(level_dir: Path, report_path: Path):
     template = env.get_template("report_template.html")
     html_content = template.render(
         warnings=analysis_warnings,
-        interactive_plot=plot_div,
-        table_data_json=table_json_data,
+        plots=plots,
+        tables_json=tables,
         findings=findings,
         decision_tree_html=decision_tree_html,
         findings_for_tree_html=findings_for_tree_html,
@@ -187,4 +146,4 @@ def generate_report(level_dir: Path, report_path: Path):
         f.write(html_content)
     log.info("✅ HTML report generation complete.")
 
-    return merged_df
+    return None
