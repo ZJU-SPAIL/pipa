@@ -1,5 +1,4 @@
 import logging
-import platform
 import shutil
 import tempfile
 import time
@@ -8,138 +7,118 @@ from typing import Optional
 
 import yaml
 
-from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
-from src.config_loader import load_events_config, load_yaml_config
+# 即将从 collector.py 导入，我们先在这里占位
+from src.collector import (
+    start_perf_record,
+    start_perf_stat,
+    start_sar,
+    stop_perf_record,
+    stop_perf_stat,
+    stop_sar,
+)
 from src.static_collector import collect_all_static_info
 
 log = logging.getLogger(__name__)
-
-# --- Pipa 的新灵魂：内置的默认采集器 ---
-# 当用户不提供自定义配置时，我们将使用这套标准的、通用的配置。
-DEFAULT_COLLECTORS_CONFIG = {
-    "collectors": {
-        "macro": [
-            {
-                "name": "perf_stat",
-                "enabled": True,
-                "mode": "pid",
-                "all_threads": True,
-                "interval": 1000,
-                "events_profile": "cpu_basic",
-            },
-            {"name": "sar_cpu", "enabled": True, "interval": 1},
-        ]
-    }
-}
 
 
 def run_sampling(
     output_path: Path,
     attach_pids: str,
-    duration: int,
-    collectors_config_path: Optional[str] = None,
-    no_static_info: bool = False,
+    duration_stat: int,
+    duration_record: int,
+    run_stat_phase: bool,
+    run_record_phase: bool,
+    perf_stat_interval: Optional[int],
+    sar_interval: Optional[int],
+    perf_record_freq: Optional[int],
+    perf_events_override: Optional[str],
+    no_static_info: bool,
 ):
     """
-    Core logic for the attach-only sampling workflow.
+    Executes the new two-phase sampling workflow.
     """
-    log.info("🚀 Starting sampling process (Attach Mode)...")
+    total_duration = (duration_stat if run_stat_phase else 0) + (duration_record if run_record_phase else 0)
+    log.info("🚀 Starting standardized two-phase sampling process...")
     log.info(f"  -> Attaching to PID(s): {attach_pids}")
-    log.info(f"  -> Duration: {duration} seconds")
+    log.info(f"  -> Total Duration: {total_duration} seconds")
     log.info(f"  -> Output will be saved to: {output_path.name}")
-
-    if not no_static_info:
-        log.info("Collecting static system information...")
-        static_info = collect_all_static_info()
-    else:
-        log.info("Skipping static system information collection.")
-        static_info = None
-
-    host_arch = platform.machine()
-    cpu_model_name = static_info.get("cpu_info", {}).get("Model_Name", "") if static_info else ""
-    events_config = load_events_config(host_arch, cpu_model_name)
 
     work_dir = Path(tempfile.mkdtemp(prefix="pipa_sample_"))
     log.info(f"Created temporary working directory: {work_dir}")
 
     try:
-        if static_info:
+        if not no_static_info:
+            log.info("Collecting static system information...")
+            static_info = collect_all_static_info()
             static_info_path = work_dir / "static_info.yaml"
             with open(static_info_path, "w") as f:
                 yaml.dump(static_info, f, default_flow_style=False)
-
-        if collectors_config_path:
-            log.info(f"Using custom collectors from: {collectors_config_path}")
-            config = load_yaml_config(collectors_config_path)
         else:
-            log.info("Using default built-in collector configuration.")
-            config = DEFAULT_COLLECTORS_CONFIG
+            log.info("Skipping static system information collection.")
 
         level_dir = work_dir / "attach_session"
         level_dir.mkdir()
 
-        log.info("--- Starting Macro-Metrics Collection ---")
+        if run_stat_phase:
+            log.info(f"--- Starting Phase 1: Macro-Scan for {duration_stat}s ---")
+            running_collectors = {}
 
-        macro_collectors_config = config.get("collectors", {}).get("macro", [])
-        running_macro_collectors = {}
+            perf_proc = start_perf_stat(
+                target_pid=attach_pids,
+                interval=perf_stat_interval,
+                events_override_str=perf_events_override,
+            )
+            if perf_proc:
+                running_collectors[perf_proc.pid] = {
+                    "proc": perf_proc,
+                    "name": "perf_stat",
+                    "output_file": level_dir / "perf_stat.txt",
+                }
 
-        for collector_conf in macro_collectors_config:
-            if not collector_conf.get("enabled", False):
-                continue
-            proc = None
-            output_file = None
-            output_bin_file = None
-            collector_name = collector_conf.get("name")
+            sar_proc = start_sar(
+                duration=duration_stat,
+                interval=sar_interval or 1,
+                output_bin_file=str(level_dir / "sar_cpu.bin"),
+            )
+            if sar_proc:
+                running_collectors[sar_proc.pid] = {
+                    "proc": sar_proc,
+                    "name": "sar_cpu",
+                    "output_bin_file": level_dir / "sar_cpu.bin",
+                    "output_csv_file": level_dir / "sar_cpu.csv",
+                }
 
-            if collector_name == "perf_stat":
-                output_file = level_dir / "perf_stat.txt"
-                profile_name = collector_conf.get("events_profile")
-                event_groups = events_config.get(profile_name, [])
-                proc = start_perf_stat(
-                    output_file=str(output_file),
-                    mode="pid",
-                    target_pid=attach_pids,
-                    event_groups=event_groups,
-                    interval=collector_conf.get("interval"),
-                )
-            elif collector_name == "sar_cpu":
-                output_bin_file = level_dir / "sar_cpu.bin"
-                interval = collector_conf.get("interval", 1)
-                proc = start_sar(
-                    duration=duration,
-                    interval=interval,
-                    output_bin_file=str(output_bin_file),
-                )
+            if running_collectors:
+                log.info(f"Phase 1 collectors running for {duration_stat} seconds...")
+                time.sleep(duration_stat)
 
-            if proc:
-                context = {"proc": proc, "name": collector_name}
-                if collector_name == "sar_cpu":
-                    context["output_bin_file"] = output_bin_file
-                    context["output_csv_file"] = level_dir / "sar_cpu.csv"
-                else:
-                    context["output_file"] = output_file
-                running_macro_collectors[proc.pid] = context
+                log.info("Stopping Phase 1 collectors...")
+                for pid, ctx in running_collectors.items():
+                    if ctx["name"] == "perf_stat":
+                        stop_perf_stat(ctx["proc"], str(ctx["output_file"]), timeout=duration_stat + 15)
+                    elif ctx["name"] == "sar_cpu":
+                        stop_sar(
+                            ctx["proc"],
+                            str(ctx["output_bin_file"]),
+                            str(ctx["output_csv_file"]),
+                            timeout=duration_stat + 15,
+                        )
 
-        if running_macro_collectors:
-            log.info(f"Collection running for {duration} seconds...")
-            time.sleep(duration)
-            log.info("Stopping macro-metrics collectors...")
+        if run_record_phase:
+            log.info(f"--- Starting Phase 2: Micro-Profiling for {duration_record}s ---")
+            perf_record_output = level_dir / "perf.data"
+            record_proc = start_perf_record(
+                target_pid=attach_pids,
+                output_file=str(perf_record_output),
+                freq=perf_record_freq,
+            )
+            if record_proc:
+                log.info(f"Phase 2 collector (perf record) running for {duration_record} seconds...")
+                time.sleep(duration_record)
+                log.info("Stopping Phase 2 collector...")
+                stop_perf_record(record_proc, timeout=duration_record + 15)
 
-            for pid, collector_context in running_macro_collectors.items():
-                proc = collector_context["proc"]
-                name = collector_context["name"]
-                wait_timeout = duration + 15
-
-                if name == "perf_stat":
-                    stop_perf_stat(proc, str(collector_context["output_file"]), timeout=wait_timeout)
-                elif name == "sar_cpu":
-                    stop_sar(
-                        proc,
-                        output_bin_file=str(collector_context["output_bin_file"]),
-                        output_csv_file=str(collector_context["output_csv_file"]),
-                        timeout=wait_timeout,
-                    )
-        log.info("--- Collection finished. ---")
+        log.info("--- All collection phases finished. ---")
 
         log.info(f"Archiving results from {work_dir} to {output_path}...")
         archive_base_name = str(output_path.with_suffix(""))

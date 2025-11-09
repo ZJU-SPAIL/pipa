@@ -1,5 +1,0 @@
-# Intel/AMD (x86_64) 架构的 perf 事件集
-cpu_basic:
-  - ["cycles", "instructions"]
-  - ["cache-references", "cache-misses"]
-  - ["branch-instructions", "branch-misses"]
