@@ -130,7 +130,7 @@ def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame], static_info: Dic
 
     df_cpu = df_dict.get("cpu")
     if df_cpu is not None and not df_cpu.empty:
-        context["total_cpu"] = df_cpu.get("pct_usr", pd.Series(0)).mean() + df_cpu.get("pct_sys", pd.Series(0)).mean()
+        context["total_cpu"] = df_cpu.get("%user", pd.Series(0)).mean() + df_cpu.get("%system", pd.Series(0)).mean()
 
     df_cswch = df_dict.get("proc_cswch")
     if df_cswch is not None and not df_cswch.empty:

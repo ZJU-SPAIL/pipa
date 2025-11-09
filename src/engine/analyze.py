@@ -52,10 +52,27 @@ def generate_report(level_dir: Path, report_path: Path):
     try:
         sar_csv_path = level_dir / "sar_cpu.csv"
         if sar_csv_path.exists() and sar_csv_path.stat().st_size > 0:
-            df_sar = pd.read_csv(sar_csv_path, sep=";", comment="#")
+            with open(sar_csv_path, "r") as f:
+                lines = f.readlines()
+
+            header_line = None
+            data_start_idx = 0
+            for i, line in enumerate(lines):
+                if line.startswith("#"):
+                    header_line = line[1:].strip()
+                    data_start_idx = i + 1
+                    break
+
+            if header_line:
+                from io import StringIO
+
+                csv_content = header_line + "\n" + "".join(lines[data_start_idx:])
+                df_sar = pd.read_csv(StringIO(csv_content), sep=";")
+            else:
+                df_sar = pd.read_csv(sar_csv_path, sep=";")
+
             log.info(f"Successfully loaded sar data from {sar_csv_path.name}.")
 
-            df_sar.columns = [col.replace("%", "pct_").replace("/s", "_per_s") for col in df_sar.columns]
             if "CPU" in df_sar.columns:
                 df_sar["CPU"] = df_sar["CPU"].astype(str)
                 df_sar.loc[df_sar["CPU"] == "-1", "CPU"] = "all"
@@ -69,7 +86,7 @@ def generate_report(level_dir: Path, report_path: Path):
 
     results_sar = {"cpu": df_sar} if not df_sar.empty else {}
 
-    if not df_sar.empty:
+    if not df_sar.empty and "CPU" in df_sar.columns:
         df_sar = df_sar[df_sar["CPU"] == "all"].copy()
 
     df_perf = pd.DataFrame()
@@ -106,19 +123,13 @@ def generate_report(level_dir: Path, report_path: Path):
             on="relative_seconds",
             direction="backward",
         )
-        if "timestamp_y" in merged_df.columns:
-            merged_df.rename(columns={"timestamp_x": "sar_timestamp", "timestamp_y": "perf_timestamp"}, inplace=True)
-        else:
-            merged_df.rename(columns={"timestamp": "sar_timestamp"}, inplace=True)
 
     elif not df_sar.empty:
         log.info("Only SAR data available. Using it as the primary timeseries data.")
         merged_df = df_sar
-        merged_df.rename(columns={"timestamp": "sar_timestamp"}, inplace=True)
     elif not df_perf.empty:
         log.info("Only Perf data available. Using it as the primary timeseries data.")
         merged_df = df_perf
-        merged_df.rename(columns={"timestamp": "perf_timestamp"}, inplace=True)
     else:
         log.warning("No time-series data available to generate plots or tables.")
 
@@ -139,7 +150,10 @@ def generate_report(level_dir: Path, report_path: Path):
             col for col in merged_df.columns if pd.api.types.is_numeric_dtype(merged_df[col]) and "timestamp" not in col
         ]
         if columns_to_plot:
-            timestamp_col = next((c for c in ["timestamp_x", "timestamp"] if c in merged_df.columns), None)
+            timestamp_col = next(
+                (c for c in ["timestamp", "timestamp_x"] if c in merged_df.columns),
+                None,
+            )
             if timestamp_col:
                 fig = px.line(
                     merged_df,
@@ -155,7 +169,8 @@ def generate_report(level_dir: Path, report_path: Path):
         table_json_data = df_for_table.to_json(orient="records")
 
     log.info(f"Generating HTML report at: {report_path}")
-    env = Environment(loader=FileSystemLoader("src/templates"))
+    templates_dir = get_project_root() / "src/templates"
+    env = Environment(loader=FileSystemLoader(str(templates_dir)))
     env.filters["markdown"] = lambda text: md.render(text)
 
     template = env.get_template("report_template.html")
