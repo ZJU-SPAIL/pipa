@@ -191,7 +191,7 @@ def stop_sar(
         proc.communicate()
 
     log.info("Sar process finished. Converting binary output to CSV...")
-    sadf_command = f"sadf -d -- {shlex.quote(output_bin_file)}"
+    sadf_command = f"sadf -P ALL -d -- {shlex.quote(output_bin_file)}"
     try:
         csv_output = run_command(sadf_command)
         with open(output_csv_file, "w") as f:

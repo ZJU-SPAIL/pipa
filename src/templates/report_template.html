@@ -97,6 +97,101 @@
         color: #c04040;
       }
 
+      /* Per-Core Filter Styling */
+      .per-core-filter-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
+        border: 1px solid #e0e0e0;
+        border-bottom: 2px solid #e25050;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      .per-core-filter-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 10px 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .per-core-filter-title::before {
+        content: "⚙️";
+        margin-right: 8px;
+      }
+
+      .per-core-filter-controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .filter-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .filter-group label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+        white-space: nowrap;
+      }
+
+      .filter-group input,
+      .filter-group select {
+        padding: 6px 10px;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        font-size: 12px;
+        background-color: white;
+        transition: border-color 0.2s;
+      }
+
+      .filter-group input:focus,
+      .filter-group select:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 4px rgba(226, 80, 80, 0.2);
+      }
+
+      .filter-button {
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+
+      .filter-button-apply {
+        background-color: #e25050;
+        color: white;
+      }
+
+      .filter-button-apply:hover {
+        background-color: #d63f3f;
+        box-shadow: 0 2px 6px rgba(226, 80, 80, 0.3);
+      }
+
+      .filter-button-reset {
+        background-color: #bbb;
+        color: white;
+      }
+
+      .filter-button-reset:hover {
+        background-color: #aaa;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      }
+
       .tree ul {
         padding-top: 20px;
         position: relative;
@@ -258,7 +353,47 @@
       <h2>Time-Series Visualizations</h2>
       {% for name, plot_div in plots.items() %}
       <div class="plot-container" id="plot-{{ name }}">
-        {{ plot_div | safe }}
+        {% if name == 'sar_per_core' %}
+        <!-- Per-Core CPU Filter Controls -->
+        <div class="per-core-filter-container">
+          <div class="per-core-filter-title">Per-Core CPU Filter</div>
+          <div class="per-core-filter-controls">
+            <div class="filter-group">
+              <label for="cpu-filter-input">CPU Cores:</label>
+              <input
+                type="text"
+                id="cpu-filter-input"
+                placeholder="e.g., 0,1,2"
+                title="Enter CPU core numbers separated by commas"
+              />
+            </div>
+
+            <div class="filter-group">
+              <label for="metric-filter-select">Metrics:</label>
+              <select id="metric-filter-select">
+                <option value="">All</option>
+                <option value="%user">%user</option>
+                <option value="%system">%system</option>
+                <option value="%total">%total</option>
+                <option value="%user,%system">%user + %system</option>
+              </select>
+            </div>
+
+            <button
+              onclick="applyPerCoreFilter('plot-{{ name }}')"
+              class="filter-button filter-button-apply"
+            >
+              Apply
+            </button>
+            <button
+              onclick="resetPerCoreFilter('plot-{{ name }}')"
+              class="filter-button filter-button-reset"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+        {% endif %} {{ plot_div | safe }}
       </div>
       {% else %}
       <p>No time-series data available to generate plots.</p>
@@ -333,6 +468,80 @@
 
       // Open the first tab by default
       document.querySelector(".tab-button").click();
+
+      // --- Per-Core CPU Filter Logic ---
+      function applyPerCoreFilter(containerId) {
+          const cpuInput = document.getElementById('cpu-filter-input').value.trim();
+          const metricSelect = document.getElementById('metric-filter-select').value;
+
+          // Parse CPU input
+          let selectedCPUs = [];
+          if (cpuInput) {
+              selectedCPUs = cpuInput.split(',').map(s => s.trim()).filter(s => s);
+          }
+
+          // Parse metrics
+          let selectedMetrics = [];
+          if (metricSelect === '%user') {
+              selectedMetrics = ['%user'];
+          } else if (metricSelect === '%system') {
+              selectedMetrics = ['%system'];
+          } else if (metricSelect === '%total') {
+              selectedMetrics = ['%total'];
+          } else if (metricSelect === '%user,%system') {
+              selectedMetrics = ['%user', '%system'];
+          } else {
+              selectedMetrics = ['%user', '%system', '%total'];
+          }
+
+          // Find the plotly graph container
+          const container = document.getElementById(containerId);
+          const plotDiv = container.querySelector('.plotly-graph-div');
+
+          if (!plotDiv || !plotDiv.data) {
+              alert('Chart data not found');
+              return;
+          }
+
+          // Generate visibility array based on filter
+          const visibility = plotDiv.data.map(function(trace, index) {
+              if (!trace.legendgroup) return true;
+
+              // Extract CPU and metric from trace name (format: "CPU - %metric")
+              const parts = trace.legendgroup.split(' - ');
+              if (parts.length !== 2) return true;
+
+              const traceCPU = parts[0];
+              const traceMetric = parts[1];
+
+              // Check if this trace matches filters
+              const cpuMatches = selectedCPUs.length === 0 || selectedCPUs.includes(traceCPU);
+              const metricMatches = selectedMetrics.length === 0 || selectedMetrics.includes(traceMetric);
+
+              return cpuMatches && metricMatches;
+          });
+
+          // Apply visibility
+          Plotly.restyle(plotDiv, {visible: visibility});
+      }
+
+      function resetPerCoreFilter(containerId) {
+          document.getElementById('cpu-filter-input').value = '';
+          document.getElementById('metric-filter-select').value = '';
+
+          // Find the plotly graph container
+          const container = document.getElementById(containerId);
+          const plotDiv = container.querySelector('.plotly-graph-div');
+
+          if (!plotDiv || !plotDiv.data) {
+              alert('Chart data not found');
+              return;
+          }
+
+          // Show all traces
+          const visibility = plotDiv.data.map(() => true);
+          Plotly.restyle(plotDiv, {visible: visibility});
+      }
     </script>
   </body>
 </html>
