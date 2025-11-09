@@ -1,6 +1,9 @@
 import logging
+import os
 import re
 import subprocess
+from pathlib import Path
+from typing import Any, Dict
 
 import yaml
 
@@ -15,57 +18,95 @@ class ConfigError(Exception):
     pass
 
 
-def _resolve_shell_commands(node):
+def _resolve_variables_and_commands(config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Recursively traverses a config dict/list and executes shell commands.
-    递归地遍历配置字典/列表，并执行 shell 命令。
+    一个两阶段的解析器：
+    1. 解析顶层的 'variables' 块，支持顺序依赖和 shell 命令。
+    2. 遍历配置的其余部分，替换 ${variable} 和 $(shell_command)。
+
+    这个设计灵感来自 Dockerfile 的 ARG/ENV 机制，实现了真正的"配置即代码"。
     """
-    if isinstance(node, dict):
-        for key, value in node.items():
-            node[key] = _resolve_shell_commands(value)
-    elif isinstance(node, list):
-        for i, item in enumerate(node):
-            node[i] = _resolve_shell_commands(item)
-    elif isinstance(node, str) and node.startswith("$(") and node.endswith(")"):
-        command = node[2:-1]
-        try:
-            result = subprocess.check_output(command, shell=True, text=True).strip()
+    resolved_vars: Dict[str, Any] = {}
+    variable_definitions = config.get("variables", [])
+
+    for var_def in variable_definitions:
+        if not isinstance(var_def, dict) or len(var_def) != 1:
+            continue
+        var_name, raw_value = list(var_def.items())[0]
+
+        if not isinstance(raw_value, str):
+            resolved_vars[var_name] = raw_value
+            continue
+
+        for res_name, res_value in resolved_vars.items():
+            raw_value = raw_value.replace(f"${{{res_name}}}", str(res_value))
+
+        if "$(" in raw_value:
+            command = f'echo "{raw_value}"'
             try:
-                return int(result)
-            except ValueError:
+                result = subprocess.check_output(command, shell=True, text=True).strip()
+                resolved_vars[var_name] = result
+                log.debug(f"变量 '{var_name}' 解析为: {result}")
+            except subprocess.CalledProcessError as e:
+                raise ConfigError(f"变量 '{var_name}' 的 shell 命令执行失败: {raw_value}\n错误: {e}")
+        else:
+            resolved_vars[var_name] = raw_value
+            log.debug(f"变量 '{var_name}' 设置为: {raw_value}")
+
+    if resolved_vars:
+        log.info(f"成功解析 {len(resolved_vars)} 个配置变量")
+
+    def _traverse_and_resolve(node: Any) -> Any:
+        if isinstance(node, dict):
+            return {k: _traverse_and_resolve(v) for k, v in node.items()}
+        elif isinstance(node, list):
+            return [_traverse_and_resolve(item) for item in node]
+        elif isinstance(node, str):
+            for name, value in resolved_vars.items():
+                node = node.replace(f"${{{name}}}", str(value))
+
+            node = os.path.expandvars(node)
+
+            if "$(" in node:
+                command = f'echo "{node}"'
                 try:
-                    return float(result)
-                except ValueError:
-                    return result
-        except subprocess.CalledProcessError:
-            raise ConfigError(f"Failed to execute shell command in config: {node}")
-    return node
+                    return subprocess.check_output(command, shell=True, text=True).strip()
+                except subprocess.CalledProcessError as e:
+                    raise ConfigError(f"配置中的 shell 命令执行失败: {node}\n错误: {e}")
+        return node
+
+    return _traverse_and_resolve(config)
 
 
-def load_workload_config(workload_name: str) -> dict:
+def load_workload_config(workload_specifier: str) -> dict:
     """
-    Loads and validates the YAML configuration for a given workload.
-    为一个给定的工作负载加载并验证 YAML 配置。
-
-    :param workload_name: The name of the workload (e.g., "mysql").
-    :return: A dictionary containing the workload configuration.
-    :raises ConfigError: If the config file is not found or invalid.
+    加载并验证指定工作负载的 YAML 配置。
+    'workload_specifier' 可以是一个名字（在 config/workloads/ 中查找），
+    也可以是一个直接指向 .yaml 文件的路径。
     """
     project_root = get_project_root()
-    config_path = project_root / f"config/workloads/{workload_name}.yaml"
+    potential_path = Path(workload_specifier)
+
+    if potential_path.is_file() and potential_path.suffix in [".yaml", ".yml"]:
+        config_path = potential_path
+        log.info(f"直接从路径加载 workload 配置文件: {config_path}")
+    else:
+        config_path = project_root / f"config/workloads/{workload_specifier}.yaml"
+        log.info(f"在默认目录中查找 workload: {config_path}")
+
     if not config_path.is_file():
-        raise ConfigError(f"Workload configuration file not found at: {config_path}")
+        raise ConfigError(f"Workload 配置文件未找到: {config_path}")
 
     try:
         with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+            raw_config = yaml.safe_load(f)
     except yaml.YAMLError as e:
-        raise ConfigError(f"Error parsing YAML file {config_path}: {e}")
+        raise ConfigError(f"解析 YAML 文件 {config_path} 出错: {e}")
 
-    resolved_config = _resolve_shell_commands(config)
+    resolved_config = _resolve_variables_and_commands(raw_config)
 
     if not isinstance(resolved_config, dict):
-        raise ConfigError("Top level of a workload config must be a dictionary.")
+        raise ConfigError("Workload 配置的顶层必须是一个字典。")
 
     return resolved_config
 

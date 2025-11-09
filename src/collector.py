@@ -11,7 +11,6 @@ from .executor import (
     ExecutionError,
     PerfPermissionError,
     run_command,
-    run_in_background,
 )
 
 log = logging.getLogger(__name__)
@@ -112,7 +111,7 @@ def start_perf_stat(
     for group in event_groups:
         if group:
             events_str = ",".join(group)
-            events_flags.append(f"-e {{{events_str}}}")
+            events_flags.append(f"-e '{{{events_str}}}'")
 
     command_parts = [
         "perf",
@@ -122,10 +121,20 @@ def start_perf_stat(
     ]
     if interval is not None:
         command_parts.append(f"-I {interval}")
-    command = " ".join(command_parts)
 
-    log.info(f"Starting background perf stat: {command}")
-    return run_in_background(command)
+    log.info(f"Starting background perf stat: {' '.join(command_parts)}")
+    try:
+        proc = subprocess.Popen(
+            command_parts,
+            shell=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            preexec_fn=os.setsid,
+        )
+        return proc
+    except FileNotFoundError:
+        raise ExecutionError("Command not found: perf")
 
 
 # 修改 stop_perf_stat 函数的签名和实现

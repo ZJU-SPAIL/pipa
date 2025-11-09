@@ -10,8 +10,9 @@ commands:
 
 # --- Benchmark Driver Definition ---
 benchmark_driver:
-  # 我们的“强度”就是 CPU worker 的数量 (--cpu)
-  command_template: "stress-ng --cpu {intensity} --timeout 300s" # 压测时间要足够长
+  # 我们的"强度"就是 CPU worker 的数量 (--cpu)
+  # 不设置 --timeout，让进程一直运行，由 calibrate.py 通过 SIGTERM 控制
+  command_template: "stress-ng --cpu {intensity} --timeout 0"
 
   intensity_variable:
     name: "cpu-workers"
