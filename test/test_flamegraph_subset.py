@@ -5,7 +5,11 @@ import os
 
 from pipa.analysis.flamegraph.io import parse_folded_file
 from pipa.analysis.flamegraph.analyzer import FoldedAnalyzer
-from pipa.analysis.flamegraph.api import subset_mapping_by_symbol, analyzer_from_symbol_subset, filter_stacks_by_prefixes
+from pipa.analysis.flamegraph.api import (
+    subset_mapping_by_symbol,
+    analyzer_from_symbol_subset,
+    filter_stacks_by_prefixes,
+)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
@@ -27,4 +31,7 @@ def test_filter_stacks_by_prefixes():
     # All returned stacks must contain at least one of the prefixes in frames
     for s in filtered:
         frames = s.stack.split(";")[1:]
-        assert any(any(f.startswith(p) for p in ("__x64_sys_", "vfs_", "ext4_")) for f in frames)
+        assert any(
+            any(f.startswith(p) for p in ("__x64_sys_", "vfs_", "ext4_"))
+            for f in frames
+        )

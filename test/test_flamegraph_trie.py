@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import os
-import json
-from typing import Dict
 
 from pipa.analysis.flamegraph.io import parse_folded_file
 from pipa.analysis.flamegraph.trie import (
@@ -29,7 +27,10 @@ def test_build_trie_from_collapsed_and_paths():
     assert len(paths) > 0
     # to_path_stats returns strings joined by ';' and valid percentages
     stats = trie.to_path_stats()
-    assert all(isinstance(p, str) and isinstance(c, int) and isinstance(pct, float) for p, c, pct in stats)
+    assert all(
+        isinstance(p, str) and isinstance(c, int) and isinstance(pct, float)
+        for p, c, pct in stats
+    )
     assert all(0.0 <= pct <= 100.0 for _, _, pct in stats)
 
 
@@ -74,7 +75,7 @@ def test_export_sorted_tree_ordering_and_k_depth():
         # children should be sorted by count desc
         ch = forest[0].get("children", [])
         for i in range(1, len(ch)):
-            assert ch[i-1]["count"] >= ch[i]["count"]
+            assert ch[i - 1]["count"] >= ch[i]["count"]
     # export from a specific symbol with depth limit 1
     any_stack = next(iter(parse_folded_file(SMALL_FOLDED).keys()))
     frames = any_stack.split(";")
@@ -86,4 +87,6 @@ def test_export_sorted_tree_ordering_and_k_depth():
         for node in sub:
             for child in node.get("children", []):
                 # grandchildren should be absent when k=1
-                assert not child.get("children", []) or isinstance(child.get("children"), list)
+                assert not child.get("children", []) or isinstance(
+                    child.get("children"), list
+                )

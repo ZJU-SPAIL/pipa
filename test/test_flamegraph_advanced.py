@@ -109,7 +109,10 @@ def test_to_shares_and_csv_with_pct(tmp_path):
     stack_shares = an.to_stack_shares(stack_stats)
 
     # values in [0,100]
-    assert all(0.0 <= s.inclusive_pct <= 100.0 and 0.0 <= s.leaf_pct <= 100.0 for s in sym_shares)
+    assert all(
+        0.0 <= s.inclusive_pct <= 100.0 and 0.0 <= s.leaf_pct <= 100.0
+        for s in sym_shares
+    )
     assert all(0.0 <= s.weight_pct <= 100.0 for s in stack_shares)
 
     sym_csv = tmp_path / "sym_pct.csv"

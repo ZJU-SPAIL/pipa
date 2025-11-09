@@ -39,7 +39,9 @@ def main() -> None:
 
     # In dataset, "log_flusher" is a symbol inside stacks (not a process name).
     subset: Dict[str, int] = {
-        k: w for k, w in stacks.items() if any(part == "log_flusher" for part in k.split(";")[1:])
+        k: w
+        for k, w in stacks.items()
+        if any(part == "log_flusher" for part in k.split(";")[1:])
     }
     if not subset:
         subset = {k: w for k, w in stacks.items() if "log_flusher" in k}
@@ -53,8 +55,16 @@ def main() -> None:
     lock_filter = SymbolFilter(include_prefixes=LOCK_PREFIXES)
     lock_syms = sub_an.topk_symbols(k=100, filters=lock_filter)
 
-    write_symbol_stats_csv(os.path.join(OUT_DIR, "log_flusher_io_hotspots.csv"), io_syms, total=sub_an.total_weight)
-    write_symbol_stats_csv(os.path.join(OUT_DIR, "log_flusher_lock_hotspots.csv"), lock_syms, total=sub_an.total_weight)
+    write_symbol_stats_csv(
+        os.path.join(OUT_DIR, "log_flusher_io_hotspots.csv"),
+        io_syms,
+        total=sub_an.total_weight,
+    )
+    write_symbol_stats_csv(
+        os.path.join(OUT_DIR, "log_flusher_lock_hotspots.csv"),
+        lock_syms,
+        total=sub_an.total_weight,
+    )
 
     # Capture hot callchains related to IO and locks, within the subset
     top_stacks = sub_an.topk_stacks(2000)
@@ -66,8 +76,16 @@ def main() -> None:
     io_stacks = [s for s in top_stacks if keep_stack(IO_PREFIXES, s.stack)]
     lock_stacks = [s for s in top_stacks if keep_stack(LOCK_PREFIXES, s.stack)]
 
-    write_stack_stats_csv(os.path.join(OUT_DIR, "log_flusher_io_stacks.csv"), io_stacks, total=sub_an.total_weight)
-    write_stack_stats_csv(os.path.join(OUT_DIR, "log_flusher_lock_stacks.csv"), lock_stacks, total=sub_an.total_weight)
+    write_stack_stats_csv(
+        os.path.join(OUT_DIR, "log_flusher_io_stacks.csv"),
+        io_stacks,
+        total=sub_an.total_weight,
+    )
+    write_stack_stats_csv(
+        os.path.join(OUT_DIR, "log_flusher_lock_stacks.csv"),
+        lock_stacks,
+        total=sub_an.total_weight,
+    )
 
     # ---- Trie-based: path stats and sorted subtrees for log_flusher ----
     if subset:
@@ -79,7 +97,11 @@ def main() -> None:
                 f.write(f"{path},{cnt},{pct:.2f}%\n")
         # pick a symbol to expand: prefer 'log_flusher' itself if present
         subtree = trie.export_sorted_tree(start_symbol="log_flusher", fuzzy=True, k=3)
-        with open(os.path.join(OUT_DIR, "log_flusher_trie_subtree.json"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(OUT_DIR, "log_flusher_trie_subtree.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(subtree, f, ensure_ascii=False, indent=2)
 
         # ---- Heuristics for potential redundant flush/syscalls ----
@@ -112,8 +134,13 @@ def main() -> None:
             "weight_fdatasync_pct": round(weight_fdatasync * 100.0 / total, 2),
             "weight_both_pct": round(weight_both * 100.0 / total, 2),
         }
-        with open(os.path.join(OUT_DIR, "log_flusher_fsync_summary.json"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(OUT_DIR, "log_flusher_fsync_summary.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(summary, f, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     main()
