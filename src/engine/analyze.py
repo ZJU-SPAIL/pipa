@@ -99,13 +99,11 @@ def generate_report(level_dir: Path, report_path: Path):
 
     df_perf = pd.DataFrame()
     if not df_perf_raw.empty:
-        df_perf = pd.DataFrame()
-    if not df_perf_raw.empty:
         df_perf = df_perf_raw.pivot_table(
             index=["timestamp", "cpu"], columns="event_name", values="value"
         ).reset_index()
 
-    all_dataframes = {"perf": df_perf, **results_sar}
+    all_dataframes = {"perf_raw": df_perf_raw, "perf": df_perf, **results_sar}
     project_root = get_project_root()
     rules_path = project_root / "config/rules/decision_tree.yaml"
     rules, rule_configs = load_rules(rules_path)
