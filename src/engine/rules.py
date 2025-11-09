@@ -58,43 +58,42 @@ def _format_rule_to_html_list(
     df_dict: Dict[str, pd.DataFrame],
     context: Dict[str, Any],
     md: MarkdownIt,
+    parent_is_active: bool = True,
 ) -> tuple[str, str]:
     """
     递归地将节点转换为HTML <li>，并单独返回其finding HTML。
-    返回 (li_html_string, finding_html_string)。
+    现在会考虑父节点的激活状态。
     """
-    is_active_node = False
+    is_self_condition_met = False
     try:
         if eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context}):
-            is_active_node = True
+            is_self_condition_met = True
     except Exception:
-        is_active_node = False
+        pass
+
+    is_truly_active = parent_is_active and is_self_condition_met
 
     finding_html = ""
-    if is_active_node and (finding_template := rule_node.get("finding")):
+    if is_truly_active and (finding_template := rule_node.get("finding")):
         try:
             formatted_finding = finding_template.format(**context)
             finding_html = f"<div class='finding-box'>{md.render(formatted_finding)}</div>"
         except KeyError as e:
             finding_html = f"<div class='finding-box error'>数据缺失: {e}</div>"
 
-    active_class = "active-node" if is_active_node else ""
+    active_class = "active-node" if is_truly_active else ""
     li_html = f"<li class='{active_class}'><span>{rule_node['name']}</span>"
 
     all_child_findings = []
-    if is_active_node and (sub_rules := rule_node.get("sub_rules")):
+    if sub_rules := rule_node.get("sub_rules"):
         li_html += "<ul>"
         for sub_rule in sub_rules:
-            sub_li_html, sub_finding_html = _format_rule_to_html_list(sub_rule, df_dict, context, md)
+            sub_li_html, sub_finding_html = _format_rule_to_html_list(
+                sub_rule, df_dict, context, md, parent_is_active=is_truly_active
+            )
             li_html += sub_li_html
             if sub_finding_html:
                 all_child_findings.append(sub_finding_html)
-        li_html += "</ul>"
-    elif not is_active_node and (sub_rules := rule_node.get("sub_rules")):
-        li_html += "<ul>"
-        for sub_rule in sub_rules:
-            sub_li_html, _ = _format_rule_to_html_list(sub_rule, df_dict, context, md)
-            li_html += sub_li_html
         li_html += "</ul>"
 
     li_html += "</li>"

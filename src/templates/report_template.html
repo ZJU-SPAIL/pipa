@@ -305,6 +305,48 @@
         padding-left: 20px;
         margin-bottom: 0;
       }
+
+      /* --- Styles for JSON Tree Viewer --- */
+      .json-tree {
+        font-family: monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      }
+      .json-tree ul {
+        list-style-type: none;
+        padding-left: 20px;
+        margin: 0;
+        border-left: 1px dotted #ccc;
+      }
+      .json-tree li {
+        position: relative;
+      }
+      .json-tree .toggler {
+        cursor: pointer;
+        position: absolute;
+        left: -1em;
+        top: 0.1em;
+      }
+      .json-tree .toggler::before {
+        content: "▶";
+        color: #999;
+        transition: transform 0.1s ease-in-out;
+        display: inline-block;
+      }
+      .json-tree .toggler.open::before {
+        transform: rotate(90deg);
+      }
+      .json-tree .key {
+        color: #990055;
+        font-weight: bold;
+      }
+      .json-tree .value {
+        color: #0077aa;
+      }
+      .json-tree .value.string {
+        color: #009933;
+      }
     </style>
   </head>
 
@@ -410,28 +452,103 @@
       {% endfor %}
     </div>
 
-    {% if static_info_str %}
+    {% if static_info_data %}
     <div id="system" class="tab-pane">
       <h2>System Information</h2>
-      <pre><code>{{ static_info_str }}</code></pre>
+      <div id="json-tree-container"></div>
+      <script>
+        // JSON Tree Viewer - Define and call inline
+        function createJsonTreeInline(container, data) {
+          const tree = document.createElement('ul');
+          tree.className = 'json-tree';
+
+          for (const key in data) {
+            const li = document.createElement('li');
+            const keySpan = document.createElement('span');
+            keySpan.className = 'key';
+            keySpan.textContent = `"${key}": `;
+            li.appendChild(keySpan);
+
+            const value = data[key];
+            if (typeof value === 'object' && value !== null) {
+              const toggler = document.createElement('span');
+              toggler.className = 'toggler';
+              toggler.onclick = function() {
+                this.classList.toggle('open');
+                const nestedUl = this.nextElementSibling.nextElementSibling;
+                if (nestedUl) {
+                  nestedUl.style.display = nestedUl.style.display === 'none' ? 'block' : 'none';
+                }
+              };
+              li.insertBefore(toggler, keySpan);
+              li.appendChild(document.createTextNode(Array.isArray(value) ? '[' : '{'));
+
+              const nestedUl = document.createElement('ul');
+              nestedUl.style.display = 'none';
+              nestedUl.className = 'json-tree';
+              for (const nestedKey in value) {
+                const nestedLi = document.createElement('li');
+                const nestedKeySpan = document.createElement('span');
+                nestedKeySpan.className = 'key';
+                nestedKeySpan.textContent = `"${nestedKey}": `;
+                nestedLi.appendChild(nestedKeySpan);
+
+                const nestedValue = value[nestedKey];
+                if (typeof nestedValue === 'object' && nestedValue !== null) {
+                  nestedLi.appendChild(document.createTextNode(Array.isArray(nestedValue) ? '[...]' : '{...}'));
+                } else {
+                  const valueSpan = document.createElement('span');
+                  valueSpan.className = 'value ' + (typeof nestedValue === 'string' ? 'string' : '');
+                  valueSpan.textContent = JSON.stringify(nestedValue);
+                  nestedLi.appendChild(valueSpan);
+                }
+                nestedUl.appendChild(nestedLi);
+              }
+              li.appendChild(nestedUl);
+              li.appendChild(document.createTextNode(Array.isArray(value) ? ']' : '}'));
+            } else {
+              const valueSpan = document.createElement('span');
+              valueSpan.className = 'value ' + (typeof value === 'string' ? 'string' : '');
+              valueSpan.textContent = JSON.stringify(value);
+              li.appendChild(valueSpan);
+            }
+            tree.appendChild(li);
+          }
+          container.appendChild(tree);
+        }
+
+        const staticInfoData = {{ static_info_data | tojson | safe }};
+        createJsonTreeInline(document.getElementById('json-tree-container'), staticInfoData);
+      </script>
     </div>
     {% endif %}
 
     <script>
-      // --- Tabulator Table Initialization ---
+      // --- Tabulator Table Initialization (v2 - Polished) ---
       const tablesJsonData = {{ tables_json | tojson | safe }};
       for (const [name, jsonData] of Object.entries(tablesJsonData)) {
           const tableData = JSON.parse(jsonData);
           let columns = [];
           if (tableData.length > 0) {
               columns = Object.keys(tableData[0]).map(function (key) {
-                  return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+                  const columnDef = { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+
+                  // --- 核心修复 #2: 为 CPU 列启用精确匹配 ---
+                  if (key.toUpperCase() === 'CPU') {
+                      columnDef.headerFilterFunc = "=";
+                      columnDef.headerFilterPlaceholder = "Exact match (e.g., 0)";
+                  }
+                  // --- 修复结束 ---
+
+                  return columnDef;
               });
           }
           new Tabulator(`#table-${name}`, {
               data: tableData,
               columns: columns,
-              layout: "fitData",
+              // --- 核心修复 #1: 让表格自动填满宽度 ---
+              layout: "fitColumns",
+              // --- 修复结束 ---
               pagination: "local",
               paginationSize: 15,
               paginationSizeSelector: [10, 15, 25, 50, 100],
@@ -541,6 +658,50 @@
           // Show all traces
           const visibility = plotDiv.data.map(() => true);
           Plotly.restyle(plotDiv, {visible: visibility});
+      }
+
+      // --- JSON Tree Viewer Logic (Fixed) ---
+      function createJsonTree(container, data, isRoot = true) {
+        const tree = document.createElement('ul');
+        tree.className = 'json-tree';
+
+        for (const key in data) {
+          const li = document.createElement('li');
+          const keySpan = document.createElement('span');
+          keySpan.className = 'key';
+          keySpan.textContent = `"${key}": `;
+          li.appendChild(keySpan);
+
+          const value = data[key];
+          if (typeof value === 'object' && value !== null) {
+            const toggler = document.createElement('span');
+            toggler.className = 'toggler';
+            toggler.onclick = function() {
+              this.classList.toggle('open');
+              const nestedUl = this.nextElementSibling.nextElementSibling;
+              nestedUl.style.display = nestedUl.style.display === 'none' ? 'block' : 'none';
+            };
+            li.insertBefore(toggler, keySpan);
+            li.appendChild(document.createTextNode(Array.isArray(value) ? '[' : '{'));
+
+            const nestedUl = document.createElement('ul');
+            nestedUl.style.display = 'none'; // Initially collapsed
+            createJsonTree(nestedUl, value, false); // Pass nestedUl as container
+            li.appendChild(nestedUl);
+            li.appendChild(document.createTextNode(Array.isArray(value) ? ']' : '}'));
+          } else {
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'value ' + (typeof value === 'string' ? 'string' : '');
+            valueSpan.textContent = JSON.stringify(value);
+            li.appendChild(valueSpan);
+          }
+          tree.appendChild(li);
+        }
+
+        // Append to container
+        container.appendChild(tree);
+
+        return tree;
       }
     </script>
   </body>

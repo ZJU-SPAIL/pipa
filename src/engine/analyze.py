@@ -142,6 +142,7 @@ def generate_report(level_dir: Path, report_path: Path):
         tables["sar_cpu"] = df_sar_all_cpu.round(2).to_json(orient="records")
 
     if not df_sar_per_core.empty:
+        tables["sar_cpu_per_core"] = df_sar_per_core.round(2).to_json(orient="records")
         log.info("Generating plot for Per-Core SAR data...")
 
         df_sar_per_core_plot = df_sar_per_core.copy()
@@ -233,6 +234,7 @@ def generate_report(level_dir: Path, report_path: Path):
         decision_tree_html=decision_tree_html,
         findings_for_tree_html=findings_for_tree_html,
         static_info_str=static_info_str,
+        static_info_data=static_info_data,
     )
     with open(report_path, "w") as f:
         f.write(html_content)
