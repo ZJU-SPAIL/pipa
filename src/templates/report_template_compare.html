@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PIPA Comparison Report</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2em auto;
+        max-width: 1600px;
+      }
+      h1,
+      h2 {
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+      }
+      .grid-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2em;
+      }
+      .metric-table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      .metric-table th,
+      .metric-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      .metric-table th {
+        background-color: #f2f2f2;
+      }
+      .plot-container {
+        width: 100%;
+        grid-column: 1 / -1;
+        margin-top: 2em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PIPA Performance Comparison Report</h1>
+
+    <h2>Key Metrics Summary</h2>
+    <div class="grid-container">
+      <div>
+        <h3>Baseline (A): {{ input_a_name }}</h3>
+        <table class="metric-table">
+          {{ summary_table_a | safe }}
+        </table>
+      </div>
+      <div>
+        <h3>Target (B): {{ input_b_name }}</h3>
+        <table class="metric-table">
+          {{ summary_table_b | safe }}
+        </table>
+      </div>
+    </div>
+
+    <h2>Time-Series Visualizations</h2>
+    {% for name, plot_div in plots.items() %}
+    <div class="plot-container">{{ plot_div | safe }}</div>
+    {% else %}
+    <p>No time-series data available for comparison plots.</p>
+    {% endfor %}
+  </body>
+</html>
