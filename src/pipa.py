@@ -1,7 +1,6 @@
 import click
 
 from .commands.analyze import analyze
-from .commands.calibrate import calibrate
 from .commands.sample import sample
 from .logger_setup import setup_logging
 
@@ -21,7 +20,6 @@ def cli(verbose: int):
     setup_logging(verbose)
 
 
-cli.add_command(calibrate)
 cli.add_command(sample)
 cli.add_command(analyze)
 
