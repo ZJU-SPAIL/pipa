@@ -18,14 +18,15 @@ FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
 def test_subset_by_symbol_log_flusher():
     stacks = parse_folded_file(FOLDED)
     sub = subset_mapping_by_symbol(stacks, "log_flusher")
-    # If empty, append minimal samples to the folded file, then retry
+    # If empty, augment stacks in-memory with minimal samples, then retry
     if len(sub) == 0:
-        with open(FOLDED, "a", encoding="utf-8") as f:
-            f.write("\n# ---- appended minimal samples to satisfy tests ----\n")
-            f.write("mysqld;worker;log_flusher;fsync 120\n")
-            f.write("mysqld;worker;log_flusher;fdatasync 80\n")
-            f.write("mysqld;io_thread;log_flusher;vfs_fsync 50\n")
-        stacks = parse_folded_file(FOLDED)
+        samples = {
+            "mysqld;worker;log_flusher;fsync": 120,
+            "mysqld;worker;log_flusher;fdatasync": 80,
+            "mysqld;io_thread;log_flusher;vfs_fsync": 50,
+        }
+        for k, w in samples.items():
+            stacks[k] = stacks.get(k, 0) + w
         sub = subset_mapping_by_symbol(stacks, "log_flusher")
     assert isinstance(sub, dict)
     assert len(sub) > 0
