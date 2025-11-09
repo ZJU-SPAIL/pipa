@@ -1,0 +1,17 @@
+[client]
+socket    = ${MYSQL_SOCKET_PATH}
+port    = ${MYSQL_PORT}
+
+[mysqld]
+user    = $(whoami)
+port    = ${MYSQL_PORT}
+basedir    = ${MYSQL_INSTALL_DIR}
+datadir    = ${MYSQL_DATA_DIR}
+socket    = ${MYSQL_SOCKET_PATH}
+pid-file = ${MYSQL_PID_PATH}
+log-error = ${MYSQL_LOGS_DIR}/error.log
+bind-address = 127.0.0.1
+innodb_buffer_pool_size=1G
+innodb_log_file_size=256M
+max_connections = 1024
+max_prepared_stmt_count = 1000000

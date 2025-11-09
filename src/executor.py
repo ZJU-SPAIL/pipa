@@ -64,23 +64,24 @@ def run_command(command: str, timeout: Optional[int] = None, env: Optional[Dict[
         raise ExecutionError(error_message)
 
 
+# 在 run_in_background() 函数中，找到 subprocess.Popen 的调用
+#
+# 将其修改为：
 def run_in_background(command: str) -> subprocess.Popen:
     """
     Executes a shell command in the background.
     在后台执行一个 shell 命令。
-
-    :param command: The command string to execute.
-    :return: A Popen object representing the running process.
-    :raises ExecutionError: If the command fails to start.
     """
     log.info(f"Executing background command: {command}")
     try:
         process = subprocess.Popen(
-            shlex.split(command),
+            command,
+            shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
+            preexec_fn=os.setsid,
         )
         return process
     except FileNotFoundError:
-        raise ExecutionError(f"Command not found: {shlex.split(command)[0]}")
+        raise ExecutionError(f"Command not found via shell: {command}")

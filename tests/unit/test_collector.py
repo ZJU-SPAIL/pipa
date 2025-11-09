@@ -109,17 +109,20 @@ def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call
     Tests that the perf stat command is constructed correctly for all modes
     by the new start_perf_stat function.
     """
-    called_command = []
+    called_command_list = []
 
-    def mock_run_in_background(command):
-        called_command.append(command)
+    def mock_popen(command_list, **kwargs):
+        called_command_list.append(command_list)
 
         class MockPopen:
-            pass
+            pid = 123
+
+            def poll(self):
+                return None
 
         return MockPopen()
 
-    monkeypatch.setattr("src.collector.run_in_background", mock_run_in_background)
+    monkeypatch.setattr("src.collector.subprocess.Popen", mock_popen)
 
     base_args = {
         "output_file": "/tmp/perf.txt",
@@ -127,13 +130,13 @@ def test_start_perf_stat_command_construction(monkeypatch, mode, kwargs_for_call
     }
     start_perf_stat(mode=mode, **base_args, **kwargs_for_call)
 
-    assert len(called_command) == 1
-    final_command = called_command[0]
+    assert len(called_command_list) == 1
+    final_command = " ".join(called_command_list[0])
 
     assert "perf stat" in final_command
     assert expected_flag_part in final_command
     assert "--append" not in final_command
-    assert "-e {cycles}" in final_command
+    assert "-e '{cycles}'" in final_command
     assert "sleep" not in final_command
 
 
