@@ -85,8 +85,15 @@ def generate_report(level_dir: Path, report_path: Path):
 
     results_sar = {"cpu": df_sar} if not df_sar.empty else {}
 
+    df_sar_all_cpu = pd.DataFrame()
+    df_sar_per_core = pd.DataFrame()
+
     if not df_sar.empty and "CPU" in df_sar.columns:
-        df_sar = df_sar[df_sar["CPU"] == "all"].copy()
+        log.debug(f"SAR DataFrame shape: {df_sar.shape}")
+        log.debug(f"SAR CPU unique values: {df_sar['CPU'].unique()}")
+        df_sar_all_cpu = df_sar[df_sar["CPU"] == "all"].copy()
+        df_sar_per_core = df_sar[df_sar["CPU"] != "all"].copy()
+        log.debug(f"df_sar_all_cpu shape: {df_sar_all_cpu.shape}, df_sar_per_core shape: {df_sar_per_core.shape}")
 
     df_perf = pd.DataFrame()
     if not df_perf_raw.empty:
@@ -109,21 +116,104 @@ def generate_report(level_dir: Path, report_path: Path):
     tables = {}
     md = MarkdownIt()
 
-    if not df_sar.empty:
-        log.info("Generating plot and table for SAR data...")
-        sar_cols_to_plot = [col for col in df_sar.columns if col not in ["hostname", "CPU", "timestamp"]]
-        if "timestamp" in df_sar.columns and sar_cols_to_plot:
-            fig_sar = px.line(df_sar, x="timestamp", y=sar_cols_to_plot, title="SAR CPU Metrics")
-            fig_sar.update_layout(autosize=True, height=500, legend_itemclick="toggleothers")
-            plots["sar_cpu"] = fig_sar.to_html(full_html=False, include_plotlyjs="cdn")
-        tables["sar_cpu"] = df_sar.round(2).to_json(orient="records")
+    if not df_sar_all_cpu.empty:
+        log.info("Generating plot and table for SAR (all-cpu) data...")
+
+        id_vars = ["timestamp", "hostname", "CPU"]
+        value_vars = [col for col in df_sar_all_cpu.columns if col not in id_vars]
+
+        df_sar_all_cpu_long = df_sar_all_cpu.melt(
+            id_vars=id_vars, value_vars=value_vars, var_name="metric", value_name="value"
+        )
+
+        if "timestamp" in df_sar_all_cpu_long.columns:
+            fig_sar = px.line(
+                df_sar_all_cpu_long,
+                x="timestamp",
+                y="value",
+                color="metric",
+                title="SAR CPU Metrics (Overall)",
+            )
+            fig_sar.update_layout(autosize=True, height=500, legend_itemclick="toggle")
+            plots["sar_cpu_all"] = fig_sar.to_html(full_html=False, include_plotlyjs="cdn")
+
+        tables["sar_cpu"] = df_sar_all_cpu.round(2).to_json(orient="records")
+
+    if not df_sar_per_core.empty:
+        log.info("Generating plot for Per-Core SAR data...")
+
+        df_sar_per_core_plot = df_sar_per_core.copy()
+        df_sar_per_core_plot["%total"] = df_sar_per_core_plot["%user"] + df_sar_per_core_plot["%system"]
+
+        id_vars = ["timestamp", "hostname", "CPU"]
+        value_vars = ["%user", "%system", "%total"]
+        df_sar_per_core_long = df_sar_per_core_plot.melt(
+            id_vars=id_vars, value_vars=value_vars, var_name="metric", value_name="value"
+        )
+
+        df_sar_per_core_long["CPU_Metric"] = (
+            df_sar_per_core_long["CPU"].astype(str) + " - " + df_sar_per_core_long["metric"]
+        )
+
+        fig_sar_per_core = px.line(
+            df_sar_per_core_long,
+            x="timestamp",
+            y="value",
+            color="CPU_Metric",
+            title="Per-Core CPU Utilization (%)",
+            labels={"value": "Utilization (%)"},
+        )
+
+        all_traces = df_sar_per_core_long["CPU_Metric"].unique().tolist()
+        user_traces = [t for t in all_traces if "%user" in t]
+        system_traces = [t for t in all_traces if "%system" in t]
+        total_traces = [t for t in all_traces if "%total" in t]
+
+        fig_sar_per_core.update_layout(
+            autosize=True,
+            height=500,
+            legend_title_text="CPU Core - Metric",
+            updatemenus=[
+                dict(
+                    buttons=list(
+                        [
+                            dict(args=[{"visible": [True] * len(all_traces)}], label="Show All", method="update"),
+                            dict(args=[{"visible": [False] * len(all_traces)}], label="Hide All", method="update"),
+                            dict(
+                                args=[{"visible": [t in user_traces for t in all_traces]}],
+                                label="Show %user only",
+                                method="update",
+                            ),
+                            dict(
+                                args=[{"visible": [t in system_traces for t in all_traces]}],
+                                label="Show %system only",
+                                method="update",
+                            ),
+                            dict(
+                                args=[{"visible": [t in total_traces for t in all_traces]}],
+                                label="Show %total only",
+                                method="update",
+                            ),
+                        ]
+                    ),
+                    direction="down",
+                    pad={"r": 10, "t": 10},
+                    showactive=True,
+                    x=0.0,
+                    xanchor="left",
+                    y=1.15,
+                    yanchor="top",
+                ),
+            ],
+        )
+        plots["sar_per_core"] = fig_sar_per_core.to_html(full_html=False, include_plotlyjs="cdn")
 
     if not df_perf.empty:
         log.info("Generating plot and table for Perf data...")
         perf_cols_to_plot = [col for col in df_perf.columns if col not in ["timestamp", "cpu"]]
         if "timestamp" in df_perf.columns and perf_cols_to_plot:
             fig_perf = px.line(df_perf, x="timestamp", y=perf_cols_to_plot, title="Perf Micro-Architectural Metrics")
-            fig_perf.update_layout(autosize=True, height=500, legend_itemclick="toggleothers")
+            fig_perf.update_layout(autosize=True, height=500, legend_itemclick="toggle")
             plots["perf_stat"] = fig_perf.to_html(full_html=False, include_plotlyjs="cdn")
         tables["perf_stat"] = df_perf.round(2).to_json(orient="records")
 
