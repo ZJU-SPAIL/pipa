@@ -195,7 +195,9 @@ def start_sar(
     Starts `sar -A` in the background to collect all system activities.
     在后台启动 `sar -A` 以收集所有系统活动。
     """
-
+    if duration < interval:
+        log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
+        return None
     command = f"sar -A {interval}"
 
     log.info(f"Starting background sar: {command}")
