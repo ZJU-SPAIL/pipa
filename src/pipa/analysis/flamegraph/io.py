@@ -19,6 +19,10 @@ def parse_folded_lines(lines: Iterable[str]) -> Dict[str, int]:
     """Parse folded stacks lines into a mapping.
 
     Lines that are empty or malformed are ignored safely.
+    We also skip perf-script metadata or counters that do not resemble folded stacks.
+    Heuristics to skip:
+    - Lines whose key starts with '#' or ':' (metadata/counters)
+    - Lines whose key does not contain ';' (no stack delimiter)
     """
     stacks: Dict[str, int] = {}
     for raw in lines:
@@ -32,9 +36,15 @@ def parse_folded_lines(lines: Iterable[str]) -> Dict[str, int]:
         except ValueError:
             # Malformed line: ignore
             continue
-        # Normalize key: strip trailing/leading spaces
+        # Normalize key
         key = key.strip()
         if not key:
+            continue
+        # Skip metadata/counter lines
+        if key.startswith("#") or key.startswith(":"):
+            continue
+        # Require at least one ';' to ensure there is a process and at least one frame
+        if ";" not in key:
             continue
         stacks[key] = stacks.get(key, 0) + weight
     return stacks

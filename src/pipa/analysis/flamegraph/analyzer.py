@@ -95,6 +95,34 @@ class FoldedAnalyzer:
         self._stacks: Dict[str, int] = dict(stacks)
         self._total_weight: int = sum(self._stacks.values())
 
+    def aggregate_by_dso(self, resolver: Callable[[str], str]) -> List[DSOStat]:
+        """Aggregate symbol costs by resolved DSO name.
+
+        The provided resolver maps a symbol string to its DSO bucket name.
+        We compute both inclusive and leaf costs per DSO.
+        """
+        dso_acc: Dict[str, Tuple[int, int]] = {}
+        for stack, weight in self._stacks.items():
+            frames = stack.split(Separator)
+            if len(frames) < 2:
+                continue
+            syms = frames[1:]
+            leaf_sym = syms[-1]
+            # Inclusive: add weight for every frame's DSO
+            for sym in syms:
+                dso = resolver(sym)
+                inc, leaf = dso_acc.get(dso, (0, 0))
+                inc += weight
+                dso_acc[dso] = (inc, leaf)
+            # Leaf: add weight to leaf frame's DSO
+            leaf_dso = resolver(leaf_sym)
+            inc, leaf = dso_acc.get(leaf_dso, (0, 0))
+            leaf += weight
+            dso_acc[leaf_dso] = (inc, leaf)
+        stats = [DSOStat(dso=d, inclusive=inc, leaf=leaf) for d, (inc, leaf) in dso_acc.items()]
+        stats.sort(key=lambda x: (x.inclusive, x.leaf), reverse=True)
+        return stats
+
     @classmethod
     def from_collapsed(cls, collapsed: Mapping[str, int]) -> "FoldedAnalyzer":
         return cls(dict(collapsed))
