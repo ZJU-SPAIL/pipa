@@ -134,7 +134,7 @@ def test_generate_report_missing_perf_data_file(mock_level_dir, mock_dependencie
 
 
 def test_generate_report_missing_sar_data(mock_level_dir, mock_dependencies, tmp_path):
-    """Test report generation when sar_cpu.csv is missing."""
+    """Test report generation when sar_*.csv files are missing."""
     (mock_level_dir / "perf_stat.txt").write_text("1.000000000;0;cycles;1000000")
 
     report_path = tmp_path / "report.html"
@@ -144,7 +144,7 @@ def test_generate_report_missing_sar_data(mock_level_dir, mock_dependencies, tmp
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
 
-    assert any("sar_cpu.csv" in w for w in warnings)
+    assert any("sar_*.csv" in w or "No sar" in w for w in warnings)
 
 
 def test_generate_report_missing_static_info(mock_level_dir, mock_dependencies, tmp_path):

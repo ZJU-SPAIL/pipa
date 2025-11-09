@@ -4,6 +4,7 @@ import platform
 import shlex
 import signal
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 from .executor import (
@@ -184,12 +185,12 @@ def start_sar(
 def stop_sar(
     proc: subprocess.Popen,
     output_bin_file: str,
-    output_csv_file: str,
+    level_dir: Path,  # <- 新增参数
     timeout: int,
 ) -> None:
     """
-    Waits for sar to finish, then converts its binary output to CSV using sadf.
-    等待 sar 结束，然后使用 sadf 将其二进制输出转换为 CSV。
+    Waits for sar to finish, then uses sadf to convert its binary output
+    into multiple, categorized CSV files.
     """
     log.info(f"Waiting for sar process (PID: {proc.pid}) to complete...")
     try:
@@ -201,17 +202,32 @@ def stop_sar(
         proc.kill()
         proc.communicate()
 
-    log.info("Sar process finished. Converting binary output to CSV...")
-    sadf_command = f"sadf -P ALL -d -- {shlex.quote(output_bin_file)}"
-    try:
-        csv_output = run_command(sadf_command)
-        with open(output_csv_file, "w") as f:
-            f.write(csv_output)
-        log.info(f"Successfully converted sar data to CSV: {output_csv_file}")
-    except (ExecutionError, FileNotFoundError) as e:
-        log.error(f"Failed to convert sar data to CSV using sadf: {e}")
-    except IOError as e:
-        log.error(f"Failed to write sar CSV file to {output_csv_file}: {e}")
+    log.info("Sar process finished. Converting binary output to multiple CSVs...")
+
+    sar_metric_maps = {
+        "cpu": "-d -- -P ALL",
+        "network": "-d -- -n DEV",
+        "io": "-d -- -b",
+        "memory": "-d -- -r",
+        "paging": "-d -- -B",
+        "load": "-d -- -q",
+    }
+
+    for name, options in sar_metric_maps.items():
+        output_csv_file = level_dir / f"sar_{name}.csv"
+        sadf_command = f"sadf {options} -- {shlex.quote(output_bin_file)}"
+        try:
+            csv_output = run_command(sadf_command)
+            if csv_output:
+                with open(output_csv_file, "w") as f:
+                    f.write(csv_output)
+                log.info(f"Successfully converted sar data to CSV: {output_csv_file.name}")
+            else:
+                log.warning(f"sadf command for '{name}' produced no output.")
+        except (ExecutionError, FileNotFoundError) as e:
+            log.error(f"Failed to convert sar '{name}' data to CSV using sadf: {e}")
+        except IOError as e:
+            log.error(f"Failed to write sar CSV file to {output_csv_file}: {e}")
 
 
 def start_perf_record(

@@ -114,14 +114,13 @@ def run_sampling(
             sar_proc = start_sar(
                 duration=duration_stat,
                 interval=sar_interval or 1,
-                output_bin_file=str(level_dir / "sar_cpu.bin"),
+                output_bin_file=str(level_dir / "sar_all.bin"),
             )
             if sar_proc:
                 running_collectors[sar_proc.pid] = {
                     "proc": sar_proc,
                     "name": "sar_cpu",
-                    "output_bin_file": level_dir / "sar_cpu.bin",
-                    "output_csv_file": level_dir / "sar_cpu.csv",
+                    "output_bin_file": level_dir / "sar_all.bin",
                 }
 
             if running_collectors:
@@ -136,7 +135,7 @@ def run_sampling(
                         stop_sar(
                             ctx["proc"],
                             str(ctx["output_bin_file"]),
-                            str(ctx["output_csv_file"]),
+                            level_dir,
                             timeout=duration_stat + 15,
                         )
 
