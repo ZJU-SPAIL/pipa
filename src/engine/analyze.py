@@ -10,7 +10,6 @@ from markdown_it import MarkdownIt
 
 from src.engine.rules import calculate_context_metrics, format_rules_to_html_tree, load_rules, run_rules_engine
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
-from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 from src.utils import get_project_root
 
 log = logging.getLogger(__name__)
@@ -49,24 +48,37 @@ def generate_report(level_dir: Path, report_path: Path):
     except FileNotFoundError:
         analysis_warnings.append("perf_stat.txt not found. Perf-related analysis will be skipped.")
 
-    results_sar = {}
+    df_sar = pd.DataFrame()
     try:
-        sar_content = (level_dir / "sar_cpu.txt").read_text()
-        if sar_content:
-            results_sar = parse_sar_timeseries(sar_content)
-            log.info("Successfully parsed sar_cpu.txt.")
-        else:
-            analysis_warnings.append("sar_cpu.txt is empty.")
-    except FileNotFoundError:
-        analysis_warnings.append("sar_cpu.txt not found. SAR-related analysis will be skipped.")
+        sar_csv_path = level_dir / "sar_cpu.csv"
+        if sar_csv_path.exists() and sar_csv_path.stat().st_size > 0:
+            df_sar = pd.read_csv(sar_csv_path, sep=";", comment="#")
+            log.info(f"Successfully loaded sar data from {sar_csv_path.name}.")
 
-    df_sar = results_sar.get("cpu", pd.DataFrame())
+            df_sar.columns = [col.replace("%", "pct_").replace("/s", "_per_s") for col in df_sar.columns]
+            if "CPU" in df_sar.columns:
+                df_sar["CPU"] = df_sar["CPU"].astype(str)
+                df_sar.loc[df_sar["CPU"] == "-1", "CPU"] = "all"
+
+        else:
+            analysis_warnings.append("sar_cpu.csv not found or is empty.")
+    except Exception as e:
+        warning = f"Failed to read or process sar_cpu.csv: {e}"
+        log.error(warning, exc_info=True)
+        analysis_warnings.append(warning)
+
+    results_sar = {"cpu": df_sar} if not df_sar.empty else {}
+
     if not df_sar.empty:
         df_sar = df_sar[df_sar["CPU"] == "all"].copy()
 
     df_perf = pd.DataFrame()
     if not df_perf_raw.empty:
-        df_perf = df_perf_raw.pivot(index="timestamp", columns="event_name", values="value").reset_index()
+        df_perf = pd.DataFrame()
+    if not df_perf_raw.empty:
+        df_perf = df_perf_raw.pivot_table(
+            index=["timestamp", "cpu"], columns="event_name", values="value"
+        ).reset_index()
 
     merged_df = pd.DataFrame()
     if not df_sar.empty and not df_perf.empty:

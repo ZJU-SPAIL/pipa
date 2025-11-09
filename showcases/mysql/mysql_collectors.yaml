@@ -1,0 +1,13 @@
+# 这是一个用于 pipa sample --collectors-config 的配置文件。
+# 它只定义了在对 MySQL 进行快照时，我们推荐使用的采集器组合。
+collectors:
+  macro:
+    - name: perf_stat
+      enabled: true
+      mode: "pid"
+      all_threads: true
+      interval: 1000
+      events_profile: "cpu_basic"
+    - name: sar_cpu
+      enabled: true
+      interval: 1

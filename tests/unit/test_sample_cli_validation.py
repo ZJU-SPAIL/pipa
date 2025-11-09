@@ -1,8 +1,7 @@
 """
-Unit tests for the sample command CLI parameter validation.
+Unit tests for the simplified, attach-only sample command CLI.
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -11,62 +10,15 @@ from src.commands.sample import sample
 
 
 class TestSampleCLIParameterValidation:
-    """Test the parameter validation logic in the CLI layer."""
+    """Test the parameter validation logic for the attach-only CLI."""
 
-    def test_mutually_exclusive_config_and_intensity(self):
-        """Test that --config and --intensity cannot be used together."""
-        runner = CliRunner()
-        with runner.isolated_filesystem():
-            Path("test.yaml").touch()
-
-            result = runner.invoke(
-                sample,
-                [
-                    "--config",
-                    "test.yaml",
-                    "--intensity",
-                    "8",
-                    "--workload",
-                    "stress_cpu",
-                    "--output",
-                    "out.pipa",
-                ],
-            )
-            assert result.exit_code != 0
-            assert "mutually exclusive" in result.output.lower()
-
-    def test_mutually_exclusive_config_and_attach(self):
-        """Test that --config and --attach-to-pid cannot be used together."""
-        runner = CliRunner()
-        with runner.isolated_filesystem():
-            Path("test.yaml").touch()
-
-            result = runner.invoke(
-                sample,
-                [
-                    "--config",
-                    "test.yaml",
-                    "--attach-to-pid",
-                    "12345",
-                    "--duration",
-                    "30",
-                    "--output",
-                    "out.pipa",
-                ],
-            )
-            assert result.exit_code != 0
-            assert "mutually exclusive" in result.output.lower()
-
-    def test_mutually_exclusive_intensity_and_attach(self):
-        """Test that --intensity and --attach-to-pid cannot be used together."""
+    @patch("src.commands.sample.run_sampling")
+    def test_valid_attach_mode_invocation(self, mock_run):
+        """Test a valid, standard invocation."""
         runner = CliRunner()
         result = runner.invoke(
             sample,
             [
-                "--intensity",
-                "8",
-                "--workload",
-                "stress_cpu",
                 "--attach-to-pid",
                 "12345",
                 "--duration",
@@ -74,118 +26,48 @@ class TestSampleCLIParameterValidation:
                 "--output",
                 "out.pipa",
             ],
+            catch_exceptions=False,
         )
-        assert result.exit_code != 0
-        assert "mutually exclusive" in result.output.lower()
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args.kwargs
+        assert call_args["attach_pids"] == "12345"
+        assert call_args["duration"] == 30
+        assert call_args["collectors_config_path"] is None
 
-    def test_no_mode_specified(self):
-        """Test that at least one mode must be specified."""
+    @patch("src.commands.sample.run_sampling")
+    def test_with_custom_collectors_config(self, mock_run, tmp_path):
+        """Test that --collectors-config path is passed correctly."""
         runner = CliRunner()
-        result = runner.invoke(sample, ["--output", "out.pipa"])
-        assert result.exit_code != 0
-        assert "must specify a mode" in result.output.lower()
+        config_file = tmp_path / "my_collectors.yaml"
+        config_file.touch()
 
-    def test_direct_mode_missing_workload(self):
-        """Test that --workload is required when using --intensity."""
-        runner = CliRunner()
-        result = runner.invoke(sample, ["--intensity", "8", "--output", "out.pipa"])
-        assert result.exit_code != 0
-        assert "--workload is required" in result.output.lower()
-
-    def test_attach_mode_missing_duration(self):
-        """Test that --duration is required when using --attach-to-pid."""
-        runner = CliRunner()
-        result = runner.invoke(sample, ["--attach-to-pid", "12345", "--output", "out.pipa"])
-        assert result.exit_code != 0
-        assert "--duration is required" in result.output.lower()
-
-    def test_invalid_intensity_format(self):
-        """Test that --intensity must be valid integers."""
-        runner = CliRunner()
         result = runner.invoke(
             sample,
             [
-                "--intensity",
-                "abc",
-                "--workload",
-                "stress_cpu",
+                "--attach-to-pid",
+                "12345",
+                "--duration",
+                "30",
                 "--output",
                 "out.pipa",
+                "--collectors-config",
+                str(config_file),
             ],
+            catch_exceptions=False,
         )
-        assert result.exit_code != 0
-        assert "must be a number" in result.output.lower()
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args.kwargs
+        assert call_args["collectors_config_path"] == str(config_file)
 
-    def test_valid_calibrated_mode(self):
-        """Test valid calibrated mode invocation."""
+    def test_missing_required_options(self):
+        """Test that missing required options cause a failure."""
         runner = CliRunner()
-        with runner.isolated_filesystem():
-            Path("test.yaml").write_text("calibrated_parameters: {}")
+        result1 = runner.invoke(sample, ["--duration", "30", "--output", "out.pipa"])
+        assert result1.exit_code != 0
+        assert "missing option" in result1.output.lower()
 
-            with patch("src.commands.sample.run_sampling") as mock_run:
-                result = runner.invoke(sample, ["--config", "test.yaml", "--output", "out.pipa"])
-                assert result.exit_code == 0
-                assert mock_run.called
-                assert "completed successfully" in result.output.lower()
-
-    def test_valid_direct_mode(self):
-        """Test valid direct mode invocation."""
-        runner = CliRunner()
-        with patch("src.commands.sample.run_sampling") as mock_run:
-            result = runner.invoke(
-                sample,
-                [
-                    "--workload",
-                    "stress_cpu",
-                    "--intensity",
-                    "8,16",
-                    "--output",
-                    "out.pipa",
-                ],
-            )
-            assert result.exit_code == 0
-            assert mock_run.called
-            call_args = mock_run.call_args
-            assert call_args[0][3] == [8, 16]
-
-    def test_valid_attach_mode(self):
-        """Test valid attach mode invocation."""
-        runner = CliRunner()
-        with patch("src.commands.sample.run_sampling") as mock_run:
-            result = runner.invoke(
-                sample,
-                [
-                    "--attach-to-pid",
-                    "12345",
-                    "--duration",
-                    "30",
-                    "--output",
-                    "out.pipa",
-                ],
-            )
-            assert result.exit_code == 0
-            assert mock_run.called
-            call_args = mock_run.call_args
-            assert call_args[0][4] == "12345"
-            assert call_args[0][5] == 30
-
-    def test_no_static_info_flag(self):
-        """Test that --no-static-info flag is passed correctly."""
-        runner = CliRunner()
-        with patch("src.commands.sample.run_sampling") as mock_run:
-            result = runner.invoke(
-                sample,
-                [
-                    "--workload",
-                    "stress_cpu",
-                    "--intensity",
-                    "8",
-                    "--no-static-info",
-                    "--output",
-                    "out.pipa",
-                ],
-            )
-            assert result.exit_code == 0
-            assert mock_run.called
-            call_args = mock_run.call_args
-            assert call_args[0][6] is True
+        result2 = runner.invoke(sample, ["--attach-to-pid", "12345", "--output", "out.pipa"])
+        assert result2.exit_code != 0
+        assert "missing option" in result2.output.lower()

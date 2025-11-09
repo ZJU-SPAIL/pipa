@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 
 from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
-from src.parsers.sar_timeseries_parser import parse_sar_timeseries
 
 
 # --- Test Assets ---
@@ -28,6 +27,7 @@ def complex_perf_content() -> str:
 
 
 class TestPerfStatParser:
+
     def test_parse_perf_complex_from_asset(self, complex_perf_content):
         """
         Tests the hardened parser against a comprehensive asset file, verifying
@@ -36,8 +36,10 @@ class TestPerfStatParser:
         df = parse_perf_stat_timeseries(complex_perf_content)
 
         assert not df.empty
-        assert df.shape == (6, 4)
-        assert list(df.columns) == ["timestamp", "value", "unit", "event_name"]
+        assert df.shape == (6, 5)
+        assert list(df.columns) == ["timestamp", "cpu", "value", "unit", "event_name"]
+
+        assert (df["cpu"] == "all").all()
 
         cycles_row = df[df["event_name"] == "cycles"].iloc[0]
         assert cycles_row["value"] == 36416323183
@@ -55,7 +57,6 @@ class TestPerfStatParser:
         assert l1_row["value"] == 59861356776
         assert l1_row["unit"] == ""
 
-        ghz_row = df[df["event_name"] == ""].iloc[0]
         ghz_rows = df[df["unit"] == "GHz"]
         assert len(ghz_rows) > 0
         ghz_row = ghz_rows.iloc[0]
@@ -70,55 +71,3 @@ class TestPerfStatParser:
     def test_parse_perf_empty_and_malformed(self, bad_content):
         df = parse_perf_stat_timeseries(bad_content)
         assert df.empty
-
-
-class TestSarParser:
-    def test_parse_sar_a_comprehensive_from_asset(self, comprehensive_sar_content):
-        """
-        Tests that the parser correctly handles the full, real-world sar -A asset file,
-        extracting all defined blocks in one go.
-        """
-        results = parse_sar_timeseries(comprehensive_sar_content)
-
-        expected_blocks = [
-            "cpu",
-            "proc_cswch",
-            "paging",
-            "io",
-            "memory_util",
-            "swap_util",
-            "load_queue",
-            "device_io",
-            "network_dev",
-            "network_err",
-            "tcp_stats",
-        ]
-        for block in expected_blocks:
-            assert block in results, f"Block '{block}' is missing from parse results"
-            assert isinstance(results[block], pd.DataFrame), f"Block '{block}' is not a DataFrame"
-            assert not results[block].empty, f"Block '{block}' DataFrame is empty"
-
-        df_cpu = results["cpu"]
-        assert df_cpu[df_cpu["CPU"] == "all"].shape[0] > 0
-        assert pd.api.types.is_numeric_dtype(df_cpu["pct_usr"])
-
-        df_mem = results["memory_util"]
-        assert "kbmemused" in df_mem.columns
-        assert pd.api.types.is_numeric_dtype(df_mem["kbmemused"])
-
-        df_dev = results["device_io"]
-        assert "DEV" in df_dev.columns
-        assert pd.api.types.is_numeric_dtype(df_dev["tps"])
-        assert "sda" in df_dev["DEV"].unique()
-        assert "zram0" in df_dev["DEV"].unique()
-
-        df_net = results["network_dev"]
-        assert "IFACE" in df_net.columns
-        assert pd.api.types.is_numeric_dtype(df_net["rxpck_per_s"])
-        assert "lo" in df_net["IFACE"].unique()
-        assert "eth0" in df_net["IFACE"].unique()
-
-    def test_parse_sar_empty_input_returns_empty_dict(self):
-        results = parse_sar_timeseries("")
-        assert isinstance(results, dict)
-        assert not results

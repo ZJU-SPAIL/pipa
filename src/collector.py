@@ -16,57 +16,6 @@ from .executor import (
 log = logging.getLogger(__name__)
 
 
-def collect_cpu_utilization(duration: int, interval: int = 1) -> float:
-    """
-    Collects average CPU utilization over a period using sar.
-    在一段时间内，使用 sar 收集平均 CPU 利用率。
-
-    :param duration: The total duration to monitor in seconds.
-    :param interval: The interval between samples in seconds.
-    :return: The average total CPU utilization (%user + %system).
-    :raises ExecutionError: If sar command fails or output is unparsable.
-    """
-    count = duration // interval
-    command = f"sar -u {interval} {count}"
-
-    env = {"LC_ALL": "C"}
-
-    output = ""
-
-    try:
-        output = run_command(command, env=env)
-        lines = output.strip().splitlines()
-
-        avg_line = None
-        for line in reversed(lines):
-            if line.strip().startswith("Average:"):
-                avg_line = line
-                break
-
-        if not avg_line:
-            raise ExecutionError("Could not find 'Average:' line in sar output.")
-
-        log.debug(f"Line being parsed is: '{avg_line.strip()}'")
-
-        parts = avg_line.split()
-        if len(parts) < 5 or parts[1] != "all":
-            raise ExecutionError("Unexpected format for 'Average:' line in sar output.")
-
-        user_cpu = float(parts[2])
-        system_cpu = float(parts[4])
-        avg_util = user_cpu + system_cpu
-
-        log.info(f"Collected average CPU utilization: {avg_util:.2f}%")
-        return avg_util
-
-    except (ValueError, IndexError) as e:
-        log.error(f"Failed to parse CPU utilization from sar output: {e}")
-        debug_info = "Failed to parse sar 'Average:' line. " f"Raw sar output:\n---\n{output}\n---"
-        raise ExecutionError(debug_info)
-    except ExecutionError:
-        raise
-
-
 def start_perf_stat(
     output_file: str,
     mode: str = "pid",
@@ -119,6 +68,8 @@ def start_perf_stat(
         target_flag,
         *events_flags,
     ]
+    if mode in ["system", "cpu"]:
+        command_parts.append("-A")
     if interval is not None:
         command_parts.append(f"-I {interval}")
 
@@ -189,24 +140,27 @@ def stop_perf_stat(proc: subprocess.Popen, output_file: str, timeout: int) -> Op
 def start_sar(
     duration: int,
     interval: int,
-    output_file: str,
+    output_bin_file: str,
 ) -> Optional[subprocess.Popen]:
     """
-    Starts `sar -A` in the background to collect all system activities.
-    在后台启动 `sar -A` 以收集所有系统活动。
+    Starts `sar -A` in the background, writing binary data to an output file.
+    This is more robust than capturing stdout.
+    在后台启动 `sar -A`，将二进制数据写入输出文件。这比捕获 stdout 更健壮。
     """
     if duration < interval:
         log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
         return None
-    command = f"sar -A {interval}"
 
-    log.info(f"Starting background sar: {command}")
+    count = (duration // interval) + 1
+    command = f"sar -A -o {shlex.quote(output_bin_file)} {interval} {count}"
+
+    log.info(f"Starting background sar (binary mode): {command}")
     try:
         env = os.environ.copy()
         env["LC_ALL"] = "C"
         proc = subprocess.Popen(
             shlex.split(command),
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
             env=env,
@@ -216,31 +170,34 @@ def start_sar(
         raise ExecutionError("Command not found: sar")
 
 
-def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optional[str]:
+def stop_sar(
+    proc: subprocess.Popen,
+    output_bin_file: str,
+    output_csv_file: str,
+    timeout: int,
+) -> None:
     """
-    Actively terminates the sar process, captures its output, and saves to file.
-    主动终止 sar 进程，捕获其输出，并保存到文件。
+    Waits for sar to finish, then converts its binary output to CSV using sadf.
+    等待 sar 结束，然后使用 sadf 将其二进制输出转换为 CSV。
     """
-    log.info(f"Sending SIGTERM to sar process (PID: {proc.pid})...")
-    proc.terminate()
-    timeout = 15
+    log.info(f"Waiting for sar process (PID: {proc.pid}) to complete...")
     try:
-        stdout_data, stderr_data = proc.communicate(timeout=timeout)
-
-        if proc.returncode not in [0, -signal.SIGTERM]:
-            log.error(f"sar process exited with unexpected code {proc.returncode}. Stderr: {stderr_data}")
-
-        with open(output_file, "w") as f:
-            f.write(stdout_data)
-        log.info(f"sar report saved to {output_file}")
-
-        return stdout_data
+        _, stderr_data = proc.communicate(timeout=timeout)
+        if proc.returncode != 0:
+            log.warning(f"sar process exited with code {proc.returncode}. Stderr: {stderr_data}")
     except subprocess.TimeoutExpired:
-        log.warning("sar process did not terminate gracefully. Killing it...")
+        log.warning(f"sar process timed out after {timeout}s. Killing it...")
         proc.kill()
-        stdout_data, _ = proc.communicate()
-        if stdout_data:
-            with open(output_file, "w") as f:
-                f.write(stdout_data)
-            log.info(f"sar partial report saved to {output_file}")
-        return stdout_data
+        proc.communicate()
+
+    log.info("Sar process finished. Converting binary output to CSV...")
+    sadf_command = f"sadf -d -h -- {shlex.quote(output_bin_file)}"
+    try:
+        csv_output = run_command(sadf_command)
+        with open(output_csv_file, "w") as f:
+            f.write(csv_output)
+        log.info(f"Successfully converted sar data to CSV: {output_csv_file}")
+    except (ExecutionError, FileNotFoundError) as e:
+        log.error(f"Failed to convert sar data to CSV using sadf: {e}")
+    except IOError as e:
+        log.error(f"Failed to write sar CSV file to {output_csv_file}: {e}")
