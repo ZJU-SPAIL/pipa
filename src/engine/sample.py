@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import yaml
+import click
 
 # 即将从 collector.py 导入，我们先在这里占位
 from src.collector import (
@@ -16,7 +16,6 @@ from src.collector import (
     stop_perf_stat,
     stop_sar,
 )
-from src.static_collector import collect_all_static_info
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +32,7 @@ def run_sampling(
     perf_record_freq: Optional[int],
     perf_events_override: Optional[str],
     no_static_info: bool,
+    static_info_path: Optional[Path] = None,
 ):
     """
     Executes the new two-phase sampling workflow.
@@ -47,14 +47,30 @@ def run_sampling(
     log.info(f"Created temporary working directory: {work_dir}")
 
     try:
-        if not no_static_info:
-            log.info("Collecting static system information...")
-            static_info = collect_all_static_info()
-            static_info_path = work_dir / "static_info.yaml"
-            with open(static_info_path, "w") as f:
-                yaml.dump(static_info, f, default_flow_style=False)
-        else:
-            log.info("Skipping static system information collection.")
+        static_info_found_and_handled = False
+
+        if static_info_path:
+            log.info(f"Using explicitly provided static info from: {static_info_path}")
+            shutil.copy(static_info_path, work_dir / "static_info.yaml")
+            static_info_found_and_handled = True
+
+        if not static_info_found_and_handled:
+            default_static_info_path = Path.cwd() / "pipa_static_info.yaml"
+            if default_static_info_path.exists():
+                log.info(f"Found and using default static info file: {default_static_info_path.name}")
+                shutil.copy(default_static_info_path, work_dir / "static_info.yaml")
+                static_info_found_and_handled = True
+
+        if no_static_info:
+            log.info("Skipping static system information collection as requested by --no-static-info flag.")
+
+        elif not static_info_found_and_handled:
+            error_msg = (
+                "For maximum sampling precision, a pre-collected static information file is required.\n"
+                "Please run `pipa healthcheck` in this directory first, or provide a file using "
+                "`--static-info-file`."
+            )
+            raise click.UsageError(error_msg)
 
         level_dir = work_dir / "attach_session"
         level_dir.mkdir()
