@@ -13,3 +13,4 @@ report.html
 .coverage
 coverage.xml
 junit-report.xml
+.vscode

@@ -56,17 +56,14 @@
         align-items: center;
       }
 
-      #plot {
+      .plot-container {
         width: 100%;
-        min-height: 1000px;
-      }
-      #interactive-table {
-        margin-left: 0;
-        margin-right: auto;
+        margin-bottom: 2em;
       }
 
       h1,
-      h2 {
+      h2,
+      h3 {
         color: #333;
       }
 
@@ -75,7 +72,6 @@
         margin-top: 1em;
       }
 
-      /* --- 新的决策树容器布局 --- */
       .decision-tree-container {
         display: grid;
         grid-template-columns: 2fr 1fr;
@@ -101,7 +97,6 @@
         color: #c04040;
       }
 
-      /* --- Tree Visualization Styles --- */
       .tree ul {
         padding-top: 20px;
         position: relative;
@@ -194,20 +189,12 @@
         border-color: #94a0b4;
       }
 
-      /* --- 高亮激活的节点 --- */
-      .tree li.active-node > span {
-        background: #e25050;
-        color: #fff;
-        border-color: #e25050;
-      }
-      /* --- 高亮激活的节点 --- */
       .tree li.active-node > span {
         background: #e25050;
         color: #fff;
         border-color: #e25050;
       }
 
-      /* --- 警告信息样式 --- */
       .warnings-container {
         background-color: #fffbe6;
         border: 1px solid #ffe58f;
@@ -249,7 +236,7 @@
         Metrics Explorer
       </button>
       <button class="tab-button" onclick="openTab(event, 'rawdata')">
-        Raw Aligned Data
+        Raw Data Tables
       </button>
       {% if static_info_str %}
       <button class="tab-button" onclick="openTab(event, 'system')">
@@ -268,13 +255,24 @@
     </div>
 
     <div id="explorer" class="tab-pane">
-      <h2>Time-Series Visualization</h2>
-      <div id="plot">{{ interactive_plot | safe }}</div>
+      <h2>Time-Series Visualizations</h2>
+      {% for name, plot_div in plots.items() %}
+      <div class="plot-container" id="plot-{{ name }}">
+        {{ plot_div | safe }}
+      </div>
+      {% else %}
+      <p>No time-series data available to generate plots.</p>
+      {% endfor %}
     </div>
 
     <div id="rawdata" class="tab-pane">
-      <h2>Raw Aligned Data (Interactive)</h2>
-      <div id="interactive-table"></div>
+      <h2>Raw Data (Interactive Tables)</h2>
+      {% for name, table_json in tables_json.items() %}
+      <h3>{{ name.replace('_', ' ')|title }} Data</h3>
+      <div id="table-{{ name }}"></div>
+      {% else %}
+      <p>No raw data available to display.</p>
+      {% endfor %}
     </div>
 
     {% if static_info_str %}
@@ -285,53 +283,56 @@
     {% endif %}
 
     <script>
-            // --- Tabulator Table Script ---
-            var tableData = {{ table_data_json | safe }};
-            var columns = [];
-            if (tableData.length > 0) {
-                columns = Object.keys(tableData[0]).map(function (key) {
-                    return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
-                });
-            }
-      var table = new Tabulator("#interactive-table", {
-                data: tableData,
-                columns: columns,
-                layout: "fitDataTable",   // 修改此行
-                pagination: "local",
-                paginationSize: 15,
-                paginationSizeSelector: [10, 15, 25, 50, 100],
-            });
+      // --- Tabulator Table Initialization ---
+      const tablesJsonData = {{ tables_json | tojson | safe }};
+      for (const [name, jsonData] of Object.entries(tablesJsonData)) {
+          const tableData = JSON.parse(jsonData);
+          let columns = [];
+          if (tableData.length > 0) {
+              columns = Object.keys(tableData[0]).map(function (key) {
+                  return { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
+              });
+          }
+          new Tabulator(`#table-${name}`, {
+              data: tableData,
+              columns: columns,
+              layout: "fitData",
+              pagination: "local",
+              paginationSize: 15,
+              paginationSizeSelector: [10, 15, 25, 50, 100],
+          });
+      }
 
-              // --- Tab Switching Logic ---
-              function openTab(evt, tabName) {
-                  var i, tabcontent, tablinks;
-                  tabcontent = document.getElementsByClassName("tab-pane");
-                  for (i = 0; i < tabcontent.length; i++) {
-                      tabcontent[i].style.display = "none";
-                  }
-                  tablinks = document.getElementsByClassName("tab-button");
-                  for (i = 0; i < tablinks.length; i++) {
-                      tablinks[i].className = tablinks[i].className.replace(" active", "");
-                  }
-                  var activeTab = document.getElementById(tabName);
-                  activeTab.style.display = "block";
-                  evt.currentTarget.className += " active";
+      // --- Tab Switching Logic ---
+      function openTab(evt, tabName) {
+          var i, tabcontent, tablinks;
+          tabcontent = document.getElementsByClassName("tab-pane");
+          for (i = 0; i < tabcontent.length; i++) {
+              tabcontent[i].style.display = "none";
+          }
+          tablinks = document.getElementsByClassName("tab-button");
+          for (i = 0; i < tablinks.length; i++) {
+              tablinks[i].className = tablinks[i].className.replace(" active", "");
+          }
+          var activeTab = document.getElementById(tabName);
+          activeTab.style.display = "block";
+          evt.currentTarget.className += " active";
 
-                  // --- 核心修复：使用 Plotly.Plots.resize 强制重绘 ---
-                  if (tabName === 'explorer') {
-                      // 将重绘操作推迟到 DOM 更新的下一个事件循环，确保容器已完全可见
-                      setTimeout(function() {
-                          var plotDiv = document.getElementById('plot');
-                          // 检查 Plotly 对象和绘图 div 是否存在
-                          if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
-                              Plotly.Plots.resize(plotDiv);
-                          }
-                      }, 0);
-                  }
-              }
+          if (tabName === 'explorer') {
+              setTimeout(function() {
+                  const plotContainers = document.querySelectorAll('.plot-container');
+                  plotContainers.forEach(container => {
+                      const plotDiv = container.querySelector('.plotly-graph-div');
+                      if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
+                          Plotly.Plots.resize(plotDiv);
+                      }
+                  });
+              }, 0);
+          }
+      }
 
-            // Get the element with id="defaultOpen" and click on it
-            document.querySelector(".tab-button").click();
+      // Open the first tab by default
+      document.querySelector(".tab-button").click();
     </script>
   </body>
 </html>
