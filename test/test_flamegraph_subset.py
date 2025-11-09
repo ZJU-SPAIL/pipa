@@ -8,7 +8,7 @@ from pipa.analysis.flamegraph.analyzer import FoldedAnalyzer
 from pipa.analysis.flamegraph.api import subset_mapping_by_symbol, analyzer_from_symbol_subset, filter_stacks_by_prefixes
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-FOLDED = os.path.join(DATA_DIR, "out.py.stacks-folded")
+FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
 
 
 def test_subset_by_symbol_log_flusher():

@@ -10,7 +10,7 @@ from pipa.analysis.flamegraph.api import analyze_file
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 SMALL_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
-LARGE_FOLDED = os.path.join(DATA_DIR, "out.py.stacks-folded")
+LARGE_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
 
 
 def test_parse_folded_file_smoke():

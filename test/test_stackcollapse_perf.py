@@ -12,7 +12,7 @@ from pipa.parser.flamegraph.stackcollapse_perf import (
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 INPUT_PATH = os.path.join(DATA_DIR, "perf_script_file.txt")
-EXPECTED_PATH = os.path.join(DATA_DIR, "out.py.stacks-folded")
+EXPECTED_PATH = os.path.join(DATA_DIR, "out.stacks-folded")
 
 
 @pytest.mark.skipif(
