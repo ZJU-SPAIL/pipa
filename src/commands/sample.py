@@ -17,8 +17,15 @@ from src.engine.sample import run_sampling
 @click.option(
     "--attach-to-pid",
     "attach_pid_str",
-    required=True,
+    required=False,
+    default=None,
     help="Attach to an existing process ID (or comma-separated list).",
+)
+@click.option(
+    "--system-wide",
+    is_flag=True,
+    default=False,
+    help="Run collectors in system-wide mode instead of attaching to a PID.",
 )
 @click.option(
     "--duration-stat",
@@ -66,6 +73,7 @@ from src.engine.sample import run_sampling
 def sample(
     output_path_str: str,
     attach_pid_str: str,
+    system_wide: bool,
     duration_stat: int,
     duration_record: int,
     no_stat: bool,
@@ -82,6 +90,11 @@ def sample(
     Phase 1: Macro-scan (perf stat + sar).
     Phase 2: Micro-profiling (perf record for flamegraphs).
     """
+    if system_wide and attach_pid_str:
+        raise click.UsageError("Cannot specify both --attach-to-pid and --system-wide.")
+    if not system_wide and not attach_pid_str:
+        raise click.UsageError("Must specify either --attach-to-pid or --system-wide.")
+
     if no_stat and no_record:
         raise click.UsageError("Cannot specify both --no-stat and --no-record. At least one phase must run.")
 
@@ -91,6 +104,7 @@ def sample(
         run_sampling(
             output_path=output_path,
             attach_pids=attach_pid_str,
+            system_wide=system_wide,
             duration_stat=duration_stat,
             duration_record=duration_record,
             run_stat_phase=not no_stat,

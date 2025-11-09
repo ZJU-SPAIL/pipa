@@ -40,12 +40,13 @@ AARCH64_EVENT_SET = [
 
 
 def start_perf_stat(
-    target_pid: str,
+    target_pid: Optional[str],
+    system_wide: bool,
     interval: Optional[int] = 1000,
     events_override_str: Optional[str] = None,
 ) -> Optional[subprocess.Popen]:
     """
-    Starts perf stat with a built-in, architecture-aware event set.
+    Starts perf stat in either process-specific or system-wide mode.
     """
     if events_override_str:
         log.info(f"Using expert-provided perf events: {events_override_str}")
@@ -60,12 +61,16 @@ def start_perf_stat(
             log.info("Using built-in x86_64 event set as default.")
             event_groups = X86_64_EVENT_SET
 
-    command_parts = [
-        "perf",
-        "stat",
-        "-p",
-        target_pid,
-    ]
+    command_parts = ["perf", "stat"]
+
+    if system_wide:
+        log.info("Running perf stat in system-wide mode with per-core stats (-a -A).")
+        command_parts.extend(["-a", "-A"])
+    elif target_pid:
+        log.info(f"Running perf stat in process-specific mode for PID(s): {target_pid}")
+        command_parts.extend(["-p", target_pid])
+    else:
+        raise ValueError("Either target_pid or system_wide must be specified.")
 
     for group in event_groups:
         if group:
@@ -76,7 +81,6 @@ def start_perf_stat(
         [
             "-I",
             str(interval or 1000),
-            "-A",
         ]
     )
 
