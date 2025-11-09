@@ -236,6 +236,7 @@ class MockSarPopen:
         self._should_timeout = should_timeout
         self.killed = False
         self.returncode = returncode
+        self.terminated = False
 
     def send_signal(self, sig):
         """Mock send_signal method."""
@@ -251,6 +252,9 @@ class MockSarPopen:
 
     def poll(self):
         return None
+
+    def terminate(self):
+        self.terminated = True
 
 
 def test_start_sar_command_construction(monkeypatch):
@@ -272,7 +276,7 @@ def test_start_sar_command_construction(monkeypatch):
     assert "sar" in called_command
     assert "-A" in called_command
     assert "2" in called_command
-    assert "5" in called_command
+    assert len(called_command) == 3
 
 
 def test_start_sar_skips_if_duration_too_short():
@@ -290,3 +294,4 @@ def test_stop_sar_success(monkeypatch, tmp_path):
 
     assert content == "sar output data"
     assert temp_file.read_text() == "sar output data"
+    assert mock_proc.terminated is True
