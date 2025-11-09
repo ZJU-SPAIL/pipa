@@ -195,12 +195,8 @@ def start_sar(
     Starts `sar -A` in the background to collect all system activities.
     在后台启动 `sar -A` 以收集所有系统活动。
     """
-    count = duration // interval
-    if count <= 0:
-        log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
-        return None
 
-    command = f"sar -A {interval} {count}"
+    command = f"sar -A {interval}"
 
     log.info(f"Starting background sar: {command}")
     try:
@@ -220,20 +216,17 @@ def start_sar(
 
 def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optional[str]:
     """
-    Waits for the sar process to finish, captures its output, and saves to file.
-    等待 sar 进程结束，捕获其输出，并保存到文件。
-
-    :param proc: The sar subprocess.
-    :param output_file: File to save the output.
-    :param duration: The duration sar was supposed to run for timeout calculation.
+    Actively terminates the sar process, captures its output, and saves to file.
+    主动终止 sar 进程，捕获其输出，并保存到文件。
     """
-    log.info(f"Waiting for sar (PID: {proc.pid}) to finish...")
-    timeout = duration + 15
+    log.info(f"Sending SIGTERM to sar process (PID: {proc.pid})...")
+    proc.terminate()
+    timeout = 15
     try:
         stdout_data, stderr_data = proc.communicate(timeout=timeout)
 
-        if proc.returncode != 0:
-            log.error(f"sar process exited with error code {proc.returncode}" ". Stderr: {stderr_data}")
+        if proc.returncode not in [0, -signal.SIGTERM]:
+            log.error(f"sar process exited with unexpected code {proc.returncode}. Stderr: {stderr_data}")
 
         with open(output_file, "w") as f:
             f.write(stdout_data)
@@ -241,7 +234,11 @@ def stop_sar(proc: subprocess.Popen, output_file: str, duration: int) -> Optiona
 
         return stdout_data
     except subprocess.TimeoutExpired:
-        log.warning("sar process did not terminate as expected. Killing it...")
+        log.warning("sar process did not terminate gracefully. Killing it...")
         proc.kill()
         stdout_data, _ = proc.communicate()
+        if stdout_data:
+            with open(output_file, "w") as f:
+                f.write(stdout_data)
+            log.info(f"sar partial report saved to {output_file}")
         return stdout_data

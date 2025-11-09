@@ -73,17 +73,40 @@ def generate_report(level_dir: Path, report_path: Path):
         log.info("Both SAR and Perf data available. Performing as-of merge...")
         df_perf = df_perf.sort_values("timestamp")
         df_sar = df_sar.sort_values("timestamp")
-        df_sar["timestamp_dt"] = pd.to_datetime(df_sar["timestamp"].astype(str), format="%H:%M:%S")
-        df_sar["timestamp_float"] = (df_sar["timestamp_dt"] - df_sar["timestamp_dt"].iloc[0]).dt.total_seconds()
-        merged_df = pd.merge_asof(
-            left=df_sar, right=df_perf, left_on="timestamp_float", right_on="timestamp", direction="nearest"
+
+        df_sar["timestamp_dt"] = pd.to_datetime(
+            df_sar["timestamp"].astype(str), format="%H:%M:%S", errors="coerce"
+        ).dt.time
+
+        df_sar["sar_abs_seconds"] = df_sar["timestamp_dt"].apply(
+            lambda t: t.hour * 3600 + t.minute * 60 + t.second if pd.notnull(t) else None
         )
+
+        sar_start_time = df_sar["sar_abs_seconds"].iloc[0]
+        df_sar["relative_seconds"] = df_sar["sar_abs_seconds"] - sar_start_time
+        df_sar["relative_seconds"] = df_sar["relative_seconds"].astype(float)
+        perf_start_time = df_perf["timestamp"].iloc[0]
+        df_perf["relative_seconds"] = df_perf["timestamp"] - perf_start_time
+
+        merged_df = pd.merge_asof(
+            left=df_sar.sort_values("relative_seconds"),
+            right=df_perf.sort_values("relative_seconds"),
+            on="relative_seconds",
+            direction="backward",
+        )
+        if "timestamp_y" in merged_df.columns:
+            merged_df.rename(columns={"timestamp_x": "sar_timestamp", "timestamp_y": "perf_timestamp"}, inplace=True)
+        else:
+            merged_df.rename(columns={"timestamp": "sar_timestamp"}, inplace=True)
+
     elif not df_sar.empty:
         log.info("Only SAR data available. Using it as the primary timeseries data.")
         merged_df = df_sar
+        merged_df.rename(columns={"timestamp": "sar_timestamp"}, inplace=True)
     elif not df_perf.empty:
         log.info("Only Perf data available. Using it as the primary timeseries data.")
         merged_df = df_perf
+        merged_df.rename(columns={"timestamp": "perf_timestamp"}, inplace=True)
     else:
         log.warning("No time-series data available to generate plots or tables.")
 
