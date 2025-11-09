@@ -58,7 +58,7 @@ def mock_dependencies(mock_perf_data, mock_sar_data):
     """Mock all external dependencies of generate_report."""
     with (
         patch("src.engine.analyze.parse_perf_stat_timeseries", return_value=mock_perf_data),
-        patch("src.engine.analyze.load_rules", return_value=[]),
+        patch("src.engine.analyze.load_rules", return_value=([], {})),
         patch("src.engine.analyze.calculate_context_metrics", return_value={}),
         patch("src.engine.analyze.run_rules_engine", return_value=[]),
         patch("src.engine.analyze.format_rules_to_html_tree", return_value=("", "")),
@@ -197,7 +197,7 @@ def test_generate_report_writes_html_file(mock_level_dir, tmp_path):
 
     with (
         patch("src.engine.analyze.parse_perf_stat_timeseries", return_value=pd.DataFrame()),
-        patch("src.engine.analyze.load_rules", return_value=[]),
+        patch("src.engine.analyze.load_rules", return_value=([], {})),
         patch("src.engine.analyze.calculate_context_metrics", return_value={}),
         patch("src.engine.analyze.run_rules_engine", return_value=[]),
         patch("src.engine.analyze.format_rules_to_html_tree", return_value=("", "")),

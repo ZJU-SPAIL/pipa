@@ -56,12 +56,13 @@ def test_calculate_context_metrics_extracts_num_cpu(mock_static_info):
 
 
 def test_calculate_context_metrics_handles_missing_cpu_info():
-    """测试在 static_info 或 cpu_info 缺失时，函数能优雅地处理。"""
+    """测试在 static_info 或 cpu_info 缺失时，函数能优雅地处理（返回默认值）。"""
     context_empty = calculate_context_metrics({}, {})
-    assert "num_cpu" not in context_empty
+    assert context_empty["num_cpu"] == 1
+    assert context_empty["total_cpu"] == 0.0
 
     context_no_cpu_info = calculate_context_metrics({}, {"other_info": {}})
-    assert "num_cpu" not in context_no_cpu_info
+    assert context_no_cpu_info["num_cpu"] == 1
 
 
 def test_run_rules_engine_with_dynamic_cpu_context(mock_v2_rules, mock_static_info):
