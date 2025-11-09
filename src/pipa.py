@@ -2,6 +2,7 @@ import click
 
 from .commands.analyze import analyze
 from .commands.compare import compare
+from .commands.healthcheck import healthcheck
 from .commands.sample import sample
 from .logger_setup import setup_logging
 
@@ -24,6 +25,7 @@ def cli(verbose: int):
 cli.add_command(sample)
 cli.add_command(analyze)
 cli.add_command(compare)
+cli.add_command(healthcheck)
 
 
 if __name__ == "__main__":

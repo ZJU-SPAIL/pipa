@@ -56,6 +56,13 @@ from src.engine.sample import run_sampling
     default=False,
     help="Skip the collection of static system information.",
 )
+@click.option(
+    "--static-info-file",
+    "static_info_path_str",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    default=None,
+    help="Path to a pre-collected static info YAML file (from `pipa healthcheck`).",
+)
 def sample(
     output_path_str: str,
     attach_pid_str: str,
@@ -68,6 +75,7 @@ def sample(
     perf_record_freq: Optional[int],
     perf_events: Optional[str],
     no_static_info: bool,
+    static_info_path_str: Optional[str],
 ):
     """
     Captures a standardized, two-phase performance snapshot.
@@ -92,6 +100,7 @@ def sample(
             perf_record_freq=perf_record_freq,
             perf_events_override=perf_events,
             no_static_info=no_static_info,
+            static_info_path=Path(static_info_path_str) if static_info_path_str else None,
         )
         total_duration = (duration_stat if not no_stat else 0) + (duration_record if not no_record else 0)
         click.secho(f"✅ Sampling complete ({total_duration}s). Snapshot saved to: {output_path}", fg="green")
