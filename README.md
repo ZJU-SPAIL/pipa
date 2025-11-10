@@ -33,7 +33,7 @@
 # Clone the repository and install dependencies
 git clone <repository_url>
 cd pipa
-pip install -e .
+pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
 ### 3. Core Usage / 核心用法
