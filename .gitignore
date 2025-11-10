@@ -17,3 +17,4 @@ junit-report.xml
 third_party/
 test_results_*/
 pipa_static_info*.yaml
+report_universal_*.html

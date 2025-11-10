@@ -97,99 +97,44 @@
         color: #c04040;
       }
 
-      /* Per-Core Filter Styling */
-      .per-core-filter-container {
+      /* Global Legend Filter Styling */
+      .global-filter-container {
         background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
         border: 1px solid #e0e0e0;
         border-bottom: 2px solid #e25050;
         padding: 12px 16px;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
         border-radius: 6px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        display: flex;
+        gap: 12px;
+        align-items: center;
       }
 
-      .per-core-filter-title {
+      .global-filter-container label {
         font-size: 13px;
         font-weight: 600;
         color: #333;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin: 0 0 10px 0;
-        display: flex;
-        align-items: center;
-      }
-
-      .per-core-filter-title::before {
-        content: "⚙️";
-        margin-right: 8px;
-      }
-
-      .per-core-filter-controls {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .filter-group {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-
-      .filter-group label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #555;
         white-space: nowrap;
+        margin: 0;
       }
 
-      .filter-group input,
-      .filter-group select {
-        padding: 6px 10px;
+      .global-filter-container input {
+        flex: 1;
+        padding: 8px 12px;
         border: 1px solid #d0d0d0;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 13px;
         background-color: white;
         transition: border-color 0.2s;
       }
 
-      .filter-group input:focus,
-      .filter-group select:focus {
+      .global-filter-container input:focus {
         outline: none;
         border-color: #e25050;
         box-shadow: 0 0 4px rgba(226, 80, 80, 0.2);
-      }
-
-      .filter-button {
-        padding: 6px 14px;
-        font-size: 12px;
-        font-weight: 500;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
-      }
-
-      .filter-button-apply {
-        background-color: #e25050;
-        color: white;
-      }
-
-      .filter-button-apply:hover {
-        background-color: #d63f3f;
-        box-shadow: 0 2px 6px rgba(226, 80, 80, 0.3);
-      }
-
-      .filter-button-reset {
-        background-color: #bbb;
-        color: white;
-      }
-
-      .filter-button-reset:hover {
-        background-color: #aaa;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       }
 
       .tree ul {
@@ -347,6 +292,124 @@
       .json-tree .value.string {
         color: #009933;
       }
+
+      /* Sar CPU Filter Styling */
+      .per-core-filter-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #eeeff3 100%);
+        border: 1px solid #d8dce4;
+        border-bottom: 3px solid #e25050;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .per-core-filter-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .filter-group label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .filter-group input {
+        padding: 10px 14px;
+        border: 1px solid #c8cdd5;
+        border-radius: 6px;
+        font-size: 13px;
+        background-color: #ffffff;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        transition: all 0.2s ease;
+      }
+
+      .filter-group input:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 6px rgba(226, 80, 80, 0.25);
+        background-color: #fafbfc;
+      }
+
+      .filter-group input::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 768px) {
+        .per-core-filter-controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Chart Filter Styling (Universal) */
+      .chart-filter-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #eeeff3 100%);
+        border: 1px solid #d8dce4;
+        border-bottom: 3px solid #e25050;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .chart-filter-controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      .chart-filter-container .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .chart-filter-container .filter-group label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .chart-filter-container .filter-group input {
+        padding: 10px 14px;
+        border: 1px solid #c8cdd5;
+        border-radius: 6px;
+        font-size: 13px;
+        background-color: #ffffff;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        transition: all 0.2s ease;
+      }
+
+      .chart-filter-container .filter-group input:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 6px rgba(226, 80, 80, 0.25);
+        background-color: #fafbfc;
+      }
+
+      .chart-filter-container .filter-group input::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 768px) {
+        .chart-filter-controls {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
 
@@ -395,51 +458,31 @@
       <h2>Time-Series Visualizations</h2>
       {% for name, plot_div in plots.items() %}
       <div class="plot-container" id="plot-{{ name }}">
-        {% if name == 'sar_per_core' %}
-        <!-- Per-Core CPU Filter Controls -->
-        <div class="per-core-filter-container">
-          <div class="per-core-filter-title">Per-Core CPU Filter</div>
-          <div class="per-core-filter-controls">
+        {% set filters = context[name ~ '_filters'] %} {% if filters %}
+        <!-- 通用的、上下文感知的筛选器 -->
+        <div class="chart-filter-container" data-plot-id="{{ name }}">
+          <div class="chart-filter-controls">
+            {% for filter_key, filter_info in filters.items() %}
             <div class="filter-group">
-              <label for="cpu-filter-input">CPU Cores:</label>
+              <label for="{{ filter_key }}-filter-input-{{ name }}"
+                >{{ filter_key }} ({{ filter_info.count }}):</label
+              >
               <input
                 type="text"
-                id="cpu-filter-input"
-                placeholder="e.g., 0,1,2"
-                title="Enter CPU core numbers separated by commas"
+                id="{{ filter_key }}-filter-input-{{ name }}"
+                placeholder="e.g., {{ filter_info.sample|join(', ') }}{% if filter_info.count > 3 %}, ... ({{ filter_info.count }} total){% endif %}"
+                onkeyup="applyChartFilter('{{ name }}')"
+                title="Enter values separated by commas, or use ranges like 0-3 or 0-15"
               />
             </div>
-
-            <div class="filter-group">
-              <label for="metric-filter-select">Metrics:</label>
-              <select id="metric-filter-select">
-                <option value="">All</option>
-                <option value="%user">%user</option>
-                <option value="%system">%system</option>
-                <option value="%total">%total</option>
-                <option value="%user,%system">%user + %system</option>
-              </select>
-            </div>
-
-            <button
-              onclick="applyPerCoreFilter('plot-{{ name }}')"
-              class="filter-button filter-button-apply"
-            >
-              Apply
-            </button>
-            <button
-              onclick="resetPerCoreFilter('plot-{{ name }}')"
-              class="filter-button filter-button-reset"
-            >
-              Reset
-            </button>
+            {% endfor %}
           </div>
         </div>
         {% endif %} {{ plot_div | safe }}
       </div>
-      {% else %}
+      {% endfor %} {% if not plots %}
       <p>No time-series data available to generate plots.</p>
-      {% endfor %}
+      {% endif %}
     </div>
 
     <div id="rawdata" class="tab-pane">
@@ -586,78 +629,135 @@
       // Open the first tab by default
       document.querySelector(".tab-button").click();
 
-      // --- Per-Core CPU Filter Logic ---
-      function applyPerCoreFilter(containerId) {
-          const cpuInput = document.getElementById('cpu-filter-input').value.trim();
-          const metricSelect = document.getElementById('metric-filter-select').value;
-
-          // Parse CPU input
-          let selectedCPUs = [];
-          if (cpuInput) {
-              selectedCPUs = cpuInput.split(',').map(s => s.trim()).filter(s => s);
-          }
-
-          // Parse metrics
-          let selectedMetrics = [];
-          if (metricSelect === '%user') {
-              selectedMetrics = ['%user'];
-          } else if (metricSelect === '%system') {
-              selectedMetrics = ['%system'];
-          } else if (metricSelect === '%total') {
-              selectedMetrics = ['%total'];
-          } else if (metricSelect === '%user,%system') {
-              selectedMetrics = ['%user', '%system'];
-          } else {
-              selectedMetrics = ['%user', '%system', '%total'];
-          }
-
-          // Find the plotly graph container
-          const container = document.getElementById(containerId);
-          const plotDiv = container.querySelector('.plotly-graph-div');
-
-          if (!plotDiv || !plotDiv.data) {
-              alert('Chart data not found');
+      // --- 通用的图表筛选逻辑 ---
+      function applyChartFilter(plotName) {
+          const filterContainer = document.querySelector(
+              `.chart-filter-container[data-plot-id="${plotName}"]`
+          );
+          if (!filterContainer) {
+              console.warn(`No filter container found for plot: ${plotName}`);
               return;
           }
 
-          // Generate visibility array based on filter
-          const visibility = plotDiv.data.map(function(trace, index) {
-              if (!trace.legendgroup) return true;
+          const inputs = filterContainer.querySelectorAll('input[type="text"]');
+          console.debug(`Found ${inputs.length} input(s) for plot: ${plotName}`);
 
-              // Extract CPU and metric from trace name (format: "CPU - %metric")
-              const parts = trace.legendgroup.split(' - ');
-              if (parts.length !== 2) return true;
+          // 首先尝试找 plotly-graph-div
+          let plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
 
-              const traceCPU = parts[0];
-              const traceMetric = parts[1];
+          // 如果找不到，尝试直接找 plot 容器下的第一个 div（它可能就是 plotly 图表）
+          if (!plotDiv) {
+              const plotContainer = document.querySelector(`#plot-${plotName}`);
+              if (plotContainer) {
+                  // 找容器内第一个有数据的 div
+                  const allDivs = plotContainer.querySelectorAll('div[id]');
+                  for (let div of allDivs) {
+                      if (div.data && Array.isArray(div.data)) {
+                          plotDiv = div;
+                          break;
+                      }
+                  }
+              }
+          }
 
-              // Check if this trace matches filters
-              const cpuMatches = selectedCPUs.length === 0 || selectedCPUs.includes(traceCPU);
-              const metricMatches = selectedMetrics.length === 0 || selectedMetrics.includes(traceMetric);
+          if (!plotDiv || !plotDiv.data) {
+              console.warn(`Plotly div or data not found for plot: ${plotName}`, {plotDiv, hasData: plotDiv?.data});
+              return;
+          }
 
-              return cpuMatches && metricMatches;
+          console.debug(`Found plotly div for ${plotName} with ${plotDiv.data.length} traces`);
+
+          // 1. 解析所有筛选器的值
+          const activeFilters = {};
+          inputs.forEach((input) => {
+              const filterKey = input.id.split('-filter-input')[0].toUpperCase();
+              const filterValue = input.value.trim();
+              console.debug(`Processing filter input: id="${input.id}", filterKey="${filterKey}", value="${filterValue}"`);
+              if (filterValue) {
+                  // 检测是否为纯数字模式（用于 CPU、范围等）
+                  const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
+
+                  if (isNumericPattern) {
+                      // 纯数字：精准匹配，支持范围
+                      const parseRange = (str) =>
+                          new Set(
+                              str.split(',').flatMap((part) => {
+                                  part = part.trim();
+                                  if (part.includes('-')) {
+                                      const [start, end] = part.split('-').map(Number);
+                                      return Array.from(
+                                          { length: end - start + 1 },
+                                          (_, i) => String(start + i)
+                                      );
+                                  }
+                                  return part;
+                              })
+                          );
+                      activeFilters[filterKey] = {
+                          type: 'exact',
+                          values: parseRange(filterValue)
+                      };
+                  } else {
+                      // 包含字母：模糊匹配
+                      const keywords = filterValue.split(',').map(k => k.trim().toLowerCase());
+                      activeFilters[filterKey] = {
+                          type: 'fuzzy',
+                          keywords: keywords
+                      };
+                  }
+              }
           });
 
-          // Apply visibility
-          Plotly.restyle(plotDiv, {visible: visibility});
-      }
+          // 2. 遍历所有曲线，判断是否可见
+          const visibilityArray = plotDiv.data.map((trace) => {
+              for (const [key, filterInfo] of Object.entries(activeFilters)) {
+                  let traceValue = '';
 
-      function resetPerCoreFilter(containerId) {
-          document.getElementById('cpu-filter-input').value = '';
-          document.getElementById('metric-filter-select').value = '';
+                  // 根据 key 类型提取 trace 值
+                  if (key === 'CPU' && trace.legendgroup) {
+                      // sar_cpu: legendgroup 格式为 "CPU, METRIC"
+                      traceValue = trace.legendgroup.split(', ')[0];
+                  } else if (key === 'METRIC' && trace.legendgroup) {
+                      // sar_cpu: legendgroup 格式为 "CPU, METRIC"
+                      traceValue = trace.legendgroup.split(', ').slice(1).join(', ');
+                  } else if (key === 'METRIC') {
+                      // 对于 melted 格式的数据（perf, sar_io, sar_load, sar_memory, sar_paging）
+                      // trace.name 对应 metric 值
+                      traceValue = trace.name;
+                  } else if ((key === 'IFACE' || key === 'DEV' || key === 'CPU') && trace.legendgroup) {
+                      // melted 格式的 ID 列在 legendgroup 中
+                      traceValue = trace.legendgroup;
+                  } else if ((key === 'IFACE' || key === 'DEV' || key === 'CPU') && !trace.legendgroup && trace.name) {
+                      // 备用：从 name 中提取
+                      traceValue = trace.name;
+                  }
 
-          // Find the plotly graph container
-          const container = document.getElementById(containerId);
-          const plotDiv = container.querySelector('.plotly-graph-div');
+                  // 根据匹配类型进行匹配
+                  if (traceValue) {
+                      if (filterInfo.type === 'exact') {
+                          // 精准匹配
+                          if (!filterInfo.values.has(traceValue)) {
+                              return false;
+                          }
+                      } else if (filterInfo.type === 'fuzzy') {
+                          // 模糊匹配：所有关键字都要被找到（不考虑顺序）
+                          const traceValueLower = traceValue.toLowerCase();
+                          const allKeywordsMatched = filterInfo.keywords.every(keyword =>
+                              traceValueLower.includes(keyword)
+                          );
+                          if (!allKeywordsMatched) {
+                              return false;
+                          }
+                      }
+                  }
+              }
+              return true; // 所有过滤器都匹配则显示
+          });
 
-          if (!plotDiv || !plotDiv.data) {
-              alert('Chart data not found');
-              return;
-          }
-
-          // Show all traces
-          const visibility = plotDiv.data.map(() => true);
-          Plotly.restyle(plotDiv, {visible: visibility});
+          Plotly.restyle(plotDiv, 'visible', visibilityArray);
+          console.debug(
+              `Applied filter to ${plotName}: ${Object.keys(activeFilters).join(', ')}`
+          );
       }
 
       // --- JSON Tree Viewer Logic (Fixed) ---
