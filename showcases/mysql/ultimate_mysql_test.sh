@@ -5,6 +5,19 @@ set -e
 # PIPA 终极试炼：鲲鹏 MySQL @ 256 线程
 # =================================================================
 
+# 获取项目根目录（脚本所在目录的两级父目录）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../" && pwd)"
+
+# 自动激活虚拟环境
+VENV_DIR="${PROJECT_ROOT}/.venv"
+if [ -d "${VENV_DIR}" ]; then
+    source "${VENV_DIR}/bin/activate"
+    echo "✓ Virtual environment activated: ${VENV_DIR}"
+else
+    echo "⚠ Warning: Virtual environment not found at ${VENV_DIR}"
+fi
+
 LOG_PREFIX="[UltimateTest]"
 
 log() {
@@ -16,7 +29,7 @@ cleanup() {
     log "Cleaning up environment..."
     pkill -f sysbench || true
     if pgrep -x mysqld > /dev/null; then
-        ../../showcases/mysql/stop_mysql.sh
+        "${PROJECT_ROOT}/showcases/mysql/stop_mysql.sh"
     fi
     echo "✅ Test finished."
 }
@@ -25,9 +38,9 @@ trap cleanup EXIT
 # --- 1. 环境准备 ---
 log "Step 1: Preparing MySQL and Sysbench environment..."
 # 加载 showcase 配置
-source ../../showcases/mysql/env.sh
+source "${PROJECT_ROOT}/showcases/mysql/env.sh"
 # 启动 MySQL 服务器
-../../showcases/mysql/start_mysql.sh
+"${PROJECT_ROOT}/showcases/mysql/start_mysql.sh"
 MYSQL_PID=$(pgrep -x mysqld)
 echo "   -> MySQL is running with PID: ${MYSQL_PID}"
 
@@ -39,7 +52,7 @@ echo "   -> pipa_static_info.yaml created in current directory."
 # --- 3. 施加极限负载 ---
 log "Step 3: Applying EXTREME load (256 threads)..."
 # 在后台启动一个持续 5 分钟的、256 线程的 sysbench 压测
-../../showcases/mysql/run_sysbench.sh 256 &
+"${PROJECT_ROOT}/showcases/mysql/run_sysbench.sh" 256 &
 SYSBENCH_PID=$!
 echo "   -> Sysbench is running in the background with PID: ${SYSBENCH_PID}"
 echo "   -> Waiting 15 seconds for the load to stabilize..."
