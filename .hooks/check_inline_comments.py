@@ -3,7 +3,7 @@
 
 import ast
 import sys
-from typing import List
+from typing import List, Optional
 
 
 class InlineCommentRemover(ast.NodeVisitor):
@@ -95,7 +95,7 @@ def process_file(filepath: str) -> bool:
         return False
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """Main function"""
     argv = argv or sys.argv[1:]
 
