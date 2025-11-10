@@ -7,11 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .executor import (
-    ExecutionError,
-    PerfPermissionError,
-    run_command,
-)
+from .executor import ExecutionError, PerfPermissionError, run_command
 
 log = logging.getLogger(__name__)
 # --- Built-in Event Sets ---
