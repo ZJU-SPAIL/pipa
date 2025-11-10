@@ -144,9 +144,13 @@ def calculate_context_metrics(df_dict: Dict[str, pd.DataFrame], static_info: Dic
     if static_info and (cpu_info := static_info.get("cpu_info")):
         context["num_cpu"] = cpu_info.get("CPUs_Count", 1)
 
-    df_cpu = df_dict.get("cpu")
+    df_cpu = df_dict.get("sar_cpu")
     if df_cpu is not None and not df_cpu.empty:
-        context["total_cpu"] = df_cpu.get("%user", pd.Series(0)).mean() + df_cpu.get("%system", pd.Series(0)).mean()
+        df_cpu_all = df_cpu[df_cpu["CPU"] == "all"]
+        if not df_cpu_all.empty:
+            context["total_cpu"] = (
+                df_cpu_all.get("%user", pd.Series(0)).mean() + df_cpu_all.get("%system", pd.Series(0)).mean()
+            )
 
     df_cswch = df_dict.get("proc_cswch")
     if df_cswch is not None and not df_cswch.empty:

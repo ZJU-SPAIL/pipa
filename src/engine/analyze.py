@@ -108,61 +108,120 @@ def generate_report(level_dir: Path, report_path: Path):
         all_dataframes["perf"] = df_perf
 
     for name, df in all_dataframes.items():
-        if name == "perf_raw":
-            continue
-
-        if df.empty:
+        if name == "perf_raw" or df.empty:
             continue
 
         log.info(f"Processing data for '{name}'...")
-
         tables[name] = df.round(2).to_json(orient="records")
-        log.info(f"Generated data table for '{name}'.")
 
         try:
-            time_col = None
-            if "timestamp" in df.columns:
-                time_col = "timestamp"
-
-            if not time_col:
+            time_col = "timestamp"
+            if time_col not in df.columns:
                 continue
 
-            id_col = None
-            for col in ["CPU", "IFACE", "DEV"]:
-                if col in df.columns:
-                    id_col = col
-                    break
+            fig = None
+            filter_options = {}
 
-            value_cols = [
-                c
-                for c in df.columns
-                if df[c].dtype in ["int64", "float64", "int32", "float32"] and c not in ["interval", "hostname"]
-            ]
+            if name == "sar_cpu":
+                if "%user" in df.columns and "%system" in df.columns:
+                    df["%total"] = df["%user"] + df["%system"]
 
-            if not value_cols:
-                continue
+                metrics_to_plot = [m for m in ["%user", "%system", "%iowait", "%idle", "%total"] if m in df.columns]
 
-            if id_col:
-                fig = px.line(
-                    df,
-                    x=time_col,
-                    y=value_cols,
-                    color=id_col,
-                    title=f"{name.replace('_', ' ').title()} Metrics",
+                melted_df = df.melt(
+                    id_vars=[time_col, "CPU"],
+                    value_vars=metrics_to_plot,
+                    var_name="metric",
+                    value_name="utilization",
                 )
+
+                fig = px.line(
+                    melted_df,
+                    x=time_col,
+                    y="utilization",
+                    color="CPU",
+                    line_dash="metric",
+                    title="Sar CPU Metrics (Per-Core & Overall)",
+                    labels={"utilization": "CPU Utilization (%)"},
+                )
+                fig.update_layout(showlegend=False, height=600)
+                fig.for_each_trace(lambda trace: trace.update(visible=True))
+
+                filter_options["CPU"] = sorted(df["CPU"].unique().tolist())
+                filter_options["METRIC"] = metrics_to_plot
+
+                log.info(
+                    f"Generated sar_cpu plot: {len(filter_options['CPU'])} CPUs, "
+                    f"{len(filter_options['METRIC'])} metrics."
+                )
+
             else:
-                fig = px.line(
-                    df,
-                    x=time_col,
-                    y=value_cols,
-                    title=f"{name.replace('_', ' ').title()} Metrics",
-                )
+                id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
+                value_cols = [
+                    c for c in df.columns if df[c].dtype.kind in "if" and c not in ["interval", "hostname", "CPU"]
+                ]
+                if not value_cols:
+                    continue
 
-            fig.update_layout(autosize=True, height=500, legend_itemclick="toggle")
-            plots[name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
-            log.info(f"Generated plot for '{name}'.")
+                if name.startswith("perf"):
+                    melted_df = df.melt(
+                        id_vars=[time_col] + ([id_col] if id_col else []),
+                        value_vars=value_cols,
+                        var_name="metric",
+                        value_name="value",
+                    )
+                    fig = px.line(
+                        melted_df,
+                        x=time_col,
+                        y="value",
+                        color="metric",
+                        line_dash=id_col if id_col else None,
+                        title=f"{name.replace('_', ' ').title()} Metrics",
+                        labels={"value": "Value"},
+                    )
+                    filter_options["METRIC"] = sorted(value_cols)
+                    if id_col:
+                        filter_options[id_col] = sorted(df[id_col].unique().tolist())
+                else:
+                    melted_df = df.melt(
+                        id_vars=[time_col] + ([id_col] if id_col else []),
+                        value_vars=value_cols,
+                        var_name="metric",
+                        value_name="value",
+                    )
+                    fig = px.line(
+                        melted_df,
+                        x=time_col,
+                        y="value",
+                        color="metric",
+                        line_dash=id_col if id_col else None,
+                        title=f"{name.replace('_', ' ').title()} Metrics",
+                        labels={"value": "Value"},
+                    )
+                    filter_options["METRIC"] = sorted(value_cols)
+                    if id_col:
+                        filter_options[id_col] = sorted(df[id_col].unique().tolist())
+
+                fig.update_layout(height=500, showlegend=False)
+                fig.for_each_trace(lambda trace: trace.update(visible=True))
+
+                log.info(f"Generated generic plot for '{name}' with filter dimensions: {list(filter_options.keys())}")
+
+            if fig:
+                plots[name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
+                if filter_options:
+                    filters_with_hints = {}
+                    for key, values in filter_options.items():
+                        filters_with_hints[key] = {
+                            "values": values,
+                            "sample": values[:3],
+                            "count": len(values),
+                        }
+                    context[f"{name}_filters"] = filters_with_hints
+                    log.info(f"Attached filter options to '{name}': {list(filter_options.keys())}")
+
         except Exception as e:
-            log.warning(f"Could not generate plot for '{name}': {e}")
+            log.warning(f"Could not generate plot for '{name}': {e}", exc_info=True)
 
     log.info(f"Generating HTML report at: {report_path}")
     templates_dir = get_project_root() / "src/templates"
@@ -179,6 +238,7 @@ def generate_report(level_dir: Path, report_path: Path):
         findings_for_tree_html=findings_for_tree_html,
         static_info_str=static_info_str,
         static_info_data=static_info_data,
+        context=context,
     )
     with open(report_path, "w") as f:
         f.write(html_content)
