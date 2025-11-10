@@ -8,14 +8,7 @@ from typing import Optional
 
 import click
 
-from src.collector import (
-    start_perf_record,
-    start_perf_stat,
-    start_sar,
-    stop_perf_record,
-    stop_perf_stat,
-    stop_sar,
-)
+from src.collector import start_perf_record, start_perf_stat, start_sar, stop_perf_record, stop_perf_stat, stop_sar
 
 log = logging.getLogger(__name__)
 

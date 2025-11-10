@@ -2,12 +2,7 @@ import subprocess
 from typing import cast
 from unittest.mock import MagicMock, patch
 
-from src.collector import (
-    start_perf_stat,
-    start_sar,
-    stop_perf_stat,
-    stop_sar,
-)
+from src.collector import start_perf_stat, start_sar, stop_perf_stat, stop_sar
 
 
 @patch("src.collector.platform.machine", return_value="x86_64")

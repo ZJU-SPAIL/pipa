@@ -5,10 +5,7 @@ import logging
 import pytest
 
 from src.executor import ExecutionError
-from src.static_collector import (
-    collect_all_static_info,
-    get_numa_info,
-)
+from src.static_collector import collect_all_static_info, get_numa_info
 
 
 # 确保在测试环境中不打印 click 输出
