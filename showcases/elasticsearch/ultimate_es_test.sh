@@ -3,8 +3,8 @@ set -e
 set -o pipefail
 
 # --- 核心配置区 ---
-DURATION_STAT=60
-DURATION_RECORD=60
+DURATION_STAT=600
+DURATION_RECORD=600
 ESRALLY_PROBE_TIMEOUT=1200 # 最长等待 5 分钟
 
 # --- 脚本初始化 ---
