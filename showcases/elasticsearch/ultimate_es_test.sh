@@ -57,21 +57,32 @@ if [ -z "$ES_PIDS" ]; then
 fi
 log "   -> ES 集群已运行, PIDs: ${ES_PIDS}"
 
-# --- 步骤 2: 启动负载并等待“开始”信号 ---
-log "步骤 2: 启动 esrally 负载并主动探测其状态..."
-ESRALLY_LOG_FILE="/tmp/esrally_ultimate_test.log"
-rm -f "$ESRALLY_LOG_FILE"
-"$SHOWCASE_DIR/run_load.sh" > "$ESRALLY_LOG_FILE" 2>&1 &
-ESRALLY_PID=$!
-log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})，日志输出至 ${ESRALLY_LOG_FILE}"
+# --- 步骤 2: 启动负载并探测真实日志文件 ---
+log "步骤 2: 启动 esrally 负载并主动探测其真实日志..."
+# 定义 esrally 真正的日志文件路径
+ESRALLY_REAL_LOG_FILE="$HOME/.rally/logs/rally.log"
+log "   -> 目标日志文件: ${ESRALLY_REAL_LOG_FILE}"
 
-log "   -> 正在等待 esrally 发出 'Running challenge' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
+# 关键步骤：在启动前清空日志，确保我们只看到本次运行的输出
+# The > operator will create the file if it doesn't exist.
+# > 操作符会在文件不存在时创建它。
+> "$ESRALLY_REAL_LOG_FILE"
+log "   -> 已清空目标日志文件以进行干净的探测。"
+
+# 启动 run_load.sh，将其无关紧要的 stdout/stderr 重定向到 /dev/null
+"$SHOWCASE_DIR/run_load.sh" > /dev/null 2>&1 &
+ESRALLY_PID=$!
+log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
+
+# 探测循环：现在我们监视的是真正的日志文件
+log "   -> 正在等待 esrally 发出 'Racing on track' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
-CHALLENGE_SIGNAL="Running challenge [${ES_RALLY_CHALLENGE}]"
+WORKLOAD_SIGNAL="Racing on track [${ES_RALLY_TRACK}]"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
-    if grep -q -F -e "$CHALLENGE_SIGNAL" "$ESRALLY_LOG_FILE"; then
+    # 使用 -F 进行固定字符串搜索，确保健壮性
+    if grep -q -F "$WORKLOAD_SIGNAL" "$ESRALLY_REAL_LOG_FILE"; then
         log "   -> ✅ 探测到负载信号！立即开始采样！"
         LOAD_STARTED=true
         break
@@ -84,8 +95,8 @@ while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
 done
 
 if ! $LOAD_STARTED; then
-    log "❌ 致命错误: 在 ${ESRALLY_PROBE_TIMEOUT} 秒内未探测到 esrally 负载开始信号。"
-    log "请检查日志: ${ESRALLY_LOG_FILE}"
+    log "❌ 致命错误: 在 ${ESRALLY_PROBE_TIMEOUT} 秒内未在真实日志中探测到 esrally 负载开始信号。"
+    log "请检查日志: ${ESRALLY_REAL_LOG_FILE}"
     exit 1
 fi
 
