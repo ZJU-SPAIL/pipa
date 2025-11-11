@@ -2,12 +2,6 @@
 set -e
 set -o pipefail
 
-# =================================================================
-# PIPA 终极试炼: Elasticsearch Showcase (v3 - 信号驱动 & 配置化)
-# 职责: 自动化执行一个完整的“启动->施压->采样->分析”工作流。
-# 这是对 pipa 观察者哲学的终极展示。
-# =================================================================
-
 # --- 核心配置区 ---
 DURATION_STAT=60
 DURATION_RECORD=60
@@ -36,33 +30,14 @@ log "   -> Pipa command found at: ${PIPA_CMD}"
 
 # --- 健壮的清理机制 ---
 cleanup() {
-    log "执行清理..."
-
-    # 步骤 1: 可靠地终止 esrally 进程组
-    if [ -n "$ESRALLY_PID" ] && ps -p "$ESRALLY_PID" > /dev/null; then
-        log "   -> 正在停止 esrally 进程组 (PGID: $ESRALLY_PID)..."
-        # 使用 kill -- -PGID 向整个进程组发送 SIGTERM 信号
-        kill -- -"$ESRALLY_PID" 2>/dev/null || true
-        # 等待 2 秒让其优雅退出
-        sleep 2
-        # 如果仍在运行，则强制终止
-        if ps -p "$ESRALLY_PID" > /dev/null; then
-            log "   -> esrally 未能优雅退出，强制发送 SIGKILL..."
-            kill -9 -- -"$ESRALLY_PID" 2>/dev/null || true
-        fi
-        log "   -> esrally 进程组已终止。"
-    else
-        # 如果 esrally 已经自己退出了，就用 pkill 做一次保险性的清扫
-        log "   -> esrally 进程未找到或已停止，执行保险性 pkill..."
-        pkill -f esrally || true
-    fi
-
-    # 步骤 2: 调用标准脚本停止 ES 集群
+    log "执行最终的清理..."
+    log "   -> 正在使用 pkill 终止所有 'esrally race' 进程..."
+    pkill -f "esrally race" || true
+    sleep 2
+    pkill -9 -f "esrally race" || true
+    log "   -> 所有 esrally 进程已被强制终止。"
     "$SHOWCASE_DIR/stop_es.sh"
-
-    # 步骤 3: 清理临时日志文件
     rm -f "$HOME/.rally/logs/rally.log"
-
     log "✅ 清理完成。"
 }
 trap cleanup EXIT
@@ -122,7 +97,6 @@ if ! $LOAD_STARTED; then
     exit 1
 fi
 
-# --- 步骤 3: 运行 Pipa 健康检查 (最佳实践) ---
 log "步骤 3: 运行 $PIPA_CMD healthcheck..."
 $PIPA_CMD healthcheck
 ``
