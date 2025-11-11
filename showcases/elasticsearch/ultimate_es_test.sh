@@ -61,7 +61,7 @@ log "步骤 2: 在后台施加 esrally 负载..."
 "$SHOWCASE_DIR/run_load.sh" &
 ESRALLY_PID=$!
 log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID}). 等待 30 秒让负载稳定..."
-sleep 30
+sleep 90
 
 # --- 步骤 3: 运行 Pipa 健康检查 (最佳实践) ---
 log "步骤 3: 运行 $PIPA_CMD healthcheck..."
@@ -71,8 +71,8 @@ $PIPA_CMD healthcheck
 log "步骤 4: 执行 Pipa 标准两阶段快照 (30s stat + 30s record)..."
 $PIPA_CMD sample \
     --attach-to-pid "${ES_PIDS}" \
-    --duration-stat 30 \
-    --duration-record 30 \
+    --duration-stat 60 \
+    --duration-record 60 \
     --output es_ultimate_snapshot.pipa
 
 log "   -> 快照捕获完成。"
