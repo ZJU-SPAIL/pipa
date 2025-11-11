@@ -71,7 +71,7 @@ LOAD_STARTED=false
 CHALLENGE_SIGNAL="Running challenge [${ES_RALLY_CHALLENGE}]"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
-    if grep -q "$CHALLENGE_SIGNAL" "$ESRALLY_LOG_FILE"; then
+    if grep -q -e "$CHALLENGE_SIGNAL" "$ESRALLY_LOG_FILE"; then
         log "   -> ✅ 探测到负载信号！立即开始采样！"
         LOAD_STARTED=true
         break
@@ -92,7 +92,7 @@ fi
 # --- 步骤 3: 运行 Pipa 健康检查 (最佳实践) ---
 log "步骤 3: 运行 $PIPA_CMD healthcheck..."
 $PIPA_CMD healthcheck
-
+``
 # --- 步骤 4: 执行 Pipa 标准快照 ---
 log "步骤 4: 执行 Pipa 标准两阶段快照 (${DURATION_STAT}s stat + ${DURATION_RECORD}s record)..."
 $PIPA_CMD sample \
