@@ -5,7 +5,7 @@ set -o pipefail
 # --- 核心配置区 ---
 DURATION_STAT=60
 DURATION_RECORD=60
-ESRALLY_PROBE_TIMEOUT=300 # 最长等待 5 分钟
+ESRALLY_PROBE_TIMEOUT=1200 # 最长等待 5 分钟
 
 # --- 脚本初始化 ---
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
