@@ -18,6 +18,11 @@ PROJECT_ROOT=$(cd "$SHOWCASE_DIR/.." && pwd)
 VENV_PATH="$PROJECT_ROOT/.venv"
 PIPA_CMD="$VENV_PATH/bin/pipa"
 
+log() {
+    echo ""
+    echo "--- [UltimateTest-ES] $1 ---"
+}
+
 if [ ! -x "$PIPA_CMD" ]; then
     log "❌ 致命错误: Pipa 命令未在 '$PIPA_CMD' 找到或不可执行。"
     log "   -> 请确保你已在项目根目录成功运行过 './setup.sh'。"
@@ -25,10 +30,6 @@ if [ ! -x "$PIPA_CMD" ]; then
 fi
 log "   -> Pipa command found at: ${PIPA_CMD}"
 
-log() {
-    echo ""
-    echo "--- [UltimateTest-ES] $1 ---"
-}
 
 # --- 健壮的清理机制 ---
 cleanup() {
