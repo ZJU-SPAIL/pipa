@@ -37,11 +37,33 @@ log "   -> Pipa command found at: ${PIPA_CMD}"
 # --- 健壮的清理机制 ---
 cleanup() {
     log "执行清理..."
-    pkill -f esrally || true
+
+    # 步骤 1: 可靠地终止 esrally 进程组
+    if [ -n "$ESRALLY_PID" ] && ps -p "$ESRALLY_PID" > /dev/null; then
+        log "   -> 正在停止 esrally 进程组 (PGID: $ESRALLY_PID)..."
+        # 使用 kill -- -PGID 向整个进程组发送 SIGTERM 信号
+        kill -- -"$ESRALLY_PID" 2>/dev/null || true
+        # 等待 2 秒让其优雅退出
+        sleep 2
+        # 如果仍在运行，则强制终止
+        if ps -p "$ESRALLY_PID" > /dev/null; then
+            log "   -> esrally 未能优雅退出，强制发送 SIGKILL..."
+            kill -9 -- -"$ESRALLY_PID" 2>/dev/null || true
+        fi
+        log "   -> esrally 进程组已终止。"
+    else
+        # 如果 esrally 已经自己退出了，就用 pkill 做一次保险性的清扫
+        log "   -> esrally 进程未找到或已停止，执行保险性 pkill..."
+        pkill -f esrally || true
+    fi
+
+    # 步骤 2: 调用标准脚本停止 ES 集群
     "$SHOWCASE_DIR/stop_es.sh"
-    # 清理临时日志文件
-    rm -f /tmp/esrally_ultimate_test.log
-    log "✅ 测试结束。"
+
+    # 步骤 3: 清理临时日志文件
+    rm -f "$HOME/.rally/logs/rally.log"
+
+    log "✅ 清理完成。"
 }
 trap cleanup EXIT
 
