@@ -39,7 +39,9 @@ for i in "${!NODES[@]}"; do
 
     log "启动节点 ${NODE_NAME} (CPU 亲和性: ${AFFINITY})..."
     # 使用 taskset 绑定 CPU，并在后台启动
-    taskset -c "$AFFINITY" "$NODE_DIR/bin/elasticsearch" &
+    LOG_FILE="$NODE_DIR/logs/startup.log"
+    mkdir -p "$(dirname "$LOG_FILE")"
+    taskset -c "$AFFINITY" "$NODE_DIR/bin/elasticsearch" > "$LOG_FILE" 2>&1 &
 done
 
 # --- 等待并验证 ---
