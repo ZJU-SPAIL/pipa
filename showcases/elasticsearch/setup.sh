@@ -3,9 +3,9 @@ set -e
 set -o pipefail
 
 # =================================================================
-# Pipa Showcase: Elasticsearch 环境准备脚本 (v2 - Pipa 范式)
-# 职责: 编译、安装、初始化 Elasticsearch 和 esrally。
-# 特性: 幂等性、配置模板化、清晰日志、依赖 env.sh。
+# Pipa Showcase: Elasticsearch 环境准备脚本
+# 职责: 在本地构建 Elasticsearch 3节点集群和 esrally 虚拟环境。
+#       此脚本不执行任何网络数据下载。
 # =================================================================
 
 # --- 脚本初始化 ---
@@ -20,13 +20,13 @@ log() {
 SUCCESS_FLAG="$BASE_DIR/.setup_success"
 if [ -f "$SUCCESS_FLAG" ]; then
     log "✅ 检测到成功标志，环境已准备就绪。跳过所有步骤。"
-    log "如需强制重新准备，请先删除目录: rm -rf $SUCCESS_FLAG"
+    log "如需强制重新准备，请先删除目录: rm -rf $BASE_DIR"
     exit 0
 fi
 
 # --- 步骤 1: 安装系统依赖 ---
 log "--- 步骤 1/5: 安装系统依赖 ---"
-sudo yum install -y wget tar python3-devel
+sudo yum install -y wget tar python3-devel python3-venv
 
 # --- 步骤 2: 创建目录结构 ---
 log "--- 步骤 2/5: 创建目录结构 ---"
@@ -64,24 +64,12 @@ for i in "${!NODES[@]}"; do
     rm -rf "$NODE_DIR"
     cp -R "$SRC_DIR/$ES_SRC_DIR_NAME" "$NODE_DIR"
 
-    # 动态生成配置文件
-    export NODE_NAME
-    export HTTP_PORT=${HTTP_PORTS[$i]}
-    export TRANSPORT_PORT=${TRANSPORT_PORTS[$i]}
-    export ES_CLUSTER_NAME
-    # 仅为第一个节点设置 initial_master_nodes
-    if [ "$i" -eq 0 ]; then
-        export INITIAL_MASTER_NODE_CONFIG="cluster.initial_master_nodes: [\"${NODE_NAME}\"]"
-    else
-        export INITIAL_MASTER_NODE_CONFIG=""
-    fi
+    export NODE_NAME HTTP_PORT=${HTTP_PORTS[$i]} TRANSPORT_PORT=${TRANSPORT_PORTS[$i]} ES_CLUSTER_NAME
+    if [ "$i" -eq 0 ]; then export INITIAL_MASTER_NODE_CONFIG="cluster.initial_master_nodes: [\"${NODE_NAME}\"]"; else export INITIAL_MASTER_NODE_CONFIG=""; fi
     envsubst < "$CONF_TEMPLATE" > "$NODE_DIR/config/elasticsearch.yml"
 
-    # 为 perf 火焰图添加 JVM 选项 (幂等)
     JVM_OPTIONS_FILE="$NODE_DIR/config/jvm.options"
-    if ! grep -q "DumpPerfMapAtExit" "$JVM_OPTIONS_FILE"; then
-        echo -e "\n-XX:+UnlockDiagnosticVMOptions\n-XX:+DumpPerfMapAtExit" >> "$JVM_OPTIONS_FILE"
-    fi
+    if ! grep -q "DumpPerfMapAtExit" "$JVM_OPTIONS_FILE"; then echo -e "\n-XX:+UnlockDiagnosticVMOptions\n-XX:+DumpPerfMapAtExit" >> "$JVM_OPTIONS_FILE"; fi
 done
 
 # --- 步骤 5: 配置 esrally ---
@@ -94,30 +82,8 @@ pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install esrally -i https://pypi.tuna.tsinghua.edu.cn/simple
 deactivate
 
-log "验证 esrally 安装..."
-"$PYTHON_VENV_PATH/bin/esrally" list tracks
-
-# --- 步骤 6: 手动准备 esrally 数据集 ---
-log "--- 步骤 6/6: 手动准备 esrally 数据集 ---"
-RALLY_DATA_DIR="$HOME/.rally/benchmarks/data"
-GEONAMES_DATA_ARCHIVE="$SHOWCASE_DIR/geonames-data.tar.gz" # 假设我们把数据包放在这里
-
-if [ ! -f "$GEONAMES_DATA_ARCHIVE" ]; then
-    log "❌ 致命错误: esrally 数据集归档文件未找到: ${GEONAMES_DATA_ARCHIVE}"
-    log "请先在有网环境中准备好此文件。"
-    exit 1
-fi
-
-if [ -d "$RALLY_DATA_DIR/geonames" ]; then
-    log "检测到 geonames 数据已存在，跳过解压。"
-else
-    log "解压 geonames 数据集到 ${RALLY_DATA_DIR}..."
-    mkdir -p "$RALLY_DATA_DIR"
-    tar -zxf "$GEONAMES_DATA_ARCHIVE" -C "$RALLY_DATA_DIR"
-    log "✅ esrally 数据集准备完成。"
-fi
-
 # --- 完成 ---
 touch "$SUCCESS_FLAG"
-log "✅ Elasticsearch Showcase 环境准备完成！"
-log "下一步: 运行 ./showcases/elasticsearch/start_es.sh 来启动集群。"
+log "✅ Elasticsearch Showcase 本地环境准备完成！"
+log "下一步 (如果需要): 运行 ./showcases/elasticsearch/download_data.sh 来下载数据集。"
+log "然后: 运行 ./showcases/elasticsearch/start_es.sh 来启动集群。"
