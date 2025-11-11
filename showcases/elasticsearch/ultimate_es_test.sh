@@ -11,8 +11,8 @@ set -o pipefail
 # --- 脚本初始化 ---
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 # 项目根目录是 showcase 目录的父目录
-PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-SHOWCASE_DIR="$PROJECT_ROOT/showcases/elasticsearch"
+SHOWCASE_DIR="$SCRIPT_DIR"
+PROJECT_ROOT=$(cd "$SHOWCASE_DIR/.." && pwd)
 
 # 自动激活 pipa 的虚拟环境
 VENV_PATH="$PROJECT_ROOT/.venv"
