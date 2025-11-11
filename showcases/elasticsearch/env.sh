@@ -39,3 +39,7 @@ export ES_JVM_HEAP="16g"
 export ES_BENCHMARK_CPU_AFFINITY="96-127"
 export ES_RALLY_TRACK="geonames"
 export ES_RALLY_CHALLENGE="append-no-conflicts"
+
+# --- 信号配置 ---
+# 这是 esrally 在后台日志中，标志着核心压测开始的真实信号
+export ES_RALLY_WORKLOAD_SIGNAL="executing tasks: ['default']"

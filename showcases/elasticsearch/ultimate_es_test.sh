@@ -67,14 +67,15 @@ log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
 
 WORKLOAD_SIGNAL="Running default"
 # 探测循环：现在我们监视的是真正的日志文件
-log "   -> 正在等待 esrally 发出 '$WORKLOAD_SIGNAL' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
+log "   -> 正在等待 esrally 发出核心负载信号${ES_RALLY_WORKLOAD_SIGNAL} (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
+# 使用从 env.sh 中读取的、动态的、正确的信号！
+WORKLOAD_SIGNAL="${ES_RALLY_WORKLOAD_SIGNAL}"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
-    # 使用 -F 进行固定字符串搜索，确保健壮性
     if grep -q -F "$WORKLOAD_SIGNAL" "$ESRALLY_REAL_LOG_FILE"; then
-        log "   -> ✅ 探测到负载信号！立即开始采样！"
+        log "   -> ✅ 探测到核心负载信号: '${WORKLOAD_SIGNAL}'！立即开始采样！"
         LOAD_STARTED=true
         break
     fi
