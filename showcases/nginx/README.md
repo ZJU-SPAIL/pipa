@@ -29,6 +29,7 @@ cd showcases/nginx
 ```
 
 这个脚本会：
+
 - 安装必要的编译依赖
 - 从源代码编译 Nginx
 - 从源代码编译 WRK（高性能 HTTP 基准测试工具）
@@ -55,6 +56,7 @@ cd showcases/nginx
 ```
 
 这会运行两个测试：
+
 - 保活连接测试 (Keep-Alive)
 - 关闭连接测试 (Close)
 
@@ -65,6 +67,7 @@ cd showcases/nginx
 ```
 
 这会运行 10 轮完整的性能测试，收集的指标包括：
+
 - CPU 使用率（用户态、系统态）
 - 中断处理时间 (IRQ, SoftIRQ)
 - CPU 性能计数器（周期数、指令数、缓存性能等）
@@ -77,26 +80,6 @@ cd showcases/nginx
 
 ```bash
 ./stop_nginx_server.sh
-```
-
-## 配置文件说明
-
-### env.sh
-
-这是环境配置文件，定义了所有需要的变量和路径。可以修改以下参数：
-
-```bash
-# Nginx 配置
-NGINX_VERSION="1.24.0"           # Nginx 版本
-NGINX_WORKER_PROCESSES=4         # Worker 进程数
-NGINX_CPU_AFFINITY="0-3"         # CPU 亲和性绑定
-
-# WRK 基准测试参数
-WRK_THREADS=4                    # 测试线程数
-WRK_CONNECTIONS=100              # 并发连接数
-WRK_DURATION="30s"               # 测试持续时间
-WRK_CPU_AFFINITY="4-7"          # CPU 亲和性绑定
-WRK_TARGET_URL="http://localhost:8000/"  # 测试目标
 ```
 
 ## 性能分析工作流
@@ -116,10 +99,12 @@ WRK_TARGET_URL="http://localhost:8000/"  # 测试目标
 # 4. 使用 Pipa 对 Nginx 进程进行性能采样和分析
 # (在另一个终端执行)
 NGINX_PID=$(pgrep -x nginx | head -1)
-pipa sample \
-    --attach-to-pid "${NGINX_PID}" \
-    --duration 60 \
-    --output nginx_snapshot.pipa
+
+pipa -vv sample \
+    --attach-to-pid ${NGINX_PID} \
+    --duration-stat 60 \
+    --duration-record 60 \
+    --output my_app_snapshot.pipa
 
 # 5. 分析快照并生成报告
 pipa analyze \
@@ -129,52 +114,3 @@ pipa analyze \
 # 6. 停止 Nginx
 ./stop_nginx_server.sh
 ```
-
-## 故障排除
-
-### 问题: "Permission denied" 或 "sudo password required"
-
-某些步骤需要 root 权限来安装系统依赖。确保你的用户可以无密码执行 `sudo`，或在运行脚本前手动安装依赖。
-
-### 问题: "Port 8000 already in use"
-
-修改 `env.sh` 中的 `WRK_TARGET_URL` 以使用不同的端口，或者停止占用该端口的其他服务。
-
-### 问题: "WRK executable not found"
-
-确保已运行 `1_setup_nginx_env.sh` 来编译 WRK。
-
-## 高级用法
-
-### 使用不同的 CPU 亲和性
-
-修改 `env.sh` 中的 `NGINX_CPU_AFFINITY` 和 `WRK_CPU_AFFINITY` 来指定不同的 CPU 核心。例如：
-
-```bash
-NGINX_CPU_AFFINITY="0-7"      # 使用核心 0-7
-WRK_CPU_AFFINITY="8-15"       # 使用核心 8-15
-```
-
-### 修改基准测试参数
-
-在 `env.sh` 中调整 WRK 参数以获得不同的测试场景：
-
-```bash
-WRK_THREADS=8              # 增加测试线程
-WRK_CONNECTIONS=500        # 增加并发连接
-WRK_DURATION="60s"         # 延长测试时间
-```
-
-### 清理构建产物
-
-要重新开始，可以删除成功标志：
-
-```bash
-rm -f build/.setup_success
-```
-
-下次运行 `1_setup_nginx_env.sh` 时，它将重新编译。
-
-## 许可证
-
-这个 showcase 是 Pipa 项目的一部分。
