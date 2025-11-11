@@ -42,4 +42,4 @@ export ES_RALLY_CHALLENGE="append-no-conflicts"
 
 # --- 信号配置 ---
 # 这是 esrally 在后台日志中，标志着核心压测开始的真实信号
-export ES_RALLY_WORKLOAD_SIGNAL="Running default"
+export ES_RALLY_WORKLOAD_SIGNAL="executing tasks: ['default']"
