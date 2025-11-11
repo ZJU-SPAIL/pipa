@@ -30,15 +30,9 @@ log "   -> Pipa command found at: ${PIPA_CMD}"
 
 # --- 健壮的清理机制 ---
 cleanup() {
-    log "执行最终的清理..."
-    log "   -> 正在使用 pkill 终止所有 'esrally race' 进程..."
-    pkill -f "esrally race" || true
-    sleep 2
-    pkill -9 -f "esrally race" || true
-    log "   -> 所有 esrally 进程已被强制终止。"
+    log "测试结束，调用终极清理脚本..."
+    # 调用我们统一的、全功能的停止脚本
     "$SHOWCASE_DIR/stop_es.sh"
-    rm -f "$HOME/.rally/logs/rally.log"
-    log "✅ 清理完成。"
 }
 trap cleanup EXIT
 
