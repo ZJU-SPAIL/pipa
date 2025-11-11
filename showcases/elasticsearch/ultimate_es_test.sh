@@ -49,7 +49,7 @@ if [ -z "$ES_PIDS" ]; then
 fi
 log "   -> ES 集群已运行, PIDs: ${ES_PIDS}"
 
---- 步骤 2: 启动负载并从简洁的 stdout 探测信号 ---
+#--- 步骤 2: 启动负载并从简洁的 stdout 探测信号 ---
 log "步骤 2: 启动 esrally 负载并从其 stdout 探测信号..."
 # 创建我们自己的、干净的探测日志文件
 PROBE_LOG_FILE="/tmp/pipa_es_probe.log"
