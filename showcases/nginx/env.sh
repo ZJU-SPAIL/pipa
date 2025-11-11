@@ -31,7 +31,9 @@ export NGINX_CPU_AFFINITY="0-3"
 
 # --- WRK 基准测试工具配置 ---
 export WRK_VERSION="4.1.0"
-export WRK_DOWNLOAD_URL="https://github.com/wg/wrk.git"
+#export WRK_DOWNLOAD_URL="https://github.com/wg/wrk.git"
+export WRK_DOWNLOAD_URL="http://gitlab.youtune.tech/pymirror/wrk.git"
+
 export WRK_THREADS=4
 export WRK_CONNECTIONS=100
 export WRK_DURATION="30s"
