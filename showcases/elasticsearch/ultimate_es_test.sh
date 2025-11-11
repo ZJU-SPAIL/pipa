@@ -99,7 +99,7 @@ fi
 
 log "步骤 3: 运行 $PIPA_CMD healthcheck..."
 $PIPA_CMD healthcheck
-``
+
 # --- 步骤 4: 执行 Pipa 标准快照 ---
 log "步骤 4: 执行 Pipa 标准两阶段快照 (${DURATION_STAT}s stat + ${DURATION_RECORD}s record)..."
 $PIPA_CMD sample \
