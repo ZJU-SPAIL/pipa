@@ -14,11 +14,16 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 SHOWCASE_DIR="$SCRIPT_DIR"
 PROJECT_ROOT=$(cd "$SHOWCASE_DIR/.." && pwd)
 
-# 自动激活 pipa 的虚拟环境
+# --- Pipa 环境校验 ---
 VENV_PATH="$PROJECT_ROOT/.venv"
-if [ -d "$VENV_PATH" ]; then
-    source "$VENV_PATH/bin/activate"
+PIPA_CMD="$VENV_PATH/bin/pipa"
+
+if [ ! -x "$PIPA_CMD" ]; then
+    log "❌ 致命错误: Pipa 命令未在 '$PIPA_CMD' 找到或不可执行。"
+    log "   -> 请确保你已在项目根目录成功运行过 './setup.sh'。"
+    exit 1
 fi
+log "   -> Pipa command found at: ${PIPA_CMD}"
 
 log() {
     echo ""
@@ -58,12 +63,12 @@ log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID}). 等待 30 秒让负
 sleep 30
 
 # --- 步骤 3: 运行 Pipa 健康检查 (最佳实践) ---
-log "步骤 3: 运行 pipa healthcheck..."
-pipa healthcheck
+log "步骤 3: 运行 $PIPA_CMD healthcheck..."
+$PIPA_CMD healthcheck
 
 # --- 步骤 4: 执行 Pipa 标准快照 ---
 log "步骤 4: 执行 Pipa 标准两阶段快照 (30s stat + 30s record)..."
-pipa sample \
+$PIPA_CMD sample \
     --attach-to-pid "${ES_PIDS}" \
     --duration-stat 30 \
     --duration-record 30 \
@@ -73,13 +78,13 @@ log "   -> 快照捕获完成。"
 
 # --- 步骤 5: 分析快照并生成报告 ---
 log "步骤 5: 分析快照..."
-pipa analyze \
+$PIPA_CMD analyze \
     --input es_ultimate_snapshot.pipa \
     --output es_ultimate_report.html
 
 # --- 步骤 6: 生成火焰图 ---
 log "步骤 6: 生成火焰图..."
-pipa flamegraph \
+$PIPA_CMD flamegraph \
     --input es_ultimate_snapshot.pipa \
     --output es_ultimate_flamegraph.svg
 
