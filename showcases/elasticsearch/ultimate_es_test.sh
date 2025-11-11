@@ -65,11 +65,11 @@ log "   -> 已清空目标日志文件以进行干净的探测。"
 ESRALLY_PID=$!
 log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
 
+WORKLOAD_SIGNAL="Running default"
 # 探测循环：现在我们监视的是真正的日志文件
-log "   -> 正在等待 esrally 发出 'Running default' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
+log "   -> 正在等待 esrally 发出 '$WORKLOAD_SIGNAL' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
-WORKLOAD_SIGNAL="Running default"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
     # 使用 -F 进行固定字符串搜索，确保健壮性
