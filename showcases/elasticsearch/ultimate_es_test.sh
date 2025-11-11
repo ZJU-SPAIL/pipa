@@ -12,7 +12,7 @@ set -o pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 # 项目根目录是 showcase 目录的父目录
 SHOWCASE_DIR="$SCRIPT_DIR"
-PROJECT_ROOT=$(cd "$SHOWCASE_DIR/.." && pwd)
+PROJECT_ROOT=$(cd "$SHOWCASE_DIR/../../" && pwd)
 
 # --- Pipa 环境校验 ---
 VENV_PATH="$PROJECT_ROOT/.venv"
