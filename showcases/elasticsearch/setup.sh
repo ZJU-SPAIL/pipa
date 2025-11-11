@@ -26,7 +26,7 @@ fi
 
 # --- 步骤 1: 安装系统依赖 ---
 log "--- 步骤 1/5: 安装系统依赖 ---"
-sudo yum install -y wget tar python3-devel python3-venv
+sudo yum install -y wget tar python3-devel
 
 # --- 步骤 2: 创建目录结构 ---
 log "--- 步骤 2/5: 创建目录结构 ---"
