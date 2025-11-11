@@ -78,7 +78,7 @@ log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
 log "   -> 正在等待 esrally 发出 'Racing on track' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
-WORKLOAD_SIGNAL="Racing on track [${ES_RALLY_TRACK}]"
+WORKLOAD_SIGNAL="Loading component [${ES_RALLY_TRACK}]"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
     # 使用 -F 进行固定字符串搜索，确保健壮性
