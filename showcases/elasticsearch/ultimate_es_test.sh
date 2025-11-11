@@ -66,7 +66,7 @@ ESRALLY_PID=$!
 log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
 
 # 探测循环：现在我们监视的是真正的日志文件
-log "   -> 正在等待 esrally 发出 'Racing on track' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
+log "   -> 正在等待 esrally 发出 'Running default' 信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
 WORKLOAD_SIGNAL="Running default"
