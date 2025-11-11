@@ -20,7 +20,7 @@ log() {
 SUCCESS_FLAG="$BASE_DIR/.setup_success"
 if [ -f "$SUCCESS_FLAG" ]; then
     log "✅ 检测到成功标志，环境已准备就绪。跳过所有步骤。"
-    log "如需强制重新准备，请先删除目录: rm -rf $BASE_DIR"
+    log "如需强制重新准备，请先删除目录: rm -rf $SUCCESS_FLAG"
     exit 0
 fi
 
@@ -96,6 +96,26 @@ deactivate
 
 log "验证 esrally 安装..."
 "$PYTHON_VENV_PATH/bin/esrally" list tracks
+
+# --- 步骤 6: 手动准备 esrally 数据集 ---
+log "--- 步骤 6/6: 手动准备 esrally 数据集 ---"
+RALLY_DATA_DIR="$HOME/.rally/benchmarks/data"
+GEONAMES_DATA_ARCHIVE="$SHOWCASE_DIR/geonames-data.tar.gz" # 假设我们把数据包放在这里
+
+if [ ! -f "$GEONAMES_DATA_ARCHIVE" ]; then
+    log "❌ 致命错误: esrally 数据集归档文件未找到: ${GEONAMES_DATA_ARCHIVE}"
+    log "请先在有网环境中准备好此文件。"
+    exit 1
+fi
+
+if [ -d "$RALLY_DATA_DIR/geonames" ]; then
+    log "检测到 geonames 数据已存在，跳过解压。"
+else
+    log "解压 geonames 数据集到 ${RALLY_DATA_DIR}..."
+    mkdir -p "$RALLY_DATA_DIR"
+    tar -zxf "$GEONAMES_DATA_ARCHIVE" -C "$RALLY_DATA_DIR"
+    log "✅ esrally 数据集准备完成。"
+fi
 
 # --- 完成 ---
 touch "$SUCCESS_FLAG"
