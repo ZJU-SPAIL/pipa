@@ -24,7 +24,7 @@ fi
 
 # --- 步骤 1: 安装系统依赖 (新增 pbzip2) ---
 log "--- 步骤 1/7: 安装系统依赖 ---"
-sudo yum install -y wget tar python3-devel python3-venv pbzip2
+sudo yum install -y wget tar python3-devel python3-virtualenv pbzip2
 
 # --- 步骤 2 & 3: 创建目录 & 下载 ES (无变化) ---
 log "--- 步骤 2/7: 创建目录结构 ---"
