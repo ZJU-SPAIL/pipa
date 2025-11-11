@@ -33,6 +33,7 @@ cleanup() {
     log "测试结束，调用终极清理脚本..."
     # 调用我们统一的、全功能的停止脚本
     "$SHOWCASE_DIR/stop_es.sh"
+    rm -f /tmp/pipa_es_probe.log
 }
 trap cleanup EXIT
 
@@ -48,33 +49,27 @@ if [ -z "$ES_PIDS" ]; then
 fi
 log "   -> ES 集群已运行, PIDs: ${ES_PIDS}"
 
-# --- 步骤 2: 启动负载并探测真实日志文件 ---
-log "步骤 2: 启动 esrally 负载并主动探测其真实日志..."
-# 定义 esrally 真正的日志文件路径
-ESRALLY_REAL_LOG_FILE="$HOME/.rally/logs/rally.log"
-log "   -> 目标日志文件: ${ESRALLY_REAL_LOG_FILE}"
+--- 步骤 2: 启动负载并从简洁的 stdout 探测信号 ---
+log "步骤 2: 启动 esrally 负载并从其 stdout 探测信号..."
+# 创建我们自己的、干净的探测日志文件
+PROBE_LOG_FILE="/tmp/pipa_es_probe.log"
+rm -f "$PROBE_LOG_FILE"
+log "   -> 探测日志文件: ${PROBE_LOG_FILE}"
 
-# 关键步骤：在启动前清空日志，确保我们只看到本次运行的输出
-# The > operator will create the file if it doesn't exist.
-# > 操作符会在文件不存在时创建它。
-> "$ESRALLY_REAL_LOG_FILE"
-log "   -> 已清空目标日志文件以进行干净的探测。"
-
-# 启动 run_load.sh，将其无关紧要的 stdout/stderr 重定向到 /dev/null
-"$SHOWCASE_DIR/run_load.sh" > /dev/null 2>&1 &
+# 启动 run_load.sh，将 stdout 重定向到我们的探测文件，stderr 直接丢弃
+"$SHOWCASE_DIR/run_load.sh" > "$PROBE_LOG_FILE" 2>/dev/null &
 ESRALLY_PID=$!
 log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
 
-WORKLOAD_SIGNAL="Running default"
-# 探测循环：现在我们监视的是真正的日志文件
-log "   -> 正在等待 esrally 发出核心负载信号${ES_RALLY_WORKLOAD_SIGNAL} (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
+# 探测循环：现在我们监视的是自己的、干净的日志文件
+log "   -> -正在等待 esrally 发出核心负载信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
 ELAPSED=0
 LOAD_STARTED=false
-# 使用从 env.sh 中读取的、动态的、正确的信号！
+# 使用从 env.sh 中读取的、动态的、简洁的信号！
 WORKLOAD_SIGNAL="${ES_RALLY_WORKLOAD_SIGNAL}"
 
 while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
-    if grep -q -F "$WORKLOAD_SIGNAL" "$ESRALLY_REAL_LOG_FILE"; then
+    if grep -q -F "$WORKLOAD_SIGNAL" "$PROBE_LOG_FILE"; then
         log "   -> ✅ 探测到核心负载信号: '${WORKLOAD_SIGNAL}'！立即开始采样！"
         LOAD_STARTED=true
         break
@@ -87,8 +82,10 @@ while [ $ELAPSED -lt $ESRALLY_PROBE_TIMEOUT ]; do
 done
 
 if ! $LOAD_STARTED; then
-    log "❌ 致命错误: 在 ${ESRALLY_PROBE_TIMEOUT} 秒内未在真实日志中探测到 esrally 负载开始信号。"
-    log "请检查日志: ${ESRALLY_REAL_LOG_FILE}"
+    log "❌ 致命错误: 在 ${ESRALLY_PROBE_TIMEOUT} 秒内未探测到核心负载信号。"
+    log "请检查探测日志: ${PROBE_LOG_FILE}"
+    # 同时，为了调试，也提示一下 esrally 的复杂日志
+    log "也可以检查 esrally 的详细日志: $HOME/.rally/logs/rally.log"
     exit 1
 fi
 
