@@ -33,7 +33,6 @@ log "负载将施加在 CPU 核心: ${ES_BENCHMARK_CPU_AFFINITY}"
 # 使用 taskset 绑定 esrally 进程到指定的 CPU 核心
 # --kill-running-processes 确保每次都是一个干净的运行
 taskset -c "$ES_BENCHMARK_CPU_AFFINITY" stdbuf -oL "$PYTHON_VENV_PATH/bin/esrally" race \
-    --logging=info \
     --offline \
     --pipeline=benchmark-only \
     --target-hosts=127.0.0.1:9200,127.0.0.1:9201,127.0.0.1:9202 \
