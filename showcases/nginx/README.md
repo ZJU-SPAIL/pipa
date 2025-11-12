@@ -9,9 +9,9 @@ showcases/nginx/
 ├── env.sh                           # 环境配置 (单一事实来源)
 ├── config/
 │   └── nginx.conf.template         # Nginx 配置模板
-├── 1_setup_nginx_env.sh            # 编译和安装 Nginx 和 WRK
-├── 2_start_nginx_server.sh         # 启动 Nginx 服务器
-├── 3_run_performance_collection.sh # 运行基准测试和数据收集
+├── setup_nginx_env.sh            # 编译和安装 Nginx 和 WRK
+├── start_nginx_server.sh         # 启动 Nginx 服务器
+├── run_performance_collection.sh # 运行基准测试和数据收集
 ├── run_single_benchmark.sh         # 运行单次 WRK 基准测试
 ├── stop_nginx_server.sh            # 停止 Nginx 服务器
 └── README.md                        # 本文件
@@ -23,13 +23,13 @@ showcases/nginx/
 
 ```bash
 # 1. 准备环境（仅需一次）
-./1_setup_nginx_env.sh
+./setup_nginx_env.sh
 
 # 2. 启动 Nginx
-./2_start_nginx_server.sh
+./start_nginx_server.sh
 
 # 3. 运行性能数据收集
-./3_run_performance_collection.sh
+./run_performance_collection.sh
 
 ```
 
