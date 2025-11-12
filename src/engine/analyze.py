@@ -121,8 +121,10 @@ def generate_report(level_dir: Path, report_path: Path):
 
             fig = None
             filter_options = {}
+            id_col = None
 
             if name == "sar_cpu":
+                id_col = "CPU"
                 if "%user" in df.columns and "%system" in df.columns:
                     df["%total"] = df["%user"] + df["%system"]
 
@@ -150,10 +152,17 @@ def generate_report(level_dir: Path, report_path: Path):
                 filter_options["CPU"] = sorted(df["CPU"].unique().tolist())
                 filter_options["METRIC"] = metrics_to_plot
 
-                log.info(
-                    f"Generated sar_cpu plot: {len(filter_options['CPU'])} CPUs, "
-                    f"{len(filter_options['METRIC'])} metrics."
-                )
+                filters_with_hints = {}
+                for key, values in filter_options.items():
+                    source_property = "legendgroup" if key == "CPU" else "name"
+                    filters_with_hints[key] = {
+                        "values": values,
+                        "sample": values[:3],
+                        "count": len(values),
+                        "source": source_property,
+                    }
+                context[f"{name}_filters"] = filters_with_hints
+                log.info(f"Attached filter options and trace map to '{name}'")
 
             else:
                 id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
@@ -212,13 +221,18 @@ def generate_report(level_dir: Path, report_path: Path):
                 if filter_options:
                     filters_with_hints = {}
                     for key, values in filter_options.items():
+                        source_property = "name"
+                        if id_col and key == id_col:
+                            source_property = "legendgroup"
+
                         filters_with_hints[key] = {
                             "values": values,
                             "sample": values[:3],
                             "count": len(values),
+                            "source": source_property,
                         }
                     context[f"{name}_filters"] = filters_with_hints
-                    log.info(f"Attached filter options to '{name}': {list(filter_options.keys())}")
+                    log.info(f"Attached filter options and trace map to '{name}'")
 
         except Exception as e:
             log.warning(f"Could not generate plot for '{name}': {e}", exc_info=True)
