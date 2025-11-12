@@ -17,74 +17,9 @@ showcases/nginx/
 └── README.md                        # 本文件
 ```
 
-## 快速开始
-
-### 1. 准备环境
-
-首先，设置 Nginx 和 WRK 的编译和安装：
-
-```bash
-cd showcases/nginx
-./1_setup_nginx_env.sh
-```
-
-这个脚本会：
-
-- 安装必要的编译依赖
-- 从源代码编译 Nginx
-- 从源代码编译 WRK（高性能 HTTP 基准测试工具）
-- 从模板生成 `nginx.conf` 配置文件
-
-**注意**: 第一次运行需要几分钟。之后的运行会跳过已完成的步骤（幂等性）。
-
-### 2. 启动 Nginx 服务器
-
-```bash
-./2_start_nginx_server.sh
-```
-
-这会启动 Nginx 服务器，监听 `http://localhost:8000/`
-
-### 3. 运行性能测试
-
-选择以下两种方式之一：
-
-#### 方式 A: 运行单次基准测试
-
-```bash
-./run_single_benchmark.sh
-```
-
-这会运行两个测试：
-
-- 保活连接测试 (Keep-Alive)
-- 关闭连接测试 (Close)
-
-#### 方式 B: 运行完整性能数据收集（推荐）
-
-```bash
-./3_run_performance_collection.sh
-```
-
-这会运行 10 轮完整的性能测试，收集的指标包括：
-
-- CPU 使用率（用户态、系统态）
-- 中断处理时间 (IRQ, SoftIRQ)
-- CPU 性能计数器（周期数、指令数、缓存性能等）
-- 上下文切换次数
-- WRK 基准测试结果（延迟、吞吐量）
-
-结果会保存到 `build/output/nginx_performance_data.csv`
-
-### 4. 停止 Nginx 服务器
-
-```bash
-./stop_nginx_server.sh
-```
-
 ## 性能分析工作流
 
-典型的使用流程：
+### 典型的使用流程：
 
 ```bash
 # 1. 准备环境（仅需一次）
@@ -96,9 +31,16 @@ cd showcases/nginx
 # 3. 运行性能数据收集
 ./3_run_performance_collection.sh
 
-# 4. 使用 Pipa 对 Nginx 进程进行性能采样和分析
-# (在另一个终端执行)
+```
+
+### 4. 使用 Pipa 对 Nginx 进程进行性能采样和分析(在另一个终端执行)
+
+```sh
+
 NGINX_PID=$(pgrep -x nginx | head -1)
+
+# 先healthcheck在进行采样
+pipa healthcheck
 
 pipa -vv sample \
     --attach-to-pid ${NGINX_PID} \
