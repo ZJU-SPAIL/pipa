@@ -29,41 +29,41 @@ PIPA is still in the active development process, and the current development foc
 
 ```mermaid
 sequenceDiagram
-    participant User as User/External System
-    participant Fruit as PIPA Fruit<br/>Insights & Visualization
-    participant Flower as PIPA Flower<br/>Analysis & Attribution
-    participant Tree as PIPA Tree<br/>Data Collection & QC
-    participant Source as Data Sources<br/>(perf, sar, eBPF...)
+    participant User as 👤 User/External System
+    participant Fruit as 🍎 PIPA Fruit<br/>📊 Insights & Visualization
+    participant Flower as 🌸 PIPA Flower<br/>🔍 Analysis & Attribution
+    participant Tree as 🌳 PIPA Tree<br/>📥 Data Collection & QC
+    participant Source as 🔌 Data Sources<br/>(perf, sar, eBPF...)
 
-    Note over User, Source: Main Data Flow: From Collection to Insights
-    User->>Fruit: Submit performance analysis request
+    Note over User, Source: 🚀 Main Data Flow: From Collection to Insights
+    User->>Fruit: 📨 Submit performance analysis request
     activate Fruit
-    Fruit->>Flower: Forward analysis requirements
+    Fruit->>Flower: 📋 Forward analysis requirements
     activate Flower
 
-    Flower->>Tree: Request performance data
+    Flower->>Tree: 📊 Request performance data
     activate Tree
-    Tree->>Source: Collect multi-source performance data
+    Tree->>Source: 🔍 Collect multi-source performance data
     activate Source
-    Source-->>Tree: Return raw data
+    Source-->>Tree: 📄 Return raw data
     deactivate Source
 
-    Note over Tree: Execute Data Quality Control<br/>- Validation rules<br/>- Auto-cleansing & tagging<br/>- Platform abstraction (x86/ARM/RISC-V)
-    Tree-->>Flower: Return validated, reliable data
+    Note over Tree: 🛡️ Execute Data Quality Control<br/>- ✅ Validation rules<br/>- 🧹 Auto-cleansing & tagging<br/>- 💻 Platform abstraction (x86/ARM/RISC-V)
+    Tree-->>Flower: ✅ Return validated, reliable data
     deactivate Tree
 
-    Note over Flower: Perform Deep Analysis & Attribution<br/>- System-level workload characterization analysis <br/>- Code-level profiling (hotspot/lock)<br/>- Instruction-level tracing<br/>- Cross-layer correlation & attribution
-    Flower-->>Fruit: Return bottlenect analysis results & root cause insights, etc
+    Note over Flower: 🔬 Perform Deep Analysis & Attribution<br/>- 📈 System-level workload characterization analysis<br/>- 🔥 Code-level profiling (hotspot/lock)<br/>- ⚙️ Instruction-level tracing<br/>- 🔗 Cross-layer correlation & attribution
+    Flower-->>Fruit: 📊 Return bottleneck analysis results &<br/>🔍 root cause insights
     deactivate Flower
 
-    Note over Fruit: Generate Actionable Insights<br/>- Interactive dashboards<br/>- Optimization opportunities<br/>- Actionable recommendations
-    Fruit-->>User: Deliver visualization report & suggestions
+    Note over Fruit: 💡 Generate Actionable Insights<br/>- 📈 Interactive dashboards<br/>- 💡 Optimization opportunities<br/>- ✅ Actionable recommendations
+    Fruit-->>User: 📋 Deliver visualization report &<br/>💡 suggestions
     deactivate Fruit
 
-    Note over Flower, Tree: Feedback Loop: Continuous Optimization
-    Flower->>Tree: Provide data quality feedback & new requirements
+    Note over Flower, Tree: 🔄 Feedback Loop: Continuous Optimization
+    Flower->>Tree: 💬 Provide data quality feedback &<br/>📋 new requirements
     activate Tree
-    Tree-->>Flower: Confirm & adjust collection strategy
+    Tree-->>Flower: ✅ Confirm & adjust collection strategy
     deactivate Tree
 ```
 
