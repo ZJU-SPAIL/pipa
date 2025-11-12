@@ -410,6 +410,42 @@
           grid-template-columns: 1fr;
         }
       }
+
+      /* Filter Summary Table */
+      .filter-summary {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        font-size: 14px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .filter-summary th,
+      .filter-summary td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .filter-summary th {
+        background-color: #f0f0f0;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .filter-summary td {
+        color: #555;
+        word-break: break-word;
+      }
+
+      .filter-summary tbody tr:last-child td {
+        border-bottom: none;
+      }
     </style>
   </head>
 
@@ -459,6 +495,23 @@
       {% for name, plot_div in plots.items() %}
       <div class="plot-container" id="plot-{{ name }}">
         {% set filters = context[name ~ '_filters'] %} {% if filters %}
+        <!-- 筛选选项汇总表格 -->
+        <table class="filter-summary">
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>Available Options</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for filter_key, filter_info in filters.items() %}
+            <tr>
+              <td>{{ filter_key }}</td>
+              <td>{{ filter_info['values']|join(', ') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
         <!-- 通用的、上下文感知的筛选器 -->
         <div class="chart-filter-container" data-plot-id="{{ name }}">
           <div class="chart-filter-controls">
@@ -467,12 +520,18 @@
               <label for="{{ filter_key }}-filter-input-{{ name }}"
                 >{{ filter_key }} ({{ filter_info.count }}):</label
               >
+              {% set options_to_show = 10 %} {% if filter_info['count'] <=
+              options_to_show %} {% set placeholder_text =
+              filter_info['values']|join(', ') %} {% else %} {% set
+              placeholder_text =
+              (filter_info['values'][:options_to_show]|join(', ')) ~ ', ... (' ~
+              filter_info['count'] ~ ' total)' %} {% endif %}
               <input
                 type="text"
                 id="{{ filter_key }}-filter-input-{{ name }}"
-                placeholder="e.g., {{ filter_info.sample|join(', ') }}{% if filter_info.count > 3 %}, ... ({{ filter_info.count }} total){% endif %}"
+                placeholder="{{ placeholder_text }}"
                 onkeyup="applyChartFilter('{{ name }}')"
-                title="Enter values separated by commas, or use ranges like 0-3 or 0-15"
+                title="Enter comma-separated values, or ranges like 0-3, 8-15. Use ^prefix for exact match (e.g., ^tps)"
               />
             </div>
             {% endfor %}
@@ -568,6 +627,7 @@
 
     <script>
       // --- Tabulator Table Initialization (v2 - Polished) ---
+      const reportContext = {{ context | tojson | safe }};
       const tablesJsonData = {{ tables_json | tojson | safe }};
       for (const [name, jsonData] of Object.entries(tablesJsonData)) {
           const tableData = JSON.parse(jsonData);
@@ -634,130 +694,83 @@
           const filterContainer = document.querySelector(
               `.chart-filter-container[data-plot-id="${plotName}"]`
           );
-          if (!filterContainer) {
-              console.warn(`No filter container found for plot: ${plotName}`);
-              return;
-          }
+          if (!filterContainer) return;
+
+          const plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
+          if (!plotDiv || !plotDiv.data) return;
+
+          const filterContext = reportContext[`${plotName}_filters`];
+          if (!filterContext) return;
 
           const inputs = filterContainer.querySelectorAll('input[type="text"]');
-          console.debug(`Found ${inputs.length} input(s) for plot: ${plotName}`);
-
-          // 首先尝试找 plotly-graph-div
-          let plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
-
-          // 如果找不到，尝试直接找 plot 容器下的第一个 div（它可能就是 plotly 图表）
-          if (!plotDiv) {
-              const plotContainer = document.querySelector(`#plot-${plotName}`);
-              if (plotContainer) {
-                  // 找容器内第一个有数据的 div
-                  const allDivs = plotContainer.querySelectorAll('div[id]');
-                  for (let div of allDivs) {
-                      if (div.data && Array.isArray(div.data)) {
-                          plotDiv = div;
-                          break;
-                      }
-                  }
-              }
-          }
-
-          if (!plotDiv || !plotDiv.data) {
-              console.warn(`Plotly div or data not found for plot: ${plotName}`, {plotDiv, hasData: plotDiv?.data});
-              return;
-          }
-
-          console.debug(`Found plotly div for ${plotName} with ${plotDiv.data.length} traces`);
-
-          // 1. 解析所有筛选器的值
           const activeFilters = {};
-          inputs.forEach((input) => {
-              const filterKey = input.id.split('-filter-input')[0].toUpperCase();
-              const filterValue = input.value.trim();
-              console.debug(`Processing filter input: id="${input.id}", filterKey="${filterKey}", value="${filterValue}"`);
-              if (filterValue) {
-                  // 检测是否为纯数字模式（用于 CPU、范围等）
-                  const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
 
+          inputs.forEach((input) => {
+              const filterKey = input.id.split('-filter-input')[0];
+              const filterValue = input.value.trim();
+              if (filterValue) {
+                  const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
                   if (isNumericPattern) {
-                      // 纯数字：精准匹配，支持范围
                       const parseRange = (str) =>
                           new Set(
                               str.split(',').flatMap((part) => {
                                   part = part.trim();
                                   if (part.includes('-')) {
                                       const [start, end] = part.split('-').map(Number);
-                                      return Array.from(
-                                          { length: end - start + 1 },
-                                          (_, i) => String(start + i)
-                                      );
+                                      return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
                                   }
                                   return part;
                               })
                           );
-                      activeFilters[filterKey] = {
-                          type: 'exact',
-                          values: parseRange(filterValue)
-                      };
+                      activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
                   } else {
-                      // 包含字母：模糊匹配
-                      const keywords = filterValue.split(',').map(k => k.trim().toLowerCase());
                       activeFilters[filterKey] = {
                           type: 'fuzzy',
-                          keywords: keywords
+                          keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
                       };
                   }
               }
           });
 
-          // 2. 遍历所有曲线，判断是否可见
           const visibilityArray = plotDiv.data.map((trace) => {
               for (const [key, filterInfo] of Object.entries(activeFilters)) {
-                  let traceValue = '';
+                  const sourceProperty = filterContext[key]?.source;
+                  if (!sourceProperty) continue; // 如果后端没有提供 source，则跳过此筛选
 
-                  // 根据 key 类型提取 trace 值
-                  if (key === 'CPU' && trace.legendgroup) {
-                      // sar_cpu: legendgroup 格式为 "CPU, METRIC"
-                      traceValue = trace.legendgroup.split(', ')[0];
-                  } else if (key === 'METRIC' && trace.legendgroup) {
-                      // sar_cpu: legendgroup 格式为 "CPU, METRIC"
-                      traceValue = trace.legendgroup.split(', ').slice(1).join(', ');
-                  } else if (key === 'METRIC') {
-                      // 对于 melted 格式的数据（perf, sar_io, sar_load, sar_memory, sar_paging）
-                      // trace.name 对应 metric 值
-                      traceValue = trace.name;
-                  } else if ((key === 'IFACE' || key === 'DEV' || key === 'CPU') && trace.legendgroup) {
-                      // melted 格式的 ID 列在 legendgroup 中
-                      traceValue = trace.legendgroup;
-                  } else if ((key === 'IFACE' || key === 'DEV' || key === 'CPU') && !trace.legendgroup && trace.name) {
-                      // 备用：从 name 中提取
-                      traceValue = trace.name;
+                  const traceValueRaw = trace[sourceProperty];
+                  let traceValue = traceValueRaw;
+                  if (sourceProperty === "legendgroup" && key === "CPU") {
+                      traceValue = traceValueRaw.split(', ')[0];
+                  } else if (sourceProperty === "legendgroup" && key === "METRIC") {
+                      traceValue = traceValueRaw.split(', ').slice(1).join(', ');
                   }
 
-                  // 根据匹配类型进行匹配
-                  if (traceValue) {
-                      if (filterInfo.type === 'exact') {
-                          // 精准匹配
-                          if (!filterInfo.values.has(traceValue)) {
-                              return false;
+                  if (traceValue === undefined) continue;
+
+                  const traceValueStr = String(traceValue).toLowerCase();
+
+                  if (filterInfo.type === 'exact') {
+                      if (!filterInfo.values.has(String(traceValue))) {
+                          return false;
+                      }
+                  } else if (filterInfo.type === 'fuzzy') {
+                      const anyKeywordMatched = filterInfo.keywords.some(keyword => {
+                          if (keyword.startsWith('^')) {
+                              const exactKeyword = keyword.slice(1).toLowerCase();
+                              return traceValueStr === exactKeyword;
+                          } else {
+                              return traceValueStr.includes(keyword);
                           }
-                      } else if (filterInfo.type === 'fuzzy') {
-                          // 模糊匹配：所有关键字都要被找到（不考虑顺序）
-                          const traceValueLower = traceValue.toLowerCase();
-                          const allKeywordsMatched = filterInfo.keywords.every(keyword =>
-                              traceValueLower.includes(keyword)
-                          );
-                          if (!allKeywordsMatched) {
-                              return false;
-                          }
+                      });
+                      if (!anyKeywordMatched) {
+                          return false;
                       }
                   }
               }
-              return true; // 所有过滤器都匹配则显示
+              return true; // 所有过滤器都通过，则可见
           });
 
           Plotly.restyle(plotDiv, 'visible', visibilityArray);
-          console.debug(
-              `Applied filter to ${plotName}: ${Object.keys(activeFilters).join(', ')}`
-          );
       }
 
       // --- JSON Tree Viewer Logic (Fixed) ---
