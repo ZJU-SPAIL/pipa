@@ -42,6 +42,9 @@ _**Goal:** My application (PID 12345) is running slow. I want to take a 60-secon
 _**目标:** 我的应用（PID 12345）运行缓慢。我想进行一次 60 秒的性能快照以供调查。_
 
 ```bash
+# 0. Collect Static Infomation
+pipa healthcheck
+
 # 1. Attach pipa to the PID and monitor for 60 seconds
 #    Pipa will use a built-in, general-purpose set of collectors.
 pipa sample --attach-to-pid 12345 --duration 60 --output my_snapshot.pipa
