@@ -62,6 +62,7 @@ pipa analyze --input my_snapshot.pipa --output report.html
 
 ## 📚 Deeper Dive / 深度探索
 
+- **[Manual.md](./Manual.md):** Comprehensive user manual and command reference. / 权威使用手册与命令参考。
 - **[DESIGN.md](./DESIGN.md):** The soul and blueprint of pipa. / pipa 的灵魂与蓝图。
 - **[CONTRIBUTING.md](./CONTRIBUTING.md):** Development guide and engineering standards. / 开发指南与工程标准。
 - **[ROADMAP.md](./ROADMAP.md):** Future plans and milestones. / 未来计划与里程碑。
