@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv
 venv/
 build/
 dist/

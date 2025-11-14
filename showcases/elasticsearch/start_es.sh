@@ -29,6 +29,15 @@ fi
 # --- 启动节点 ---
 log "--- 启动 Elasticsearch 3 节点集群 ---"
 
+# --- 增加 JVM 版本日志记录 ---
+log "检查并记录 Java 版本..."
+if [ -x "$ES_INSTALL_DIR/$ES_NODE_1_NAME/jdk/bin/java" ]; then
+    JAVA_CMD="$ES_INSTALL_DIR/$ES_NODE_1_NAME/jdk/bin/java"
+    log "使用的 Java 版本: $($JAVA_CMD -version 2>&1 | head -n 1)"
+else
+    log "警告: 未找到 Elasticsearch 内置 JDK，将依赖系统 Java。"
+fi
+
 NODES=("$ES_NODE_1_NAME" "$ES_NODE_2_NAME" "$ES_NODE_3_NAME")
 AFFINITIES=("$ES_NODE_1_CPU_AFFINITY" "$ES_NODE_2_CPU_AFFINITY" "$ES_NODE_3_CPU_AFFINITY")
 
