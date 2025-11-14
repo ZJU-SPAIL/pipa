@@ -61,6 +61,17 @@
         margin-bottom: 2em;
       }
 
+      /* 统一图例样式，确保所有图表对齐 */
+      .js-plotly-plot .legend {
+        overflow-y: auto !important;
+        max-height: 500px !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        border-radius: 4px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-size: 12px !important;
+      }
+
       h1,
       h2,
       h3 {
@@ -686,8 +697,33 @@
           }
       }
 
-      // Open the first tab by default
-      document.querySelector(".tab-button").click();
+      // Open the "Metrics Explorer" tab by default (it's the second button)
+      const defaultTabButton = document.querySelectorAll(".tab-button")[1];
+      if (defaultTabButton) {
+          defaultTabButton.click();
+      } else {
+          // Fallback to the first button if the second one doesn't exist for some reason
+          document.querySelector(".tab-button").click();
+      }
+
+      // Set default filters for sar_cpu to show only 'all' CPU and '%total' metric for cleaner default view
+      document.addEventListener('DOMContentLoaded', function() {
+          const filterContext = reportContext['sar_cpu_filters'];
+          if (filterContext) {
+              const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
+              if (cpuInput && filterContext['CPU'] && filterContext['CPU'].values.includes('all')) {
+                  cpuInput.value = 'all';
+              }
+              const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
+              if (metricInput && filterContext['METRIC'] && filterContext['METRIC'].values.includes('%total')) {
+                  metricInput.value = '%total';
+              }
+              // Apply the default filter
+              if (document.getElementById('plot-sar_cpu')) {
+                  applyChartFilter('sar_cpu');
+              }
+          }
+      });
 
       // --- 通用的图表筛选逻辑 ---
       function applyChartFilter(plotName) {

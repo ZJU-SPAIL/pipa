@@ -119,10 +119,6 @@ def generate_report(level_dir: Path, report_path: Path):
             if time_col not in df.columns:
                 continue
 
-            fig = None
-            filter_options = {}
-            id_col = None
-
             if name == "sar_cpu":
                 id_col = "CPU"
                 if "%user" in df.columns and "%system" in df.columns:
@@ -146,11 +142,26 @@ def generate_report(level_dir: Path, report_path: Path):
                     title="Sar CPU Metrics (Per-Core & Overall)",
                     labels={"utilization": "CPU Utilization (%)"},
                 )
-                fig.update_layout(showlegend=False, height=600)
-                fig.for_each_trace(lambda trace: trace.update(visible=True))
+                fig.update_layout(
+                    height=600,
+                    showlegend=True,
+                    legend=dict(
+                        title="Metrics",
+                        orientation="v",
+                        yanchor="top",
+                        y=1.0,
+                        xanchor="left",
+                        x=1.01,
+                        bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(0,0,0,0.2)",
+                        borderwidth=1,
+                    ),
+                    margin=dict(r=200),
+                )
 
-                filter_options["CPU"] = sorted(df["CPU"].unique().tolist())
-                filter_options["METRIC"] = metrics_to_plot
+                plots[name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
+
+                filter_options = {"CPU": sorted(df["CPU"].unique().tolist()), "METRIC": metrics_to_plot}
 
                 filters_with_hints = {}
                 for key, values in filter_options.items():
@@ -162,106 +173,92 @@ def generate_report(level_dir: Path, report_path: Path):
                         "source": source_property,
                     }
                 context[f"{name}_filters"] = filters_with_hints
-                log.info(f"Attached filter options and trace map to '{name}'")
-
-            elif name == "sar_memory":
-                kb_columns = [col for col in df.columns if col.startswith("kb")]
-                for col in kb_columns:
-                    gb_col_name = col.replace("kb", "") + "_gb"
-                    df[gb_col_name] = df[col] / (1024 * 1024)
-
-                gb_metrics_to_plot = [col.replace("kb", "") + "_gb" for col in kb_columns]
-
-                melted_df = df.melt(
-                    id_vars=[time_col],
-                    value_vars=gb_metrics_to_plot,
-                    var_name="metric",
-                    value_name="value",
-                )
-
-                fig = px.line(
-                    melted_df,
-                    x=time_col,
-                    y="value",
-                    color="metric",
-                    title="Sar Memory Metrics",
-                    labels={"value": "Memory (GB)"},
-                )
-                fig.update_layout(height=500, showlegend=False)
-                fig.for_each_trace(lambda trace: trace.update(visible=True))
-
-                filter_options["METRIC"] = sorted(gb_metrics_to_plot)
 
             else:
-                id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
-                value_cols = [
-                    c for c in df.columns if df[c].dtype.kind in "if" and c not in ["interval", "hostname", "CPU"]
+                percent_cols = [c for c in df.columns if "%" in c and df[c].dtype.kind in "if"]
+                absolute_cols = [
+                    c
+                    for c in df.columns
+                    if df[c].dtype.kind in "if" and c not in percent_cols and c not in ["interval", "hostname"]
                 ]
-                if not value_cols:
-                    continue
 
-                if name.startswith("perf"):
+                id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
+
+                metric_groups = {}
+                if percent_cols:
+                    metric_groups["percent"] = percent_cols
+                if absolute_cols:
+                    metric_groups["absolute"] = absolute_cols
+
+                for metric_type, cols_to_plot in metric_groups.items():
+                    if not cols_to_plot:
+                        continue
+
+                    plot_name = f"{name}_{metric_type}" if len(metric_groups) > 1 else name
                     melted_df = df.melt(
                         id_vars=[time_col] + ([id_col] if id_col else []),
-                        value_vars=value_cols,
+                        value_vars=cols_to_plot,
                         var_name="metric",
                         value_name="value",
                     )
+                    if melted_df.empty:
+                        continue
+
+                    chart_title = f"{name.replace('_', ' ').title()} Metrics"
+                    y_axis_title = "Value"
+                    if name == "sar_load":
+                        chart_title = "System Load & Run Queue Length"
+                    if metric_type == "percent":
+                        y_axis_title = "Percentage (%)"
+                        if len(metric_groups) > 1:
+                            chart_title += " (Percentages)"
+                    elif len(metric_groups) > 1:
+                        chart_title += " (Absolute Values)"
+
                     fig = px.line(
                         melted_df,
                         x=time_col,
                         y="value",
                         color="metric",
-                        line_dash=id_col if id_col else None,
-                        title=f"{name.replace('_', ' ').title()} Metrics",
-                        labels={"value": "Value"},
+                        line_dash=id_col,
+                        title=chart_title,
+                        labels={"value": y_axis_title},
                     )
-                    filter_options["METRIC"] = sorted(value_cols)
+
+                    fig.update_layout(
+                        height=500,
+                        showlegend=True,
+                        legend=dict(
+                            title="Metrics",
+                            orientation="v",
+                            yanchor="top",
+                            y=1.0,
+                            xanchor="left",
+                            x=1.01,
+                            bgcolor="rgba(255,255,255,0.8)",
+                            bordercolor="rgba(0,0,0,0.2)",
+                            borderwidth=1,
+                        ),
+                        margin=dict(r=200),
+                    )
+
+                    plots[plot_name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
+
+                    filter_options = {"METRIC": sorted(cols_to_plot)}
                     if id_col:
                         filter_options[id_col] = sorted(df[id_col].unique().tolist())
-                else:
-                    melted_df = df.melt(
-                        id_vars=[time_col] + ([id_col] if id_col else []),
-                        value_vars=value_cols,
-                        var_name="metric",
-                        value_name="value",
-                    )
-                    fig = px.line(
-                        melted_df,
-                        x=time_col,
-                        y="value",
-                        color="metric",
-                        line_dash=id_col if id_col else None,
-                        title=f"{name.replace('_', ' ').title()} Metrics",
-                        labels={"value": "Value"},
-                    )
-                    filter_options["METRIC"] = sorted(value_cols)
-                    if id_col:
-                        filter_options[id_col] = sorted(df[id_col].unique().tolist())
 
-                fig.update_layout(height=500, showlegend=False)
-                fig.for_each_trace(lambda trace: trace.update(visible=True))
-
-                log.info(f"Generated generic plot for '{name}' with filter dimensions: {list(filter_options.keys())}")
-
-            if fig:
-                plots[name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
-                if filter_options:
-                    filters_with_hints = {}
-                    for key, values in filter_options.items():
-                        source_property = "name"
-                        if id_col and key == id_col:
-                            source_property = "legendgroup"
-
-                        filters_with_hints[key] = {
-                            "values": values,
-                            "sample": values[:3],
-                            "count": len(values),
-                            "source": source_property,
-                        }
-                    context[f"{name}_filters"] = filters_with_hints
-                    log.info(f"Attached filter options and trace map to '{name}'")
-
+                    if filter_options:
+                        filters_with_hints = {}
+                        for key, values in filter_options.items():
+                            source_property = "legendgroup" if (id_col and key == id_col) else "name"
+                            filters_with_hints[key] = {
+                                "values": values,
+                                "sample": values[:3],
+                                "count": len(values),
+                                "source": source_property,
+                            }
+                        context[f"{plot_name}_filters"] = filters_with_hints
         except Exception as e:
             log.warning(f"Could not generate plot for '{name}': {e}", exc_info=True)
 
