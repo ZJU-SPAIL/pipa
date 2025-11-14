@@ -164,6 +164,34 @@ def generate_report(level_dir: Path, report_path: Path):
                 context[f"{name}_filters"] = filters_with_hints
                 log.info(f"Attached filter options and trace map to '{name}'")
 
+            elif name == "sar_memory":
+                kb_columns = [col for col in df.columns if col.startswith("kb")]
+                for col in kb_columns:
+                    gb_col_name = col.replace("kb", "") + "_gb"
+                    df[gb_col_name] = df[col] / (1024 * 1024)
+
+                gb_metrics_to_plot = [col.replace("kb", "") + "_gb" for col in kb_columns]
+
+                melted_df = df.melt(
+                    id_vars=[time_col],
+                    value_vars=gb_metrics_to_plot,
+                    var_name="metric",
+                    value_name="value",
+                )
+
+                fig = px.line(
+                    melted_df,
+                    x=time_col,
+                    y="value",
+                    color="metric",
+                    title="Sar Memory Metrics",
+                    labels={"value": "Memory (GB)"},
+                )
+                fig.update_layout(height=500, showlegend=False)
+                fig.for_each_trace(lambda trace: trace.update(visible=True))
+
+                filter_options["METRIC"] = sorted(gb_metrics_to_plot)
+
             else:
                 id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
                 value_cols = [
