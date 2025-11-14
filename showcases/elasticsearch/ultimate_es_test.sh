@@ -30,15 +30,18 @@ log "   -> Pipa command found at: ${PIPA_CMD}"
 
 # --- 健壮的清理机制 ---
 cleanup() {
-    log "测试结束，调用终极清理脚本..."
+    log "测试结束，调用清理脚本..."
     # 调用我们统一的、全功能的停止脚本
     "$SHOWCASE_DIR/stop_es.sh"
     rm -f /tmp/pipa_es_probe.log
 }
 trap cleanup EXIT
 
-# --- 步骤 1: 启动 Elasticsearch 集群并捕获 PIDs ---
-log "步骤 1: 启动 Elasticsearch 集群..."
+log "步骤 1: 运行 $PIPA_CMD healthcheck..."
+$PIPA_CMD healthcheck
+
+# --- 步骤 2: 启动 Elasticsearch 集群并捕获 PIDs ---
+log "步骤 2: 启动 Elasticsearch 集群..."
 source "$SHOWCASE_DIR/env.sh"
 START_OUTPUT=$("$SHOWCASE_DIR/start_es.sh")
 ES_PIDS=$(echo "${START_OUTPUT}" | grep "PIDs for pipa:" | awk '{print $NF}')
@@ -49,8 +52,8 @@ if [ -z "$ES_PIDS" ]; then
 fi
 log "   -> ES 集群已运行, PIDs: ${ES_PIDS}"
 
-#--- 步骤 2: 启动负载并从简洁的 stdout 探测信号 ---
-log "步骤 2: 启动 esrally 负载并主动探测其真实日志..."
+#--- 步骤 3: 启动负载并从简洁的 stdout 探测信号 ---
+log "步骤 3: 启动 esrally 负载并主动探测其真实日志..."
 # 定义 esrally 真正的日志文件路径
 ESRALLY_REAL_LOG_FILE="$HOME/.rally/logs/rally.log"
 log "   -> 目标日志文件: ${ESRALLY_REAL_LOG_FILE}"
@@ -89,9 +92,6 @@ if ! $LOAD_STARTED; then
     log "请检查 esrally 的详细日志: ${ESRALLY_REAL_LOG_FILE}"
     exit 1
 fi
-
-log "步骤 3: 运行 $PIPA_CMD healthcheck..."
-$PIPA_CMD healthcheck
 
 # --- 步骤 4: 执行 Pipa 标准快照 ---
 log "步骤 4: 执行 Pipa 标准两阶段快照 (${DURATION_STAT}s stat + ${DURATION_RECORD}s record)..."

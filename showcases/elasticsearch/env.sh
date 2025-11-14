@@ -27,16 +27,16 @@ export ES_CLUSTER_NAME="pipa-es-cluster"
 export ES_NODE_1_NAME="node-1"
 export ES_NODE_2_NAME="node-2"
 export ES_NODE_3_NAME="node-3"
-export ES_NODE_1_CPU_AFFINITY="0-31"
-export ES_NODE_2_CPU_AFFINITY="32-63"
-export ES_NODE_3_CPU_AFFINITY="64-95"
+export ES_NODE_1_CPU_AFFINITY="0-7"
+export ES_NODE_2_CPU_AFFINITY="8-15"
+export ES_NODE_3_CPU_AFFINITY="16-23"
 
 # --- JVM 配置 ---
 # 为每个 Elasticsearch 节点配置 16GB 的堆内存，以确保在高负载下稳定运行
 export ES_JVM_HEAP="16g"
 
 # --- 负载生成 (esrally) 配置 ---
-export ES_BENCHMARK_CPU_AFFINITY="96-127"
+export ES_BENCHMARK_CPU_AFFINITY="24-31"
 export ES_RALLY_TRACK="geonames"
 export ES_RALLY_CHALLENGE="append-no-conflicts"
 
