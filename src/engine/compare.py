@@ -167,6 +167,22 @@ def run_comparison(input_a: Path, input_b: Path, output_html_path: Optional[Path
                     title="Average CPU Utilization (User + System) Comparison",
                     labels={"time_elapsed": "Time Elapsed (seconds)", "%total_cpu": "Avg CPU Utilization (%)"},
                 )
+                fig.update_layout(
+                    height=600,
+                    showlegend=True,
+                    legend=dict(
+                        title="Snapshots",
+                        orientation="v",
+                        yanchor="top",
+                        y=1.0,
+                        xanchor="left",
+                        x=1.01,
+                        bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(0,0,0,0.2)",
+                        borderwidth=1,
+                    ),
+                    margin=dict(r=200),
+                )
                 plots["sar_cpu_overlay"] = fig.to_html(full_html=False, include_plotlyjs="cdn")
 
             summary_a_html = tabulate(
