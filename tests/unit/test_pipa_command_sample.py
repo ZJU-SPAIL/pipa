@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from src.commands.sample import sample
+from src.pipa.commands.sample import sample
 
 
 class TestSampleCLIParameterValidation:
-    @patch("src.commands.sample.run_sampling")
+    @patch("src.pipa.commands.sample._run_sampling")
     def test_valid_default_invocation(self, mock_run):
         """Test a standard invocation using all defaults."""
         runner = CliRunner()
@@ -29,7 +29,7 @@ class TestSampleCLIParameterValidation:
         assert call_args["run_stat_phase"] is True
         assert call_args["run_record_phase"] is True
 
-    @patch("src.commands.sample.run_sampling")
+    @patch("src.pipa.commands.sample._run_sampling")
     def test_disabling_phases(self, mock_run):
         """Test the --no-stat and --no-record flags."""
         runner = CliRunner()
@@ -57,7 +57,7 @@ class TestSampleCLIParameterValidation:
         assert result.exit_code != 0
         assert "cannot specify both" in result.output.lower()
 
-    @patch("src.commands.sample.run_sampling")
+    @patch("src.pipa.commands.sample._run_sampling")
     def test_expert_overrides_are_passed_correctly(self, mock_run):
         """Test that all optional override parameters are passed to the engine."""
         runner = CliRunner()

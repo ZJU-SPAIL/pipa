@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from src.engine.analyze import generate_report
+from src.pipa.commands.analyze import _generate_report
 
 
 @pytest.fixture
@@ -55,20 +55,39 @@ def mock_sar_data():
 
 @pytest.fixture
 def mock_dependencies(mock_perf_data, mock_sar_data):
-    """Mock all external dependencies of generate_report."""
-    with (
-        patch("src.engine.analyze.parse_perf_stat_timeseries", return_value=mock_perf_data),
-        patch("src.engine.analyze.load_rules", return_value=([], {})),
-        patch("src.engine.analyze.calculate_context_metrics", return_value={}),
-        patch("src.engine.analyze.run_rules_engine", return_value=[]),
-        patch("src.engine.analyze.format_rules_to_html_tree", return_value=("", "")),
-        patch("src.engine.analyze.Environment") as mock_env,
-    ):
-        mock_template = MagicMock()
-        mock_template.render.return_value = "<html>Test Report</html>"
-        mock_env.return_value.get_template.return_value = mock_template
+    """
+    This fixture isolates the `_generate_report` function by mocking all its
+    external dependencies. It allows us to test the data flow and rendering logic
+    of `_generate_report` itself, without actually running the complex sub-functions
+    like rule engines or file parsers.
 
-        yield {"template": mock_template, "perf_data": mock_perf_data, "sar_data": mock_sar_data}
+    It yields a dictionary of mocks that tests can use for assertions.
+    """
+    mock_parser_registry = {
+        "perf_stat": MagicMock(return_value=mock_perf_data),
+        "sar_cpu": MagicMock(return_value=mock_sar_data),
+    }
+
+    mock_load_rules = MagicMock(return_value=([], {}))
+    mock_calculate_context = MagicMock(return_value={"num_cpu": 8})
+    mock_format_tree = MagicMock(return_value=("<tree>", "<findings>"))
+
+    mock_template = MagicMock()
+    mock_template.render.return_value = "<html>Mocked Report</html>"
+    mock_environment = MagicMock()
+    mock_environment.get_template.return_value = mock_template
+
+    with (
+        patch("src.pipa.commands.analyze.PARSER_REGISTRY", new=mock_parser_registry),
+        patch("src.pipa.commands.analyze.load_rules", new=mock_load_rules),
+        patch("src.pipa.commands.analyze.build_full_context", new=mock_calculate_context),
+        patch("src.pipa.commands.analyze.format_rules_to_html_tree", new=mock_format_tree),
+        patch("src.pipa.report.html_generator.Environment", return_value=mock_environment),
+    ):
+        yield {
+            "template": mock_template,
+            "build_full_context": mock_calculate_context,
+        }
 
 
 def test_generate_report_with_all_data(mock_level_dir, mock_dependencies, tmp_path):
@@ -83,7 +102,7 @@ def test_generate_report_with_all_data(mock_level_dir, mock_dependencies, tmp_pa
 
     report_path = tmp_path / "report.html"
 
-    result = generate_report(mock_level_dir, report_path)
+    result = _generate_report(mock_level_dir, report_path)
 
     assert result is None
     mock_dependencies["template"].render.assert_called()
@@ -92,7 +111,7 @@ def test_generate_report_with_all_data(mock_level_dir, mock_dependencies, tmp_pa
     assert "warnings" in call_kwargs
     assert "plots" in call_kwargs
     assert "tables_json" in call_kwargs
-    assert "findings" in call_kwargs
+    assert "findings_for_tree_html" in call_kwargs
     assert "static_info_str" in call_kwargs
 
     assert len(call_kwargs["warnings"]) == 0
@@ -106,7 +125,7 @@ def test_generate_report_missing_perf_data(mock_level_dir, mock_dependencies, tm
 
     report_path = tmp_path / "report.html"
 
-    generate_report(mock_level_dir, report_path)
+    _generate_report(mock_level_dir, report_path)
 
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
@@ -125,7 +144,7 @@ def test_generate_report_missing_perf_data_file(mock_level_dir, mock_dependencie
 
     report_path = tmp_path / "report.html"
 
-    generate_report(mock_level_dir, report_path)
+    _generate_report(mock_level_dir, report_path)
 
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
@@ -135,16 +154,15 @@ def test_generate_report_missing_perf_data_file(mock_level_dir, mock_dependencie
 
 def test_generate_report_missing_sar_data(mock_level_dir, mock_dependencies, tmp_path):
     """Test report generation when sar_*.csv files are missing."""
-    (mock_level_dir / "perf_stat.txt").write_text("1.000000000;0;cycles;1000000")
-
+    (mock_level_dir / "perf_stat.txt").write_text("1.0;0;cycles;1000")
     report_path = tmp_path / "report.html"
 
-    generate_report(mock_level_dir, report_path)
+    _generate_report(mock_level_dir, report_path)
 
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
-    warnings = call_kwargs["warnings"]
 
-    assert any("sar_*.csv" in w or "No sar" in w for w in warnings)
+    assert "plots" in call_kwargs
+    assert "sar_cpu" not in call_kwargs["plots"]
 
 
 def test_generate_report_missing_static_info(mock_level_dir, mock_dependencies, tmp_path):
@@ -158,7 +176,7 @@ def test_generate_report_missing_static_info(mock_level_dir, mock_dependencies, 
 
     report_path = tmp_path / "report.html"
 
-    generate_report(mock_level_dir, report_path)
+    _generate_report(mock_level_dir, report_path)
 
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
@@ -177,7 +195,7 @@ def test_generate_report_empty_perf_file(mock_level_dir, mock_dependencies, tmp_
 
     report_path = tmp_path / "report.html"
 
-    generate_report(mock_level_dir, report_path)
+    _generate_report(mock_level_dir, report_path)
 
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
@@ -196,18 +214,23 @@ def test_generate_report_writes_html_file(mock_level_dir, tmp_path):
     report_path = tmp_path / "test_report.html"
 
     with (
-        patch("src.engine.analyze.parse_perf_stat_timeseries", return_value=pd.DataFrame()),
-        patch("src.engine.analyze.load_rules", return_value=([], {})),
-        patch("src.engine.analyze.calculate_context_metrics", return_value={}),
-        patch("src.engine.analyze.run_rules_engine", return_value=[]),
-        patch("src.engine.analyze.format_rules_to_html_tree", return_value=("", "")),
-        patch("src.engine.analyze.Environment") as mock_env,
+        patch(
+            "src.pipa.commands.analyze.PARSER_REGISTRY",
+            {
+                "perf_stat": MagicMock(return_value=pd.DataFrame()),
+                "sar_cpu": MagicMock(return_value=pd.DataFrame()),
+            },
+        ),
+        patch("src.pipa.commands.analyze.load_rules", return_value=([], {})),
+        patch("src.pipa.commands.analyze.build_full_context", return_value={}),
+        patch("src.pipa.commands.analyze.format_rules_to_html_tree", return_value=("", "")),
+        patch("src.pipa.report.html_generator.Environment") as mock_env,
     ):
         mock_template = MagicMock()
         mock_template.render.return_value = "<html>Test Report</html>"
         mock_env.return_value.get_template.return_value = mock_template
 
-        generate_report(mock_level_dir, report_path)
+        _generate_report(mock_level_dir, report_path)
 
     assert report_path.exists()
     content = report_path.read_text()
