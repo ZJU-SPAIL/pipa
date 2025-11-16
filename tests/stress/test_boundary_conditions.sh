@@ -72,8 +72,25 @@ kill $TARGET_PID
 pipa analyze --input "${RESULTS_DIR}/stat_only.pipa" --output "${RESULTS_DIR}/stat_only_report.html"
 echo "   -> OK: 'analyze' command completed without crashing."
 # 深度内容验证
-grep -q "sar_cpu_all" "${RESULTS_DIR}/stat_only_report.html" && echo "   -> OK: SAR plot is present." || (echo "   -> FAIL: SAR plot is missing!" && exit 1)
-grep -v -q "perf_stat" "${RESULTS_DIR}/stat_only_report.html" && echo "   -> OK: Perf plot is correctly absent." || (echo "   -> FAIL: Perf plot should be absent but was found!" && exit 1)
+# 核心修复: 检查 sar_cpu 的 Plotly 数据块是否存在
+if grep -q 'id="plot-sar_cpu"' "${RESULTS_DIR}/stat_only_report.html"; then
+    echo "   -> OK: sar_cpu plot is present."
+else
+    echo "   -> FAIL: sar_cpu plot is missing!" && exit 1
+fi
+
+if grep -q 'id="plot-sar_io"' "${RESULTS_DIR}/stat_only_report.html"; then
+    echo "   -> OK: sar_io plot is present."
+else
+    echo "   -> FAIL: sar_io plot is missing!" && exit 1
+fi
+
+if ! grep -q 'id="plot-perf_stat"' "${RESULTS_DIR}/stat_only_report.html"; then
+    echo "   -> OK: Perf plot is correctly absent."
+else
+    echo "   -> FAIL: Perf plot should be absent but was found!" && exit 1
+fi
+
 grep -q "perf.data not found" "${RESULTS_DIR}/stat_only_report.html" && echo "   -> OK: A warning for missing perf.data is present." || (echo "   -> FAIL: Missing perf.data warning not found!" && exit 1)
 
 # --- 5. Test Case: Generating a flamegraph from a snapshot WITHOUT perf.data ---

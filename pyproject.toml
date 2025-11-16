@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pipa = "src.pipa:cli"
+pipa = "src.pipa.cli:cli"
 
 [tool.black]
 line-length = 120

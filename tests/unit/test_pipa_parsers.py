@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.parsers.perf_stat_timeseries_parser import parse_perf_stat_timeseries
+from src.pipa.parsers.perf_stat_timeseries_parser import parse as parse_perf_stat
 
 
 # --- Test Assets ---
@@ -33,7 +33,7 @@ class TestPerfStatParser:
         Tests the hardened parser against a comprehensive asset file, verifying
         all critical edge cases including floats and percentages are handled.
         """
-        df = parse_perf_stat_timeseries(complex_perf_content)
+        df = parse_perf_stat(complex_perf_content)
 
         assert not df.empty
         assert df.shape == (6, 5)
@@ -69,5 +69,5 @@ class TestPerfStatParser:
 
     @pytest.mark.parametrize("bad_content", ["", "# Just a comment"])
     def test_parse_perf_empty_and_malformed(self, bad_content):
-        df = parse_perf_stat_timeseries(bad_content)
+        df = parse_perf_stat(bad_content)
         assert df.empty

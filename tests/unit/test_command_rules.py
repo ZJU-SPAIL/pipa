@@ -1,7 +1,8 @@
 import pandas as pd
 import pytest
 
-from src.engine.rules import calculate_context_metrics, run_rules_engine
+from src.pipa.commands.rules import run_rules_engine
+from src.pipa.report.context_builder import build_full_context
 
 # --- Mocks and Fixtures ---
 
@@ -50,18 +51,18 @@ def mock_v2_rules():
 
 def test_calculate_context_metrics_extracts_num_cpu(mock_static_info):
     """测试 calculate_context_metrics 能否从 static_info 中正确提取 num_cpu。"""
-    context = calculate_context_metrics({}, mock_static_info)
+    context = build_full_context({}, mock_static_info)
     assert "num_cpu" in context
     assert context["num_cpu"] == 16
 
 
 def test_calculate_context_metrics_handles_missing_cpu_info():
     """测试在 static_info 或 cpu_info 缺失时，函数能优雅地处理（返回默认值）。"""
-    context_empty = calculate_context_metrics({}, {})
+    context_empty = build_full_context({}, {})
     assert context_empty["num_cpu"] == 1
     assert context_empty["total_cpu"] == 0.0
 
-    context_no_cpu_info = calculate_context_metrics({}, {"other_info": {}})
+    context_no_cpu_info = build_full_context({}, {"other_info": {}})
     assert context_no_cpu_info["num_cpu"] == 1
 
 
@@ -73,7 +74,7 @@ def test_run_rules_engine_with_dynamic_cpu_context(mock_v2_rules, mock_static_in
         "cpu": pd.DataFrame({"pct_usr": [20.0], "pct_sys": [10.0]}),
         "load_queue": pd.DataFrame({"ldavg-1": [15.0]}),
     }
-    context_low = calculate_context_metrics(mock_dataframes_low_load, mock_static_info)
+    context_low = build_full_context(mock_dataframes_low_load, mock_static_info)
     findings_low = run_rules_engine(mock_dataframes_low_load, mock_v2_rules, context_low)
     assert "诊断：**OFF-CPU**。" in findings_low
     assert "根因：**系统负载过高**" not in findings_low
@@ -82,7 +83,7 @@ def test_run_rules_engine_with_dynamic_cpu_context(mock_v2_rules, mock_static_in
         "cpu": pd.DataFrame({"pct_usr": [20.0], "pct_sys": [10.0]}),
         "load_queue": pd.DataFrame({"ldavg-1": [20.0]}),
     }
-    context_high = calculate_context_metrics(mock_dataframes_high_load, mock_static_info)
+    context_high = build_full_context(mock_dataframes_high_load, mock_static_info)
     context_high["load_ratio"] = context_high["avg_load1"] / context_high["num_cpu"]
     findings_high = run_rules_engine(mock_dataframes_high_load, mock_v2_rules, context_high)
     assert "根因：**系统负载过高**" in "".join(findings_high)

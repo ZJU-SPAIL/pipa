@@ -8,12 +8,15 @@ from typing import Optional
 
 import click
 
+# --- 核心修改: 导入路径已根据新结构进行验证 ---
 from src.collector import start_perf_record, start_perf_stat, start_sar, stop_perf_record, stop_perf_stat, stop_sar
 
 log = logging.getLogger(__name__)
 
 
-def run_sampling(
+# --- 核心修改: 原 `run_sampling` 已重命名为 `_run_sampling` ---
+# 它现在是 sample 命令的内部实现细节，而不是一个公开的 engine 函数。
+def _run_sampling(
     output_path: Path,
     attach_pids: str,
     system_wide: bool,
@@ -157,3 +160,122 @@ def run_sampling(
     finally:
         log.info(f"Cleaning up temporary directory: {work_dir}")
         shutil.rmtree(work_dir)
+
+
+# --- 核心修改: 从 `commands_old/sample.py` 移入的 CLI 定义 ---
+# 它现在是此模块唯一的公开入口点。
+@click.command()
+@click.option(
+    "--output",
+    "output_path_str",
+    required=True,
+    type=click.Path(writable=True, dir_okay=False, resolve_path=True),
+    help="Path to save the final .pipa archive.",
+)
+@click.option(
+    "--attach-to-pid",
+    "attach_pid_str",
+    required=False,
+    default=None,
+    help="Attach to an existing process ID (or comma-separated list).",
+)
+@click.option(
+    "--system-wide",
+    is_flag=True,
+    default=False,
+    help="Run collectors in system-wide mode instead of attaching to a PID.",
+)
+@click.option(
+    "--duration-stat",
+    type=int,
+    default=60,
+    show_default=True,
+    help="Duration (seconds) for Phase 1 (perf stat + sar).",
+)
+@click.option(
+    "--duration-record",
+    type=int,
+    default=60,
+    show_default=True,
+    help="Duration (seconds) for Phase 2 (perf record for flamegraph).",
+)
+@click.option("--no-stat", is_flag=True, default=False, help="Disable Phase 1 (perf stat + sar).")
+@click.option("--no-record", is_flag=True, default=False, help="Disable Phase 2 (perf record).")
+@click.option(
+    "--perf-stat-interval",
+    type=int,
+    default=None,
+    help="Interval (milliseconds) for perf stat sampling.",
+)
+@click.option("--sar-interval", type=int, default=None, help="Interval (seconds) for sar sampling.")
+@click.option("--perf-record-freq", type=int, default=None, help="Sampling frequency (Hz) for perf record.")
+@click.option(
+    "--perf-events",
+    type=str,
+    default=None,
+    help="Expert: Comma-separated list to override built-in perf events.",
+)
+@click.option(
+    "--no-static-info",
+    is_flag=True,
+    default=False,
+    help="Skip the collection of static system information.",
+)
+@click.option(
+    "--static-info-file",
+    "static_info_path_str",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    default=None,
+    help="Path to a pre-collected static info YAML file (from `pipa healthcheck`).",
+)
+def sample(
+    output_path_str: str,
+    attach_pid_str: str,
+    system_wide: bool,
+    duration_stat: int,
+    duration_record: int,
+    no_stat: bool,
+    no_record: bool,
+    perf_stat_interval: Optional[int],
+    sar_interval: Optional[int],
+    perf_record_freq: Optional[int],
+    perf_events: Optional[str],
+    no_static_info: bool,
+    static_info_path_str: Optional[str],
+):
+    """
+    Captures a standardized, two-phase performance snapshot.
+    Phase 1: Macro-scan (perf stat + sar).
+    Phase 2: Micro-profiling (perf record for flamegraphs).
+    """
+    if system_wide and attach_pid_str:
+        raise click.UsageError("Cannot specify both --attach-to-pid and --system-wide.")
+    if not system_wide and not attach_pid_str:
+        raise click.UsageError("Must specify either --attach-to-pid or --system-wide.")
+
+    if no_stat and no_record:
+        raise click.UsageError("Cannot specify both --no-stat and --no-record. At least one phase must run.")
+
+    output_path = Path(output_path_str)
+
+    try:
+        _run_sampling(
+            output_path=output_path,
+            attach_pids=attach_pid_str,
+            system_wide=system_wide,
+            duration_stat=duration_stat,
+            duration_record=duration_record,
+            run_stat_phase=not no_stat,
+            run_record_phase=not no_record,
+            perf_stat_interval=perf_stat_interval,
+            sar_interval=sar_interval,
+            perf_record_freq=perf_record_freq,
+            perf_events_override=perf_events,
+            no_static_info=no_static_info,
+            static_info_path=Path(static_info_path_str) if static_info_path_str else None,
+        )
+        total_duration = (duration_stat if not no_stat else 0) + (duration_record if not no_record else 0)
+        click.secho(f"✅ Sampling complete ({total_duration}s). Snapshot saved to: {output_path}", fg="green")
+    except Exception as e:
+        click.secho(f"❌ An error occurred during the sampling process: {e}", fg="red")
+        raise click.Abort()

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def parse_perf_stat_timeseries(content: str) -> pd.DataFrame:
+def parse(content: str) -> pd.DataFrame:
     """
     Parses complex time-series output of `perf stat -I [-A]` into a pandas DataFrame.
     Handles floating point values, percentages, per-CPU data, and complex event names.
