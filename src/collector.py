@@ -27,7 +27,7 @@ X86_64_EVENT_SET = [
 # A carefully selected event set for aarch64 architectures (ARM64)
 AARCH64_EVENT_SET = [
     ["cpu-cycles", "instructions"],
-    ["branch-instructions", "branch-misses"],
+    ["branch-misses"],
     ["l1d_cache", "l1d_cache_refill"],
     ["l2d_cache", "l2d_cache_refill"],
     ["ll_cache_rd", "ll_cache_miss_rd"],
