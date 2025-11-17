@@ -53,21 +53,30 @@ def plot_sar_cpu(df: pd.DataFrame) -> Figure:
 def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figure], Dict[str, Dict]]:
     """
     Generates interactive Plotly figures for any generic time-series DataFrame.
-    It intelligently splits metrics into 'percent' and 'absolute' plots if needed.
-    Returns a tuple containing:
-    1. A dictionary of generated plot figures {plot_name: Figure}.
-    2. A dictionary of filter context for the template {plot_name_filters: {...}}.
+    It intelligently splits metrics and handles unit conversions for memory.
     """
     generated_plots: Dict[str, Figure] = {}
     generated_filters: Dict[str, Dict] = {}
 
-    percent_cols = [c for c in df.columns if "%" in c and df[c].dtype.kind in "if"]
-    absolute_cols = [
-        c
-        for c in df.columns
-        if df[c].dtype.kind in "if" and c not in percent_cols and c not in ["interval", "hostname"]
-    ]
-    id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
+    y_axis_unit_label = "Value"
+    if name == "sar_memory":
+        kb_columns = [col for col in df.columns if col.startswith("kb")]
+        for col in kb_columns:
+            gb_col_name = col.replace("kb", "") + "_gb"
+            if col in df:
+                df[gb_col_name] = df[col] / (1024 * 1024)
+
+        value_cols_to_plot = [col.replace("kb", "") + "_gb" for col in kb_columns]
+        df_to_plot = df
+        y_axis_unit_label = "Memory (GB)"
+    else:
+        value_cols_to_plot = [c for c in df.columns if df[c].dtype.kind in "if" and c not in ["interval", "hostname"]]
+        df_to_plot = df
+
+    percent_cols = [c for c in value_cols_to_plot if "%" in c]
+    absolute_cols = [c for c in value_cols_to_plot if c not in percent_cols]
+
+    id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df_to_plot.columns), None)
 
     metric_groups = {}
     if percent_cols:
@@ -80,9 +89,14 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
             continue
 
         plot_name = f"{name}_{metric_type}" if len(metric_groups) > 1 else name
-        melted_df = df.melt(
+
+        valid_cols_to_plot = [c for c in cols_to_plot if c in df_to_plot.columns]
+        if not valid_cols_to_plot:
+            continue
+
+        melted_df = df_to_plot.melt(
             id_vars=["timestamp"] + ([id_col] if id_col else []),
-            value_vars=cols_to_plot,
+            value_vars=valid_cols_to_plot,
             var_name="metric",
             value_name="value",
         )
@@ -90,15 +104,12 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
             continue
 
         chart_title = f"{name.replace('_', ' ').title()} Metrics"
-        y_axis_title = "Value"
+        y_axis_title = y_axis_unit_label if metric_type == "absolute" else "Percentage (%)"
         if name == "sar_load":
             chart_title = "System Load & Run Queue Length"
-        if metric_type == "percent":
-            y_axis_title = "Percentage (%)"
-            if len(metric_groups) > 1:
-                chart_title += " (Percentages)"
-        elif len(metric_groups) > 1:
-            chart_title += " (Absolute Values)"
+
+        if len(metric_groups) > 1:
+            chart_title += " (Percentages)" if metric_type == "percent" else " (Absolute Values)"
 
         fig = px.line(
             melted_df,
@@ -127,9 +138,9 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
         )
         generated_plots[plot_name] = fig
 
-        filter_options = {"METRIC": sorted(cols_to_plot)}
+        filter_options = {"METRIC": sorted(valid_cols_to_plot)}
         if id_col:
-            filter_options[id_col] = sorted(df[id_col].unique().tolist())
+            filter_options[id_col] = sorted(df_to_plot[id_col].unique().tolist())
 
         if filter_options:
             filters_with_hints = {}
