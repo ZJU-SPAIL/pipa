@@ -1,119 +1,214 @@
 import logging
+import re
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 import click
 import yaml
 
-# --- 核心修改: 导入路径已根据新结构进行验证 ---
 from src.executor import ExecutionError, run_command
 
 log = logging.getLogger(__name__)
 
 
-# --- 核心修改: 所有来自 static_collector.py 的逻辑被移入此文件并设为私有 ---
-def _get_info(command: str, description: str) -> str:
-    """Helper to run a command and return its output or a failure message."""
+# --- Helper Functions ---
+def _read_proc_file(filepath: str) -> dict:
+    """Safely reads a /proc-style file with key-value pairs."""
+    data = {}
     try:
-        return run_command(command)
-    except ExecutionError as e:
-        log.warning(f"Failed to collect {description}: {e}")
-        return f"Error collecting {description}"
-    except FileNotFoundError:
-        log.warning(f"Command not found for {description}: {command}")
-        return f"Error collecting {description}: Command not found"
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    data[key.strip()] = value.strip()
+    except Exception as e:
+        log.warning(f"Error reading {filepath}: {e}")
+    return data
 
 
-def _handle_error(raw_output: str, description: str) -> Optional[Dict[str, str]]:
-    """检查 _get_info 的输出是否是错误信息。"""
-    if raw_output.startswith("Error collecting"):
-        return {"error": raw_output, "source": description}
-    return None
+def _parse_os_release(filepath: str) -> dict:
+    """Parses /etc/os-release style files (key="value")."""
+    data = {}
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    data[key.strip()] = value.strip().strip('"')
+    except Exception as e:
+        log.warning(f"Error reading {filepath}: {e}")
+    return data
 
 
-def _parse_key_value_lines(raw_output: str, separator="=") -> Dict[str, str]:
-    info = {}
+# --- Robust Data Collectors (v2.1) ---
+def _collect_cpu_info() -> dict:
+    """Collects CPU info directly from /proc/cpuinfo, reading the file only once."""
+    processors = 0
+    model_name = "N/A"
+    try:
+        with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("processor"):
+                    processors += 1
+                elif line.lower().startswith("model name") or line.lower().startswith("model"):
+                    model_name = line.split(":", 1)[1].strip()
+    except Exception as e:
+        log.warning(f"Could not parse /proc/cpuinfo: {e}")
+    return {"CPU(s)": processors, "Model name": model_name}
+
+
+def _collect_memory_info() -> dict:
+    """Collects Memory info directly from /proc/meminfo."""
+    return _read_proc_file("/proc/meminfo")
+
+
+def _collect_cpu_governor_info() -> dict:
+    """Collects the CPU frequency scaling governor for each CPU."""
+    governors = {}
+    try:
+        cpu_dirs = Path("/sys/devices/system/cpu").glob("cpu[0-9]*")
+        for cpu_dir in cpu_dirs:
+            gov_path = cpu_dir / "cpufreq/scaling_governor"
+            if gov_path.exists():
+                governors[cpu_dir.name] = gov_path.read_text().strip()
+        unique_governors = set(governors.values())
+        if not governors:
+            return {"status": "Not available or not configured"}
+        return {"unique_governors": list(unique_governors)}
+    except Exception as e:
+        log.warning(f"Could not read CPU governor info: {e}")
+        return {"error": str(e)}
+
+
+def _collect_io_scheduler_info() -> dict:
+    """Collects the I/O scheduler for each block device."""
+    schedulers = {}
+    try:
+        for device_path in Path("/sys/class/block").iterdir():
+            scheduler_path = device_path / "queue/scheduler"
+            if scheduler_path.exists():
+                scheduler_line = scheduler_path.read_text().strip()
+                active_scheduler_match = re.search(r"\[([\w-]+)\]", scheduler_line)
+                if active_scheduler_match:
+                    schedulers[device_path.name] = active_scheduler_match.group(1)
+                else:
+                    schedulers[device_path.name] = scheduler_line
+        return schedulers
+    except Exception as e:
+        log.warning(f"Could not read I/O scheduler info: {e}")
+        return {"error": str(e)}
+
+
+def _collect_sysctl_info() -> dict:
+    """Collects a unified set of critical kernel parameters via sysctl."""
+    params = {}
+    params_to_get = [
+        "vm.swappiness",
+        "kernel.pid_max",
+        "net.core.somaxconn",
+        "vm.dirty_ratio",
+        "vm.dirty_background_ratio",
+        "vm.dirty_bytes",
+        "vm.dirty_background_bytes",
+        "vm.overcommit_memory",
+        "fs.file-max",
+    ]
+    try:
+        sysctl_output = run_command(f"sysctl {' '.join(params_to_get)}")
+        for line in sysctl_output.splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                params[key.strip()] = value.strip()
+    except ExecutionError:
+        log.warning("Could not collect sysctl parameters.")
+    return params
+
+
+def _collect_disk_info_from_sys() -> dict:
+    """Collects block device info directly from /sys for maximum robustness."""
+    devices = []
+    sys_block_path = Path("/sys/class/block")
+    if not sys_block_path.exists():
+        return {"error": "/sys/class/block not found."}
+    for device_path in sys_block_path.iterdir():
+        try:
+            is_partition = (device_path / "partition").exists()
+
+            size_sectors = int((device_path / "size").read_text().strip())
+            size_bytes = size_sectors * 512
+
+            device_info = {
+                "name": device_path.name,
+                "size_bytes": size_bytes,
+                "type": "partition" if is_partition else "disk",
+                "removable": "N/A",
+                "model": "N/A",
+            }
+
+            if not is_partition:
+                if (device_path / "removable").exists():
+                    device_info["removable"] = (device_path / "removable").read_text().strip() == "1"
+                if (device_path / "device/model").exists():
+                    device_info["model"] = (device_path / "device/model").read_text().strip()
+
+            devices.append(device_info)
+        except (IOError, ValueError, FileNotFoundError) as e:
+            log.warning(f"Could not fully read info for device {device_path.name}: {e}")
+    return {"block_devices": devices}
+
+
+def _parse_ip_addr(raw_output: str) -> dict:
+    """Parses `ip addr` output into a structured dictionary."""
+    interfaces = {}
+    current_iface = None
     for line in raw_output.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
+        if not line.strip():
             continue
-        if separator in line:
-            key, value = line.split(separator, 1)
-            value = value.strip().strip('"').strip("'")
-            info[key.strip()] = value
-    return info
-
-
-def _parse_os_info(raw_output: str) -> dict:
-    return _parse_key_value_lines(raw_output)
-
-
-def _parse_kernel_info(raw_output: str) -> dict:
-    return {"Full_Kernel_Info": raw_output}
-
-
-def _parse_lscpu_output(raw_output: str) -> dict:
-    info = {}
-    for line in raw_output.splitlines():
-        if ":" in line:
-            key, value = line.split(":", 1)
-            key = key.strip().replace(" ", "_")
-            value = value.strip()
-            if key == "CPU(s)":
-                info["CPUs_Count"] = int(value)
-            elif key == "Model_name":
-                info["Model_Name"] = value
-            else:
-                info[key] = value
-    return info
-
-
-def _parse_numa_info(raw_output: str) -> dict:
-    info = {}
-    for line in raw_output.splitlines():
-        line = line.strip()
-        if ":" in line:
-            key, value = line.split(":", 1)
-            key = key.strip().replace(" ", "_")
-            value = value.strip()
-            info[key] = value
-    return info
-
-
-def _get_os_info() -> Dict[str, str]:
-    raw_output = _get_info("cat /etc/os-release", "OS info")
-    return _handle_error(raw_output, "OS info") or _parse_os_info(raw_output)
-
-
-def _get_kernel_info() -> Dict[str, str]:
-    raw_output = _get_info("uname -a", "Kernel info")
-    return _handle_error(raw_output, "Kernel info") or _parse_kernel_info(raw_output)
-
-
-def _get_cpu_info() -> Dict[str, Any]:
-    raw_output = _get_info("lscpu", "CPU info")
-    return _handle_error(raw_output, "CPU info") or _parse_lscpu_output(raw_output)
-
-
-def _get_numa_info() -> Dict[str, Any]:
-    raw_output = _get_info("numactl --hardware", "NUMA info")
-    return _handle_error(raw_output, "NUMA info") or _parse_numa_info(raw_output)
+        match = re.match(r"^\d+:\s+([\w@\.-]+):", line)
+        if match:
+            current_iface = match.group(1)
+            interfaces[current_iface] = {"state": [], "mac": "N/A", "ipv4": [], "ipv6": []}
+            if "<" in line and ">" in line:
+                state_match = re.search(r"<([\w,]+)>", line)
+                if state_match:
+                    interfaces[current_iface]["state"] = state_match.group(1).split(",")
+        elif current_iface:
+            line_stripped = line.strip()
+            if line_stripped.startswith("link/ether"):
+                interfaces[current_iface]["mac"] = line_stripped.split()[1]
+            elif line_stripped.startswith("inet "):
+                interfaces[current_iface]["ipv4"].append(line_stripped.split()[1])
+            elif line_stripped.startswith("inet6 "):
+                interfaces[current_iface]["ipv6"].append(line_stripped.split()[1])
+    return {"network_interfaces": interfaces}
 
 
 def _collect_all_static_info() -> dict:
-    """Collect all static system information."""
-    log.info("Collecting static system information...")
+    """Master collector function for Healthcheck 2.0."""
+    log.info("🚀 Starting Healthcheck 2.0: Interrogating kernel directly...")
     info = {
-        "os_info": _get_os_info(),
-        "kernel_info": _get_kernel_info(),
-        "cpu_info": _get_cpu_info(),
-        "numa_info": _get_numa_info(),
+        "os_info": _parse_os_release("/etc/os-release"),
+        "kernel_version": {"version": "N/A"},
+        "cpu_info": _collect_cpu_info(),
+        "cpu_governor": _collect_cpu_governor_info(),
+        "memory_info": _collect_memory_info(),
+        "disk_info": _collect_disk_info_from_sys(),
+        "io_scheduler": _collect_io_scheduler_info(),
+        "net_info": {"error": "Failed to run 'ip addr' command"},
+        "kernel_parameters": _collect_sysctl_info(),
     }
-    log.info("Static information collected successfully.")
+    try:
+        info["kernel_version"]["version"] = run_command("uname -r").strip()
+    except ExecutionError as e:
+        log.warning(f"Could not get kernel version: {e}")
+    try:
+        ip_out = run_command("ip addr")
+        info["net_info"] = _parse_ip_addr(ip_out)
+    except ExecutionError as e:
+        log.warning(f"Could not collect network info: {e}")
+    log.info("✅ System interrogation complete.")
     return info
 
 
-# --- 核心修改: CLI 定义部分保持不变，但现在调用的是本地私有函数 ---
 @click.command()
 @click.option(
     "--output",
