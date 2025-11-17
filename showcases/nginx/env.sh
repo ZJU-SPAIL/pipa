@@ -9,11 +9,9 @@
 # --- 用户可配置区域 ---
 
 # --- 核心路径定义 ---
-# 获取此脚本所在的目录，作为 showcase 的根目录
 export SHOWCASE_DIR
 SHOWCASE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
-# 所有构建产物和数据都将存放在 showcase 目录下的 build/ 子目录中
 export BASE_DIR="$SHOWCASE_DIR/build"
 export NGINX_INSTALL_DIR="$BASE_DIR/nginx"
 export NGINX_LOGS_DIR="$BASE_DIR/logs"
@@ -31,12 +29,11 @@ export NGINX_CPU_AFFINITY="0-3"
 
 # --- WRK 基准测试工具配置 ---
 export WRK_VERSION="4.1.0"
-#export WRK_DOWNLOAD_URL="https://github.com/wg/wrk.git"
 export WRK_DOWNLOAD_URL="http://gitlab.youtune.tech/pymirror/wrk.git"
 
 export WRK_THREADS=4
 export WRK_CONNECTIONS=100
-export WRK_DURATION="30s"
+export WRK_DURATION="300s"
 export WRK_CPU_AFFINITY="4-7"
 export WRK_TARGET_URL="http://localhost:8000/"
 
@@ -45,3 +42,6 @@ export NGINX_OUTPUT_DIR="$BASE_DIR/output"
 
 # --- 服务用户 (通常为当前用户) ---
 export SERVICE_USER="$(whoami)"
+
+export DURATION_STAT=60
+export DURATION_RECORD=60
