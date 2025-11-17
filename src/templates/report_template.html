@@ -569,172 +569,45 @@
     <div id="system" class="tab-pane">
       <h2>System Information</h2>
       <div id="json-tree-container"></div>
-      <script>
-        // JSON Tree Viewer - Define and call inline
-        function createJsonTreeInline(container, data) {
-          const tree = document.createElement('ul');
-          tree.className = 'json-tree';
-
-          for (const key in data) {
-            const li = document.createElement('li');
-            const keySpan = document.createElement('span');
-            keySpan.className = 'key';
-            keySpan.textContent = `"${key}": `;
-            li.appendChild(keySpan);
-
-            const value = data[key];
-            if (typeof value === 'object' && value !== null) {
-              const toggler = document.createElement('span');
-              toggler.className = 'toggler';
-              toggler.onclick = function() {
-                this.classList.toggle('open');
-                const nestedUl = this.nextElementSibling.nextElementSibling;
-                if (nestedUl) {
-                  nestedUl.style.display = nestedUl.style.display === 'none' ? 'block' : 'none';
-                }
-              };
-              li.insertBefore(toggler, keySpan);
-              li.appendChild(document.createTextNode(Array.isArray(value) ? '[' : '{'));
-
-              const nestedUl = document.createElement('ul');
-              nestedUl.style.display = 'none';
-              nestedUl.className = 'json-tree';
-              for (const nestedKey in value) {
-                const nestedLi = document.createElement('li');
-                const nestedKeySpan = document.createElement('span');
-                nestedKeySpan.className = 'key';
-                nestedKeySpan.textContent = `"${nestedKey}": `;
-                nestedLi.appendChild(nestedKeySpan);
-
-                const nestedValue = value[nestedKey];
-                if (typeof nestedValue === 'object' && nestedValue !== null) {
-                  nestedLi.appendChild(document.createTextNode(Array.isArray(nestedValue) ? '[...]' : '{...}'));
-                } else {
-                  const valueSpan = document.createElement('span');
-                  valueSpan.className = 'value ' + (typeof nestedValue === 'string' ? 'string' : '');
-                  valueSpan.textContent = JSON.stringify(nestedValue);
-                  nestedLi.appendChild(valueSpan);
-                }
-                nestedUl.appendChild(nestedLi);
-              }
-              li.appendChild(nestedUl);
-              li.appendChild(document.createTextNode(Array.isArray(value) ? ']' : '}'));
-            } else {
-              const valueSpan = document.createElement('span');
-              valueSpan.className = 'value ' + (typeof value === 'string' ? 'string' : '');
-              valueSpan.textContent = JSON.stringify(value);
-              li.appendChild(valueSpan);
-            }
-            tree.appendChild(li);
-          }
-          container.appendChild(tree);
-        }
-
-        const staticInfoData = {{ static_info_data | tojson | safe }};
-        createJsonTreeInline(document.getElementById('json-tree-container'), staticInfoData);
-      </script>
     </div>
     {% endif %}
 
     <script>
-      // --- Tabulator Table Initialization (v2 - Polished) ---
-      const reportContext = {{ context | tojson | safe }};
-      const tablesJsonData = {{ tables_json | tojson | safe }};
-      for (const [name, jsonData] of Object.entries(tablesJsonData)) {
-          const tableData = JSON.parse(jsonData);
-          let columns = [];
-          if (tableData.length > 0) {
-              columns = Object.keys(tableData[0]).map(function (key) {
-                  const columnDef = { title: key.charAt(0).toUpperCase() + key.slice(1), field: key, headerFilter: "input" };
-
-                  // --- 核心修复 #2: 为 CPU 列启用精确匹配 ---
-                  if (key.toUpperCase() === 'CPU') {
-                      columnDef.headerFilterFunc = "=";
-                      columnDef.headerFilterPlaceholder = "Exact match (e.g., 0)";
-                  }
-                  // --- 修复结束 ---
-
-                  return columnDef;
-              });
-          }
-          new Tabulator(`#table-${name}`, {
-              data: tableData,
-              columns: columns,
-              // --- 核心修复 #1: 让表格自动填满宽度 ---
-              layout: "fitColumns",
-              // --- 修复结束 ---
-              pagination: "local",
-              paginationSize: 15,
-              paginationSizeSelector: [10, 15, 25, 50, 100],
-          });
-      }
-
-      // --- Tab Switching Logic ---
-      function openTab(evt, tabName) {
+        const reportContext = {{ context | tojson | safe }};
+        // --- Tab Switching Logic ---
+        function openTab(evt, tabName) {
           var i, tabcontent, tablinks;
           tabcontent = document.getElementsByClassName("tab-pane");
           for (i = 0; i < tabcontent.length; i++) {
-              tabcontent[i].style.display = "none";
+            tabcontent[i].style.display = "none";
           }
           tablinks = document.getElementsByClassName("tab-button");
           for (i = 0; i < tablinks.length; i++) {
-              tablinks[i].className = tablinks[i].className.replace(" active", "");
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
           }
           var activeTab = document.getElementById(tabName);
           activeTab.style.display = "block";
           evt.currentTarget.className += " active";
 
           if (tabName === 'explorer') {
-              setTimeout(function() {
-                  const plotContainers = document.querySelectorAll('.plot-container');
-                  plotContainers.forEach(container => {
-                      const plotDiv = container.querySelector('.plotly-graph-div');
-                      if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
-                          Plotly.Plots.resize(plotDiv);
-                      }
-                  });
-              }, 0);
+            setTimeout(function() {
+              const plotContainers = document.querySelectorAll('.plot-container');
+              plotContainers.forEach(container => {
+                const plotDiv = container.querySelector('.plotly-graph-div');
+                if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
+                  Plotly.Plots.resize(plotDiv);
+                }
+              });
+            }, 0);
           }
-      }
+        }
 
-      // Open the "Metrics Explorer" tab by default (it's the second button)
-      const defaultTabButton = document.querySelectorAll(".tab-button")[1];
-      if (defaultTabButton) {
-          defaultTabButton.click();
-      } else {
-          // Fallback to the first button if the second one doesn't exist for some reason
-          document.querySelector(".tab-button").click();
-      }
-
-      // Set default filters for sar_cpu to show only 'all' CPU and '%total' metric for cleaner default view
-      document.addEventListener('DOMContentLoaded', function() {
-          const filterContext = reportContext['sar_cpu_filters'];
-          if (filterContext) {
-              const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
-              if (cpuInput && filterContext['CPU'] && filterContext['CPU'].values.includes('all')) {
-                  cpuInput.value = 'all';
-              }
-              const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
-              if (metricInput && filterContext['METRIC'] && filterContext['METRIC'].values.includes('%total')) {
-                  metricInput.value = '%total';
-              }
-              // Apply the default filter
-              if (document.getElementById('plot-sar_cpu')) {
-                  applyChartFilter('sar_cpu');
-              }
-          }
-      });
-
-      // --- 通用的图表筛选逻辑 ---
-      function applyChartFilter(plotName) {
-          const filterContainer = document.querySelector(
-              `.chart-filter-container[data-plot-id="${plotName}"]`
-          );
+        // --- Universal Chart Filtering Logic ---
+        function applyChartFilter(plotName) {
+          const filterContainer = document.querySelector(`.chart-filter-container[data-plot-id="${plotName}"]`);
           if (!filterContainer) return;
-
           const plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
           if (!plotDiv || !plotDiv.data) return;
-
           const filterContext = reportContext[`${plotName}_filters`];
           if (!filterContext) return;
 
@@ -742,116 +615,167 @@
           const activeFilters = {};
 
           inputs.forEach((input) => {
-              const filterKey = input.id.split('-filter-input')[0];
-              const filterValue = input.value.trim();
-              if (filterValue) {
-                  const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
-                  if (isNumericPattern) {
-                      const parseRange = (str) =>
-                          new Set(
-                              str.split(',').flatMap((part) => {
-                                  part = part.trim();
-                                  if (part.includes('-')) {
-                                      const [start, end] = part.split('-').map(Number);
-                                      return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
-                                  }
-                                  return part;
-                              })
-                          );
-                      activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
-                  } else {
-                      activeFilters[filterKey] = {
-                          type: 'fuzzy',
-                          keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
-                      };
+            const filterKey = input.id.split('-filter-input')[0];
+            const filterValue = input.value.trim();
+            if (filterValue) {
+              const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
+              if (isNumericPattern && (filterKey.toUpperCase() === 'CPU' || !isNaN(parseInt(filterValue.replace(/[,-]/g, ''))))) {
+                const parseRange = (str) => new Set(str.split(',').flatMap((part) => {
+                  part = part.trim();
+                  if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(Number);
+                    return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
                   }
+                  return part;
+                }));
+                activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
+              } else {
+                activeFilters[filterKey] = {
+                  type: 'fuzzy',
+                  keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
+                };
               }
+            }
           });
 
           const visibilityArray = plotDiv.data.map((trace) => {
-              for (const [key, filterInfo] of Object.entries(activeFilters)) {
-                  const sourceProperty = filterContext[key]?.source;
-                  if (!sourceProperty) continue; // 如果后端没有提供 source，则跳过此筛选
+            for (const [key, filterInfo] of Object.entries(activeFilters)) {
+              const sourceProperty = filterContext[key]?.source || 'name';
+              let traceValueRaw = trace[sourceProperty];
+              let traceValue = traceValueRaw;
 
-                  const traceValueRaw = trace[sourceProperty];
-                  let traceValue = traceValueRaw;
-                  if (sourceProperty === "legendgroup" && key === "CPU") {
-                      traceValue = traceValueRaw.split(', ')[0];
-                  } else if (sourceProperty === "legendgroup" && key === "METRIC") {
-                      traceValue = traceValueRaw.split(', ').slice(1).join(', ');
-                  }
-
-                  if (traceValue === undefined) continue;
-
-                  const traceValueStr = String(traceValue).toLowerCase();
-
-                  if (filterInfo.type === 'exact') {
-                      if (!filterInfo.values.has(String(traceValue))) {
-                          return false;
-                      }
-                  } else if (filterInfo.type === 'fuzzy') {
-                      const anyKeywordMatched = filterInfo.keywords.some(keyword => {
-                          if (keyword.startsWith('^')) {
-                              const exactKeyword = keyword.slice(1).toLowerCase();
-                              return traceValueStr === exactKeyword;
-                          } else {
-                              return traceValueStr.includes(keyword);
-                          }
-                      });
-                      if (!anyKeywordMatched) {
-                          return false;
-                      }
-                  }
+              if (sourceProperty === "legendgroup" && key === "CPU") {
+                traceValue = String(traceValueRaw).split(', ')[0];
+              } else if (sourceProperty === "legendgroup" && key === "METRIC") {
+                traceValue = String(traceValueRaw).split(', ').slice(1).join(', ');
               }
-              return true; // 所有过滤器都通过，则可见
+              if (traceValue === undefined) continue;
+
+              const traceValueStr = String(traceValue).toLowerCase();
+
+              if (filterInfo.type === 'exact') {
+                if (!filterInfo.values.has(String(traceValue))) return false;
+              } else if (filterInfo.type === 'fuzzy') {
+                const anyKeywordMatched = filterInfo.keywords.some(keyword => {
+                  if (keyword.startsWith('^')) {
+                    return traceValueStr === keyword.slice(1);
+                  } else {
+                    return traceValueStr.includes(keyword);
+                  }
+                });
+                if (!anyKeywordMatched) return false;
+              }
+            }
+            return true;
           });
-
           Plotly.restyle(plotDiv, 'visible', visibilityArray);
-      }
-
-      // --- JSON Tree Viewer Logic (Fixed) ---
-      function createJsonTree(container, data, isRoot = true) {
-        const tree = document.createElement('ul');
-        tree.className = 'json-tree';
-
-        for (const key in data) {
-          const li = document.createElement('li');
-          const keySpan = document.createElement('span');
-          keySpan.className = 'key';
-          keySpan.textContent = `"${key}": `;
-          li.appendChild(keySpan);
-
-          const value = data[key];
-          if (typeof value === 'object' && value !== null) {
-            const toggler = document.createElement('span');
-            toggler.className = 'toggler';
-            toggler.onclick = function() {
-              this.classList.toggle('open');
-              const nestedUl = this.nextElementSibling.nextElementSibling;
-              nestedUl.style.display = nestedUl.style.display === 'none' ? 'block' : 'none';
-            };
-            li.insertBefore(toggler, keySpan);
-            li.appendChild(document.createTextNode(Array.isArray(value) ? '[' : '{'));
-
-            const nestedUl = document.createElement('ul');
-            nestedUl.style.display = 'none'; // Initially collapsed
-            createJsonTree(nestedUl, value, false); // Pass nestedUl as container
-            li.appendChild(nestedUl);
-            li.appendChild(document.createTextNode(Array.isArray(value) ? ']' : '}'));
-          } else {
-            const valueSpan = document.createElement('span');
-            valueSpan.className = 'value ' + (typeof value === 'string' ? 'string' : '');
-            valueSpan.textContent = JSON.stringify(value);
-            li.appendChild(valueSpan);
-          }
-          tree.appendChild(li);
         }
 
-        // Append to container
-        container.appendChild(tree);
+        // --- JSON Tree Viewer (v3 - Robust & Recursive) ---
+        function createJsonTree(container, data) {
+          const tree = document.createElement('ul');
+          tree.className = 'json-tree';
 
-        return tree;
-      }
+          for (const key in data) {
+            if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+
+            const li = document.createElement('li');
+            const keySpan = document.createElement('span');
+            keySpan.className = 'key';
+            if (!Array.isArray(data)) {
+              keySpan.textContent = `"${key}": `;
+            }
+            li.appendChild(keySpan);
+
+            const value = data[key];
+
+            if (typeof value === 'object' && value !== null) {
+              const isArray = Array.isArray(value);
+              const bracketStart = document.createTextNode(isArray ? '[' : '{');
+              const bracketEnd = document.createTextNode(isArray ? ']' : '}');
+              li.appendChild(bracketStart);
+
+              const toggler = document.createElement('span');
+              toggler.className = 'toggler open';
+              li.insertBefore(toggler, keySpan);
+
+              const nestedUl = createJsonTree(li, value);
+
+              toggler.onclick = (e) => {
+                e.stopPropagation();
+                toggler.classList.toggle('open');
+                nestedUl.style.display = nestedUl.style.display === 'none' ? '' : 'none';
+              };
+              li.appendChild(bracketEnd);
+            } else {
+              const valueSpan = document.createElement('span');
+              const valueType = typeof value === 'string' ? 'string' : 'other';
+              valueSpan.className = `value ${valueType}`;
+              valueSpan.textContent = JSON.stringify(value);
+              li.appendChild(valueSpan);
+            }
+            tree.appendChild(li);
+          }
+          container.appendChild(tree);
+          return tree;
+        }
+
+
+        // --- Page Initialization Logic ---
+        document.addEventListener('DOMContentLoaded', function() {
+          // Tabulator Tables
+          const tablesJsonData = {{ tables_json | tojson | safe }};
+          for (const [name, jsonData] of Object.entries(tablesJsonData)) {
+            const tableData = JSON.parse(jsonData);
+            let columns = [];
+            if (tableData.length > 0) {
+              columns = Object.keys(tableData[0]).map(key => ({
+                title: key.charAt(0).toUpperCase() + key.slice(1),
+                field: key,
+                headerFilter: "input",
+                headerFilterFunc: key.toUpperCase() === 'CPU' ? "=" : "like",
+                headerFilterPlaceholder: key.toUpperCase() === 'CPU' ? "Exact (e.g., 0)" : "Filter...",
+              }));
+            }
+            new Tabulator(`#table-${name}`, {
+              data: tableData,
+              columns: columns,
+              layout: "fitColumns",
+              pagination: "local",
+              paginationSize: 15,
+              paginationSizeSelector: [10, 15, 25, 50, 100],
+            });
+          }
+
+          // JSON Tree for System Info
+          const staticInfoData = {{ static_info_data | tojson | safe }};
+          const sysInfoContainer = document.getElementById('json-tree-container');
+          if (sysInfoContainer && staticInfoData) {
+            createJsonTree(sysInfoContainer, staticInfoData);
+          }
+
+          // Default Tab Activation
+          const defaultTabButton = document.querySelectorAll(".tab-button")[0];
+          if (defaultTabButton) {
+            defaultTabButton.click();
+          }
+
+      // Default Filters for sar_cpu
+          const filterContext = reportContext['sar_cpu_filters'];
+          if (filterContext) {
+            const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
+            if (cpuInput && filterContext['CPU']?.values.includes('all')) {
+              cpuInput.value = 'all';
+            }
+            const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
+            if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
+              metricInput.value = '%user,%system';
+            }
+            if (document.getElementById('plot-sar_cpu')) {
+              applyChartFilter('sar_cpu');
+            }
+          }
+        });
     </script>
   </body>
 </html>
