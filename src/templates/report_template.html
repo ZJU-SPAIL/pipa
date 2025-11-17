@@ -83,14 +83,6 @@
         margin-top: 1em;
       }
 
-      .decision-tree-container {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 20px;
-        align-items: start;
-        margin-bottom: 2em;
-      }
-
       .finding-box {
         background-color: #fbeaea;
         border: 1px solid #e25050;
@@ -153,6 +145,13 @@
         position: relative;
         white-space: nowrap;
         text-align: center;
+      }
+
+      .tree-wrapper {
+        display: flex;
+        justify-content: flex-start; /* 将子元素（树）向左对齐 */
+        overflow-x: auto; /* 如果树太宽，则出现水平滚动条 */
+        padding-bottom: 1em; /* 为滚动条留出空间 */
       }
 
       .tree li {
@@ -495,10 +494,9 @@
     <!-- Tab Content -->
     <div id="analysis" class="tab-pane">
       <h2>Decision Tree Visualization</h2>
-      <div class="decision-tree-container">
-        <div class="tree-wrapper">{{ decision_tree_html | safe }}</div>
-        <div class="findings-wrapper">{{ findings_for_tree_html | safe }}</div>
-      </div>
+      <div class="tree-wrapper">{{ decision_tree_html | safe }}</div>
+      <h2 style="margin-top: 2em">Diagnostic Findings</h2>
+      <div class="findings-wrapper">{{ findings_for_tree_html | safe }}</div>
     </div>
 
     <div id="explorer" class="tab-pane">

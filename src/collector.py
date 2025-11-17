@@ -207,6 +207,7 @@ def stop_sar(
         "memory": "-d -- -r",
         "paging": "-d -- -B",
         "load": "-d -- -q",
+        "cswch": "-d -- -w",
     }
 
     for name, options in sar_metric_maps.items():
