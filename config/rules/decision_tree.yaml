@@ -1,5 +1,5 @@
 # ==========================================================
-# PIPA 决策树 v2 (可配置 & 扩展版)
+# PIPA 决策树 v3 (负载均衡感知版)
 # ==========================================================
 
 # --- 1. 可配置阈值区 (Config) ---
@@ -7,69 +7,58 @@ config:
   # ON-CPU / OFF-CPU 分界线
   ON_CPU_THRESHOLD_PERCENT: 75
 
-  # 新增: TMA L1 瓶颈主导地位阈值
+  # 新增: CPU 负载不均的判定阈值 (标准差)
+  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 18.0 # 标准差大于 18% 即可认为不均衡
+
+  # 新增: 单核利用率过高的判定阈值
+  CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0 # 任何一个核心的平均利用率超过 80%
+
+  # TMA L1 瓶颈主导地位阈值
   TMA_DOMINANT_THRESHOLD_PERCENT: 20.0
 
-  # TMA Level 1 阈值
   IPC_LOW_THRESHOLD: 1.0
   IPC_VERY_LOW_THRESHOLD: 0.7
   BRANCH_MISS_RATE_HIGH_PERCENT: 5.0
   L3_CACHE_MISS_RATE_HIGH_PERCENT: 3.0 # LLC miss rate
-
-  # 系统级瓶颈阈值
   HIGH_CSWCH_RATE_PER_SEC: 100000
   HIGH_LOAD_AVG_RATIO_TO_CPU: 0.8
   HIGH_IOPS_THRESHOLD: 800
   HIGH_SWAP_RATE_PER_SEC: 10
-
-  # 磁盘 I/O 阈值
   IO_UTIL_HIGH_THRESHOLD: 75.0
   IO_AWAIT_HIGH_THRESHOLD: 20.0 # ms
   IO_QUEUE_HIGH_THRESHOLD: 5.0
   IO_SMALL_REQ_SIZE_THRESHOLD: 16.0 # KB
-
-  # 网络阈值
   NET_UTIL_HIGH_THRESHOLD: 90.0 # %
   NET_UTIL_LOW_THRESHOLD: 20.0 # %
-
-  # 内存阈值
   MEM_USED_HIGH_THRESHOLD: 85.0 # %
   MEM_COMMIT_HIGH_THRESHOLD: 100.0 # %
   MAJFLT_HIGH_THRESHOLD: 100.0 # major faults per second
-
-  # 新增: 调度与中断阈值
   HIGH_IRQ_PERCENT_THRESHOLD: 20.0 # %
   HIGH_SOFTIRQ_PERCENT_THRESHOLD: 20.0 # %
-
-  # 新增: I/O 等待和非自愿上下文切换阈值
   IO_WAIT_HIGH_THRESHOLD: 15.0 # %
   HIGH_NVCSWCH_RATE_PER_SEC: 10000 # 非自愿切换/秒
-
-  # 新增: CPU 均衡性阈值
-  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 25.0 # 标准差大于 25% 即可认为不均衡
 
 # --- 2. 规则定义区 (Rules) ---
 rules:
   - name: "PIPA 根因分析"
     precondition: "True"
     sub_rules:
-      # ===================== ON-CPU 分支 (V2 - TMA 驱动) =====================
-      - name: "ON-CPU 瓶颈"
-        precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
-        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。开始进行微架构(TMA)分析..."
+      # ===================== 核心变更：新增独立的 CPU 负载不均分支 =====================
+      - name: "CPU 负载不均瓶颈"
+        precondition: >-
+          cpu_util_std_dev > CPU_UTIL_STD_DEV_HIGH_THRESHOLD and
+          cpu_max_util > CPU_MAX_UTIL_HIGH_THRESHOLD
+        finding: >-
+          初步诊断：系统瓶颈为 <strong>CPU 负载严重不均</strong>。
+          尽管系统整体 CPU 平均利用率仅为 <strong>{total_cpu:.2f}%</strong>，但存在核心被“打满”的情况。
+          各核心利用率的标准差高达 <strong>{cpu_util_std_dev:.2f}</strong>，
+          利用率最高的 CPU 核心达到 <strong>{cpu_max_util:.2f}%</strong>，而最低仅为 <strong>{cpu_min_util:.2f}%</strong>。
+          这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
+          接下来将对高负载核心进行微架构分析...
+        # 在这个分支下，我们直接进行 TMA 分析
         sub_rules:
-          # --- 新增: CPU 负载不均诊断 ---
-          - name: "CPU 负载不均"
-            precondition: "cpu_util_std_dev > CPU_UTIL_STD_DEV_HIGH_THRESHOLD"
-            finding: >-
-              根因推断：<strong>CPU 负载严重不均</strong>。
-              各核心平均利用率的标准差高达 <strong>{cpu_util_std_dev:.2f}</strong>，
-              利用率最高的 CPU 核心达到 <strong>{cpu_max_util:.2f}%</strong>，而最低仅为 <strong>{cpu_min_util:.2f}%</strong>。
-              这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
-
-          # --- 原有的 TMA 诊断保持不变 ---
           - name: "微架构瓶颈 (TMA L1)"
-            precondition: "True" # 将其作为默认的细化分析
+            precondition: "True"
             finding: "开始进行微架构(TMA)分析..."
             sub_rules:
               - name: "前端瓶颈 (Frontend Bound)"
@@ -82,12 +71,37 @@ rules:
                 precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
                 finding: "TMA L1 诊断：<strong>错误推测</strong> 占主导地位 (<strong>{tma_bad_speculation:.2f}%</strong>)。CPU 执行了大量最终被丢弃的指令，浪费了宝贵的计算周期，通常由分支预测失败引起。"
               - name: "指令交付 (Retiring)"
-                precondition: "tma_retiring > 0" # 只要有指令交付就显示
+                precondition: "tma_retiring > 0"
                 finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。这代表 CPU 真实有效的工作部分。如果此值较低，说明流水线效率低下。"
 
-      # ===================== OFF-CPU 分支 =====================
+      # ===================== ON-CPU 分支 (V3 - 全局繁忙) =====================
+      - name: "ON-CPU 瓶颈 (全局繁忙)"
+        precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
+        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。系统处于全局繁忙状态，开始进行微架构(TMA)分析..."
+        sub_rules:
+          - name: "微架构瓶颈 (TMA L1)"
+            precondition: "True"
+            finding: "开始进行微架构(TMA)分析..."
+            sub_rules:
+              - name: "前端瓶颈 (Frontend Bound)"
+                precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>前端瓶颈</strong> 占主导地位 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 大部分时间在“饥饿”状态，等待指令被取指和解码。"
+              - name: "后端瓶颈 (Backend Bound)"
+                precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>后端瓶颈</strong> 占主导地位 (<strong>{tma_backend_bound:.2f}%</strong>)。CPU 执行单元“停滞”，大部分时间在等待数据或执行资源。"
+              - name: "错误推测 (Bad Speculation)"
+                precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>错误推测</strong> 占主导地位 (<strong>{tma_bad_speculation:.2f}%</strong>)。"
+              - name: "指令交付 (Retiring)"
+                precondition: "tma_retiring > 0"
+                finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。"
+
       - name: "OFF-CPU 瓶颈"
-        precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
+        precondition: >-
+          not (
+            (cpu_util_std_dev > CPU_UTIL_STD_DEV_HIGH_THRESHOLD and cpu_max_util > CPU_MAX_UTIL_HIGH_THRESHOLD) or
+            (total_cpu > ON_CPU_THRESHOLD_PERCENT)
+          )
         finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
         sub_rules:
           # --- 磁盘 I/O 瓶颈分支 ---
@@ -118,7 +132,7 @@ rules:
                 precondition: "avg_ifutil < NET_UTIL_LOW_THRESHOLD"
                 finding: "诊断提示：<strong>物理链路未被充分利用</strong>。网络接口利用率低于 <strong>{NET_UTIL_LOW_THRESHOLD}%</strong>，瓶颈可能存在于应用层或 TCP/IP 协议栈。"
 
-          # --- 内存瓶颈分支 (v3 - 科学版) ---
+          # --- 内存瓶颈分支
           - name: "内存瓶颈"
             precondition: >-
               avg_memused_percent > MEM_USED_HIGH_THRESHOLD or
@@ -137,7 +151,7 @@ rules:
                     finding: "诊断细化：<strong>高缺页中断 (Major Page Faults)</strong>。系统频繁发生严重缺页中断 (平均 <strong>{avg_majflt_s:.1f}/s</strong>)，意味着进程需要从磁盘读取内存页，这是性能下降的直接原因。"
               - name: "内存超售风险"
                 precondition: "avg_commit_percent > MEM_COMMIT_HIGH_THRESHOLD"
-                finding: "风险提示：<strong>内存超售 (Overcommit)</strong>。系统已分配的虚拟内存总量超过了物理内存+交换空间的总和 (承诺率 <strong>{avg_commit_percent:.2f}%</strong>)。在内存压力增大时，这可能导致 OOM Killer 随机杀死进程。"
+                finding: "风险提示：<strong>内存超售 (Overcommit)</strong>。已分配的虚拟内存总量超过了物理内存+交换空间的总和 (承诺率 <strong>{avg_commit_percent:.2f}%</strong>)。在内存压力增大时，可能导致 OOM Killer 随机杀死进程。"
           # --- 调度瓶颈分支 ---
           - name: "调度瓶颈"
             precondition: >-
@@ -149,7 +163,7 @@ rules:
             sub_rules:
               - name: "系统负载过高"
                 precondition: "avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU"
-                finding: "诊断细化：<strong>系统平均负载过高</strong>。1分钟平均负载 (<strong>{avg_load1:.2f}</strong>) 已超过 CPU 核心数 (<strong>{num_cpu}</strong>) 的 <strong>{HIGH_LOAD_AVG_RATIO_TO_CPU * 100}%</strong>，大量进程在排队等待 CPU 时间。"
+                finding: "诊断细化：<strong>系统平均负载过高</strong>。1分钟平均负载 (<strong>{avg_load1:.2f}</strong>) 已超过 CPU 核心数 (<strong>{num_cpu}</strong>) 的 <strong>{high_load_avg_ratio_to_cpu_percent:.0f}%</strong>，大量进程在排队等待 CPU 时间。"
               - name: "高上下文切换"
                 precondition: "avg_nvcswch_s > HIGH_NVCSWCH_RATE_PER_SEC"
                 finding: "诊断细化：<strong>锁竞争或线程抖动</strong>。系统非自愿上下文切换过于频繁 (平均 <strong>{avg_nvcswch_s:.0f}/s</strong>)，通常由过多的活跃线程抢占 CPU 或严重的内核/应用锁竞争导致。"

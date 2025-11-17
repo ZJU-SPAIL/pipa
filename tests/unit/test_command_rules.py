@@ -45,7 +45,7 @@ def mock_off_cpu_io_dataframes():
 @pytest.fixture
 def mock_static_info():
     """提供一个包含 CPU 核心数的 mock static_info 字典。"""
-    return {"cpu_info": {"CPUs_Count": 8}}
+    return {"cpu_info": {"CPU(s)": 8}}
 
 
 @pytest.fixture

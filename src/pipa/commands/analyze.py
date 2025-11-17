@@ -1,4 +1,5 @@
 import logging
+import pprint
 import shutil
 import tempfile
 from pathlib import Path
@@ -89,6 +90,11 @@ def _generate_report(level_dir: Path, report_path: Path):
     rules, rule_configs = load_rules(rules_path)
     context = build_full_context(all_dataframes, static_info_data)
     context.update(rule_configs)
+
+    log.debug("--- [DEBUG] Final Context for Decision Engine ---")
+    log.debug(f"\n{pprint.pformat(context)}")
+    log.debug("-------------------------------------------------")
+
     md = MarkdownIt()
     decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
 

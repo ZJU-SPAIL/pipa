@@ -111,15 +111,14 @@ envsubst < "$NGINX_CONF_TEMPLATE" > "$NGINX_CONF_PATH"
 touch "$SUCCESS_FLAG"
 log "✅ Nginx Showcase 环境准备完成！"
 log ""
-log "--- 🚀 快速开始：一个典型的测试流程 ---"
-log "你可以直接复制并粘贴以下命令来体验 Pipa:"
+log "--- 🚀 快速开始：推荐的自动化流程 ---"
+log "你可以直接运行终极测试脚本来完成一次完整的分析:"
 log ''
-log '1. 启动 Nginx 服务器:'
-log '   ./showcases/nginx/2_start_nginx_server.sh'
+log '   ./showcases/nginx/ultimate_nginx_test.sh'
 log ''
-log '2. 运行性能基准测试:'
-log '   ./showcases/nginx/3_run_performance_collection.sh'
-log ''
-log '3. (完成后) 停止 Nginx 服务器:'
-log '   ./showcases/nginx/stop_nginx_server.sh'
+log "--- 🔬 手动分步分析流程 (详情请见 README.md) ---"
+log "1. 启动服务: ./showcases/nginx/start_nginx.sh"
+log "2. 施加负载: ./showcases/nginx/run_load.sh &"
+log "3. 运行 Pipa"
+log "4. 清理环境: ./showcases/nginx/stop_nginx.sh"
 log "-------------------------------------------"

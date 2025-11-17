@@ -26,7 +26,7 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
     }
 
     if static_info and (cpu_info := static_info.get("cpu_info")):
-        context["num_cpu"] = cpu_info.get("CPUs_Count", 1)
+        context["num_cpu"] = cpu_info.get("CPU(s)", 1)
 
     df_cpu = df_dict.get("sar_cpu")
     if df_cpu is not None and not df_cpu.empty:
@@ -71,7 +71,7 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
 
     df_cswch = df_dict.get("sar_cswch")
     if df_cswch is not None and not df_cswch.empty:
-        context["avg_cswch"] = df_cswch.get("proc/s", pd.Series(0)).mean()
+        context["avg_cswch"] = df_cswch.get("cswch/s", pd.Series(0)).mean()
         context["avg_nvcswch_s"] = df_cswch.get("nvcswch/s", pd.Series(0)).mean()
 
     df_memory = df_dict.get("sar_memory")
@@ -136,5 +136,8 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
             cswch_series = df_perf_all[df_perf_all["event_name"] == "context-switches"]["value"]
             if not cswch_series.empty:
                 context["avg_cswch"] = cswch_series.mean()
+
+    if "HIGH_LOAD_AVG_RATIO_TO_CPU" in context:
+        context["high_load_avg_ratio_to_cpu_percent"] = context["HIGH_LOAD_AVG_RATIO_TO_CPU"] * 100
 
     return context
