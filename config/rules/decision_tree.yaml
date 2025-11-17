@@ -7,6 +7,9 @@ config:
   # ON-CPU / OFF-CPU 分界线
   ON_CPU_THRESHOLD_PERCENT: 75
 
+  # 新增: TMA L1 瓶颈主导地位阈值
+  TMA_DOMINANT_THRESHOLD_PERCENT: 20.0
+
   # TMA Level 1 阈值
   IPC_LOW_THRESHOLD: 1.0
   IPC_VERY_LOW_THRESHOLD: 0.7
@@ -19,47 +22,146 @@ config:
   HIGH_IOPS_THRESHOLD: 800
   HIGH_SWAP_RATE_PER_SEC: 10
 
+  # 磁盘 I/O 阈值
+  IO_UTIL_HIGH_THRESHOLD: 75.0
+  IO_AWAIT_HIGH_THRESHOLD: 20.0 # ms
+  IO_QUEUE_HIGH_THRESHOLD: 5.0
+  IO_SMALL_REQ_SIZE_THRESHOLD: 16.0 # KB
+
+  # 网络阈值
+  NET_UTIL_HIGH_THRESHOLD: 90.0 # %
+  NET_UTIL_LOW_THRESHOLD: 20.0 # %
+
+  # 内存阈值
+  MEM_USED_HIGH_THRESHOLD: 85.0 # %
+  MEM_COMMIT_HIGH_THRESHOLD: 100.0 # %
+  MAJFLT_HIGH_THRESHOLD: 100.0 # major faults per second
+
+  # 新增: 调度与中断阈值
+  HIGH_IRQ_PERCENT_THRESHOLD: 20.0 # %
+  HIGH_SOFTIRQ_PERCENT_THRESHOLD: 20.0 # %
+
+  # 新增: I/O 等待和非自愿上下文切换阈值
+  IO_WAIT_HIGH_THRESHOLD: 15.0 # %
+  HIGH_NVCSWCH_RATE_PER_SEC: 10000 # 非自愿切换/秒
+
+  # 新增: CPU 均衡性阈值
+  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 25.0 # 标准差大于 25% 即可认为不均衡
+
 # --- 2. 规则定义区 (Rules) ---
 rules:
   - name: "PIPA 根因分析"
     precondition: "True"
     sub_rules:
-      # ===================== ON-CPU 分支 =====================
+      # ===================== ON-CPU 分支 (V2 - TMA 驱动) =====================
       - name: "ON-CPU 瓶颈"
         precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
-        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。"
+        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。开始进行微架构(TMA)分析..."
         sub_rules:
+          # --- 新增: CPU 负载不均诊断 ---
+          - name: "CPU 负载不均"
+            precondition: "cpu_util_std_dev > CPU_UTIL_STD_DEV_HIGH_THRESHOLD"
+            finding: >-
+              根因推断：<strong>CPU 负载严重不均</strong>。
+              各核心平均利用率的标准差高达 <strong>{cpu_util_std_dev:.2f}</strong>，
+              利用率最高的 CPU 核心达到 <strong>{cpu_max_util:.2f}%</strong>，而最低仅为 <strong>{cpu_min_util:.2f}%</strong>。
+              这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
+
+          # --- 原有的 TMA 诊断保持不变 ---
           - name: "微架构瓶颈 (TMA L1)"
-            precondition: "ipc < IPC_LOW_THRESHOLD"
-            finding: "微架构分析：CPU 效率低下 (IPC = <strong>{ipc:.2f}</strong>)，表明存在指令流水线停顿。"
+            precondition: "True" # 将其作为默认的细化分析
+            finding: "开始进行微架构(TMA)分析..."
             sub_rules:
               - name: "前端瓶颈 (Frontend Bound)"
-                precondition: "branch_miss_rate > BRANCH_MISS_RATE_HIGH_PERCENT"
-                finding: "根因推断：<strong>前端瓶颈</strong>。分支预测失败率过高 (<strong>{branch_miss_rate:.2f}%</strong>)，导致 CPU 无法有效获取指令。"
+                precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>前端瓶颈</strong> 占主导地位 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 大部分时间在“饥饿”状态，等待指令被取指和解码。"
               - name: "后端瓶颈 (Backend Bound)"
-                precondition: "l3_cache_miss_rate > L3_CACHE_MISS_RATE_HIGH_PERCENT"
-                finding: "根因推断：<strong>后端瓶颈</strong>。末级缓存(L3)未命中率过高 (<strong>{l3_cache_miss_rate:.2f}%</strong>)，CPU 大量时间在等待内存数据。"
-              - name: "混合瓶颈或核心受限 (Bad Speculation / Core Bound)"
-                precondition: "True"
-                finding: "可能原因：<strong>核心受限</strong>或<strong>错误推测</strong>。若 IPC 极低 (<strong>< {IPC_VERY_LOW_THRESHOLD}</strong>)，则可能是核心资源耗尽；否则，可能是分支预测失败导致的错误推测惩罚。"
-          - name: "系统级瓶颈"
-            precondition: "True"
-            sub_rules:
-              - name: "高上下文切换"
-                precondition: "avg_cswch > HIGH_CSWCH_RATE_PER_SEC"
-                finding: "系统分析：上下文切换过于频繁 (平均 <strong>{avg_cswch:.0f}/s</strong>)，可能由线程数过多或锁竞争导致。"
+                precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>后端瓶颈</strong> 占主导地位 (<strong>{tma_backend_bound:.2f}%</strong>)。CPU 执行单元“停滞”，大部分时间在等待数据或执行资源。"
+              - name: "错误推测 (Bad Speculation)"
+                precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1 诊断：<strong>错误推测</strong> 占主导地位 (<strong>{tma_bad_speculation:.2f}%</strong>)。CPU 执行了大量最终被丢弃的指令，浪费了宝贵的计算周期，通常由分支预测失败引起。"
+              - name: "指令交付 (Retiring)"
+                precondition: "tma_retiring > 0" # 只要有指令交付就显示
+                finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。这代表 CPU 真实有效的工作部分。如果此值较低，说明流水线效率低下。"
 
       # ===================== OFF-CPU 分支 =====================
       - name: "OFF-CPU 瓶颈"
         precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
         finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
         sub_rules:
-          - name: "磁盘 IO 瓶颈"
-            precondition: "total_tps > HIGH_IOPS_THRESHOLD"
-            finding: "IO 分析：磁盘 IOPS 繁忙 (总计 **{total_tps:.0f}/s**)，可能是 IO 瓶颈。"
-          - name: "内存交换频繁"
-            precondition: "avg_swaps > HIGH_SWAP_RATE_PER_SEC"
-            finding: "内存分析：系统正在频繁进行 Swap 换页 (平均 **{avg_swaps:.0f}/s**)，很可能是物理内存不足。"
-          - name: "系统负载过高"
-            precondition: "avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU"
-            finding: "调度分析：系统平均负载过高 (1分钟平均负载 **{avg_load1:.2f}**)，大量进程处于运行或等待运行状态。"
+          # --- 磁盘 I/O 瓶颈分支 ---
+          - name: "磁盘 I/O 瓶颈"
+            precondition: "avg_util > IO_UTIL_HIGH_THRESHOLD"
+            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。磁盘利用率持续处于高位 (平均 <strong>{avg_util:.2f}%</strong>)。"
+            sub_rules:
+              - name: "吞吐量饱和"
+                precondition: "avg_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD"
+                finding: "诊断细化：<strong>吞吐量饱和</strong>。磁盘请求队列过长 (平均 <strong>{avg_avgqu_sz:.2f}</strong>)，表明 I/O 并发请求过多，磁盘已无法及时处理。"
+              - name: "高延迟"
+                precondition: "avg_await > IO_AWAIT_HIGH_THRESHOLD and avg_iowait > IO_WAIT_HIGH_THRESHOLD"
+                finding: "诊断细化：<strong>高延迟</strong>。单次 I/O 请求平均等待时间 (<strong>{avg_await:.2f}ms</strong>) 和 CPU 等待 I/O 的时间比例 (<strong>{avg_iowait:.2f}%</strong>) 均处于高位，明确指向磁盘为瓶颈。"
+                sub_rules:
+                  - name: "随机读写过多"
+                    precondition: "avg_avgrq_sz < IO_SMALL_REQ_SIZE_THRESHOLD"
+                    finding: "具体模式：<strong>随机 I/O 密集</strong>。平均请求尺寸非常小 (<strong>{avg_avgrq_sz:.2f} KB</strong>)，这加剧了磁盘寻道时间，导致高延迟。"
+          - name: "网络瓶颈"
+            precondition: >-
+              avg_ifutil > NET_UTIL_HIGH_THRESHOLD or
+              avg_ifutil < NET_UTIL_LOW_THRESHOLD
+            finding: "网络状态分析：检测到网络利用率异常。平均网络接口利用率为 <strong>{avg_ifutil:.2f}%</strong>。"
+            sub_rules:
+              - name: "带宽过载/吞吐瓶颈"
+                precondition: "avg_ifutil > NET_UTIL_HIGH_THRESHOLD"
+                finding: "根因推断：<strong>网络带宽过载</strong>。网络接口利用率持续高于 <strong>{NET_UTIL_HIGH_THRESHOLD}%</strong>，物理链路已饱和。"
+              - name: "物理链路未被充分利用"
+                precondition: "avg_ifutil < NET_UTIL_LOW_THRESHOLD"
+                finding: "诊断提示：<strong>物理链路未被充分利用</strong>。网络接口利用率低于 <strong>{NET_UTIL_LOW_THRESHOLD}%</strong>，瓶颈可能存在于应用层或 TCP/IP 协议栈。"
+
+          # --- 内存瓶颈分支 (v3 - 科学版) ---
+          - name: "内存瓶颈"
+            precondition: >-
+              avg_memused_percent > MEM_USED_HIGH_THRESHOLD or
+              avg_commit_percent > MEM_COMMIT_HIGH_THRESHOLD
+            finding: "内存状态分析：检测到系统级内存压力。内存使用率 (<strong>{avg_memused_percent:.2f}%</strong>) 或承诺率 (<strong>{avg_commit_percent:.2f}%</strong>) 过高。"
+            sub_rules:
+              - name: "物理内存不足"
+                precondition: "avg_memused_percent > MEM_USED_HIGH_THRESHOLD"
+                finding: "根因推断：<strong>物理内存不足</strong>。系统内存使用率持续过高 (平均 <strong>{avg_memused_percent:.2f}%</strong>)，可能导致性能下降。"
+                sub_rules:
+                  - name: "频繁换页 (Swapping)"
+                    precondition: "avg_swaps > HIGH_SWAP_RATE_PER_SEC"
+                    finding: "诊断细化：<strong>系统正在频繁换页 (Swapping)</strong>。平均换页速率为 <strong>{avg_swaps:.1f} pages/s</strong>，这是物理内存严重不足的明确信号，将导致严重的磁盘 I/O 压力。"
+                  - name: "高缺页中断 (Paging)"
+                    precondition: "avg_majflt_s > MAJFLT_HIGH_THRESHOLD"
+                    finding: "诊断细化：<strong>高缺页中断 (Major Page Faults)</strong>。系统频繁发生严重缺页中断 (平均 <strong>{avg_majflt_s:.1f}/s</strong>)，意味着进程需要从磁盘读取内存页，这是性能下降的直接原因。"
+              - name: "内存超售风险"
+                precondition: "avg_commit_percent > MEM_COMMIT_HIGH_THRESHOLD"
+                finding: "风险提示：<strong>内存超售 (Overcommit)</strong>。系统已分配的虚拟内存总量超过了物理内存+交换空间的总和 (承诺率 <strong>{avg_commit_percent:.2f}%</strong>)。在内存压力增大时，这可能导致 OOM Killer 随机杀死进程。"
+          # --- 调度瓶颈分支 ---
+          - name: "调度瓶颈"
+            precondition: >-
+              (avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU) or
+              (avg_cswch > HIGH_CSWCH_RATE_PER_SEC) or
+              (avg_irq_percent > HIGH_IRQ_PERCENT_THRESHOLD) or
+              (avg_softirq_percent > HIGH_SOFTIRQ_PERCENT_THRESHOLD)
+            finding: "调度分析：检测到系统调度层存在压力或瓶颈。"
+            sub_rules:
+              - name: "系统负载过高"
+                precondition: "avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU"
+                finding: "诊断细化：<strong>系统平均负载过高</strong>。1分钟平均负载 (<strong>{avg_load1:.2f}</strong>) 已超过 CPU 核心数 (<strong>{num_cpu}</strong>) 的 <strong>{HIGH_LOAD_AVG_RATIO_TO_CPU * 100}%</strong>，大量进程在排队等待 CPU 时间。"
+              - name: "高上下文切换"
+                precondition: "avg_nvcswch_s > HIGH_NVCSWCH_RATE_PER_SEC"
+                finding: "诊断细化：<strong>锁竞争或线程抖动</strong>。系统非自愿上下文切换过于频繁 (平均 <strong>{avg_nvcswch_s:.0f}/s</strong>)，通常由过多的活跃线程抢占 CPU 或严重的内核/应用锁竞争导致。"
+              - name: "中断压力过高"
+                precondition: >-
+                  avg_irq_percent > HIGH_IRQ_PERCENT_THRESHOLD or
+                  avg_softirq_percent > HIGH_SOFTIRQ_PERCENT_THRESHOLD
+                finding: "诊断细化：<strong>中断压力过高</strong>。CPU 大量时间用于处理中断 (硬中断: <strong>{avg_irq_percent:.2f}%</strong>, 软中断: <strong>{avg_softirq_percent:.2f}%</strong>)。"
+                sub_rules:
+                  - name: "硬中断瓶颈"
+                    precondition: "avg_irq_percent > HIGH_IRQ_PERCENT_THRESHOLD"
+                    finding: "具体原因：<strong>硬中断 (irq) 瓶颈</strong>。需检查中断来源 (`/proc/interrupts`)，可能是网卡、磁盘控制器等硬件设备过于繁忙。考虑开启中断合并 (coalescing) 或调整 CPU 亲和性 (irqbalance)。"
+                  - name: "软中断瓶颈"
+                    precondition: "avg_softirq_percent > HIGH_SOFTIRQ_PERCENT_THRESHOLD"
+                    finding: "具体原因：<strong>软中断 (softirq) 瓶颈</strong>。通常与网络数据包处理 (NET_RX/NET_TX) 或定时器有关。需深入分析 (`/proc/softirqs`) 是哪种软中断占主导。"
