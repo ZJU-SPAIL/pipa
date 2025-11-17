@@ -4,7 +4,7 @@
 
 ## 文件结构
 
-```
+```sh
 showcases/nginx/
 ├── env.sh                           # 环境配置 (单一事实来源)
 ├── config/
@@ -46,7 +46,7 @@ pipa -vv sample \
     --attach-to-pid ${NGINX_PID} \
     --duration-stat 60 \
     --duration-record 60 \
-    --output my_app_snapshot.pipa
+    --output nginx_snapshot.pipa
 
 # 5. 分析快照并生成报告
 pipa analyze \
