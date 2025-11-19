@@ -107,6 +107,31 @@ if ! check_system_python; then
     fi
 fi
 
+#  自动检查并初始化 Git 子模块
+echo -e "\n--- 2.5 检查第三方依赖 (Git Submodules) ---"·
+FLAMEGRAPH_SCRIPT="third_party/FlameGraph/flamegraph.pl"
+
+if [ ! -f "$FLAMEGRAPH_SCRIPT" ]; then
+    echo "检测到 FlameGraph 子模块未初始化。"
+
+    # 检查是否在 git 仓库中
+    if [ -d ".git" ] && command -v git &>/dev/null; then
+        echo "正在自动执行: git submodule update --init --recursive ..."
+        git submodule update --init --recursive
+
+        if [ $? -eq 0 ]; then
+            echo "✅ 子模块初始化成功！"
+        else
+            echo "⚠️  警告: 子模块自动初始化失败。请检查网络或 git 配置。"
+            echo "    后续 'pipa flamegraph' 命令可能无法使用。"
+        fi
+    else
+        echo "⚠️  警告: 当前不是 Git 仓库或未找到 git 命令，无法自动拉取子模块。"
+    fi
+else
+    echo "✅ FlameGraph 子模块已就绪。"
+fi
+
 echo -e "\n--- 3. 创建 venv 虚拟环境 ---"
 rm -rf "$VENV_DIR"
 "$PYTHON_EXECUTABLE" -m venv "$VENV_DIR" || { echo "创建 venv 失败"; exit 1; }
