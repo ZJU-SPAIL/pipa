@@ -10,7 +10,8 @@ dist/
 .pytest_cache/
 .python_*
 *.pipa
-report.html
+report*.html
+!report_template*.html
 .coverage
 coverage.xml
 junit-report.xml
@@ -19,4 +20,6 @@ third_party/
 test_results_*/
 pipa_static_info*.yaml
 report_universal_*.html
+*_flamegraph.svg
+*_report.html
 build

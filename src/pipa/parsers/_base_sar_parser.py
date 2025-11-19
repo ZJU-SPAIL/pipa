@@ -1,3 +1,10 @@
+"""
+基础sar解析器模块
+
+此模块提供通用的sar生成的CSV文件解析功能。
+处理sar输出的特殊格式，包括注释头和分号分隔符。
+"""
+
 from io import StringIO
 from pathlib import Path
 
@@ -6,9 +13,16 @@ import pandas as pd
 
 def generic_sar_parse(file_path: Path) -> pd.DataFrame:
     """
-    A robust, generic parser for all sar-generated CSV files.
-    This function encapsulates the shared logic for handling header comments
-    and semicolon delimiters.
+    健壮的通用解析器，用于所有sar生成的CSV文件。
+
+    此函数封装了处理注释头和分号分隔符的共享逻辑。
+    自动检测并处理sar输出的格式特点。
+
+    参数:
+        file_path: 要解析的CSV文件路径。
+
+    返回:
+        解析后的pandas DataFrame。
     """
     if not file_path.exists() or file_path.stat().st_size == 0:
         return pd.DataFrame()

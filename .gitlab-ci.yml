@@ -13,6 +13,10 @@ variables:
     - echo "Using pre-built environment from python:3.11 image."
     # 依然需要设置 pip 镜像源
     - pip config set global.index-url "http://mirrors.cloud.aliyuncs.com/pypi/simple/" && pip config set global.trusted-host "mirrors.cloud.aliyuncs.com"
+    # 设置 uv 镜像源
+    - export UV_INDEX_URL="http://mirrors.cloud.aliyuncs.com/pypi/simple/"
+    # 设置 uv 允许覆盖系统包
+    - export UV_BREAK_SYSTEM_PACKAGES=true
   cache:
     # 动作2: 实施多层聚合缓存
     # 使用 v2 key 来确保旧的、不完整的缓存失效
@@ -30,7 +34,8 @@ linting:
   extends: .base_python_job
   script:
     # 第一次运行时会安装，后续运行因为缓存将几乎瞬时完成
-    - pip install -r requirements.txt
+    - pip install uv
+    - uv pip install --system -v .
     - echo "Running pre-commit checks on all files..."
     - pre-commit run --all-files
   rules:
@@ -42,7 +47,8 @@ unit-tests:
   script:
     - echo "Running unit tests..."
     # 同样，第一次安装，后续瞬时完成
-    - pip install -r requirements.txt
+    - pip install uv
+    - uv pip install --system -v .
     - pytest --cov=src --cov-report=term-missing --cov-report=xml --junitxml=junit-report.xml
   artifacts:
     when: always

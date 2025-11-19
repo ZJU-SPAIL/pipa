@@ -1,7 +1,9 @@
 from typing import Dict, Tuple
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 
 
@@ -155,3 +157,91 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
             generated_filters[f"{plot_name}_filters"] = filters_with_hints
 
     return generated_plots, generated_filters
+
+
+def plot_cpu_clusters(cpu_features_df: pd.DataFrame, optimal_eps: float) -> Figure:
+    """根据聚类结果生成 CPU 核心行为散点图 (V2 - 峰值感知版)。"""
+    df_plot = cpu_features_df.copy()
+    df_plot["cluster_final"] = df_plot["cluster_final"].astype(str)
+
+    # 定义更加符合直觉的颜色映射
+    # 1 (Busy) -> 红色
+    # 99 (Idle) -> 绿色
+    # 0 (Mid) -> 橙色/黄色
+    color_map = {"1": "#EF553B", "99": "#00CC96", "0": "#FFA15A"}  # Plotly Red  # Plotly Green  # Plotly Orange
+
+    # ！！注意：这个函数现在依赖于 cpu_features_df 中包含 mean_* 和 p95_* 的列 ！！
+    fig = px.scatter(
+        df_plot,
+        # 核心修复 1: 使用 'mean_%user' 和 'mean_%system' 作为坐标轴
+        x="mean_%user",
+        y="mean_%system",
+        color="cluster_final",
+        # === FIX: 强制指定颜色 ===
+        color_discrete_map=color_map,
+        # 核心修复 2: 在悬停数据中，同时显示 mean 和 p95 的值
+        hover_data={
+            "CPU ID": df_plot.index,
+            "mean_%idle": ":.2f",
+            "p95_%idle": ":.2f",
+            "mean_%user": ":.2f",
+            "p95_%user": ":.2f",
+            "mean_%system": ":.2f",
+            "p95_%system": ":.2f",
+        },
+        title=f"CPU 核心行为聚类 (解读后, 原始eps={optimal_eps:.2f})",
+        # 核心修复 3: 更新坐标轴标签
+        labels={
+            "cluster_final": "CPU 簇 (最终)",
+            "mean_%user": "平均用户态利用率 (%)",
+            "mean_%system": "平均内核态利用率 (%)",
+        },
+    )
+    fig.update_layout(height=600)
+    return fig
+
+
+def plot_knee_distance(k_distances: np.ndarray, elbow_x: int, optimal_eps: float, k: int) -> Figure:
+    """(V2 使用) 绘制 K-距离图并用垂直线标记肘部。"""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=list(range(len(k_distances))), y=k_distances, mode="lines", name="K-Distance"))
+    if elbow_x is not None:
+        fig.add_vline(
+            x=elbow_x,
+            line_width=2,
+            line_dash="dash",
+            line_color="red",
+            annotation_text=f" Elbow at eps={optimal_eps:.2f}",
+            annotation_position="top left",
+        )
+    fig.update_layout(
+        title_text="K-距离图 (DBSCAN eps 自动寻优)",
+        xaxis_title="CPU 核心 (按 K-距离排序)",
+        yaxis_title=f"到第 {k} 个邻居的距离 (Epsilon)",
+    )
+    return fig
+
+
+# <<< 新增 V3 版本的绘图函数 >>>
+def plot_knee_distance_educational(k_distances: np.ndarray, k: int) -> Figure:
+    """(V3 使用) 绘制 K-距离图，用于展示数据分布的复杂性。"""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=list(range(len(k_distances))), y=k_distances, mode="lines", name="K-Distance"))
+    fig.update_layout(
+        title_text="K-距离图 (用于展示数据分布)",
+        xaxis_title="CPU 核心 (按 K-距离排序)",
+        yaxis_title=f"到第 {k} 个邻居的距离",
+        annotations=[
+            dict(
+                x=0.5,
+                y=-0.25,
+                xref="paper",
+                yref="paper",
+                text="注: 对于复杂负载, 此曲线可能无明显“肘部”, 这正是V3引擎不再依赖它的原因。",
+                showarrow=False,
+                align="center",
+                font=dict(size=12, color="#666"),
+            )
+        ],
+    )
+    return fig
