@@ -78,7 +78,6 @@ def _generate_flamegraph_from_snapshot(snapshot_path: Path, output_svg_path: Pat
             raise
 
 
-# --- 核心修改: 从 `commands_old/flamegraph.py` 移入的 CLI 定义 ---
 @click.command()
 @click.option(
     "--input",

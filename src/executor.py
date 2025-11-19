@@ -1,36 +1,49 @@
+"""
+命令执行模块
+
+此模块提供执行系统命令的功能，包括同步执行和后台执行。
+处理命令的输出、错误和超时情况，并提供自定义异常类。
+"""
+
 import logging
 import os
 import shlex
 import subprocess
 from typing import Dict, Optional
 
-# Configure a simple logger for this module
 # 为此模块配置一个简单的日志记录器
 log = logging.getLogger(__name__)
 
 
 class ExecutionError(Exception):
-    """Custom exception for command execution errors."""
+    """命令执行错误的自定义异常类。"""
 
     pass
 
 
 class PerfPermissionError(ExecutionError):
-    """Raised when perf execution fails due to kernel permission settings."""
+    """当perf执行因内核权限设置失败时抛出的异常。"""
 
     pass
 
 
 def run_command(command: str, timeout: Optional[int] = None, env: Optional[Dict[str, str]] = None) -> str:
     """
-    Executes a shell command and returns its stdout.
-    执行一个 shell 命令并返回其标准输出。
+    执行一个shell命令并返回其标准输出。
 
-    :param command: The command string to execute.
-    :param timeout: Optional timeout in seconds.
-    :param env: Optional environment variables to set for the command.
-    :return: The stdout from the command.
-    :raises ExecutionError: If the command returns a non-zero exit code.
+    使用subprocess.run执行命令，设置环境变量LC_ALL=C以确保输出格式一致。
+    如果命令执行失败，会抛出ExecutionError异常。
+
+    参数:
+        command: 要执行的命令字符串。
+        timeout: 可选的超时时间（秒）。
+        env: 可选的环境变量字典，用于覆盖默认环境。
+
+    返回:
+        命令的标准输出内容（去除首尾空白）。
+
+    异常:
+        ExecutionError: 如果命令未找到、执行失败或超时。
     """
     log.info(f"Executing command: {command}")
 
@@ -69,8 +82,19 @@ def run_command(command: str, timeout: Optional[int] = None, env: Optional[Dict[
 # 将其修改为：
 def run_in_background(command: str) -> subprocess.Popen:
     """
-    Executes a shell command in the background.
-    在后台执行一个 shell 命令。
+    在后台执行一个shell命令。
+
+    使用subprocess.Popen启动后台进程，不等待完成。
+    进程组设置为新会话，以便独立管理。
+
+    参数:
+        command: 要执行的命令字符串。
+
+    返回:
+        启动的subprocess.Popen对象。
+
+    异常:
+        ExecutionError: 如果命令未找到。
     """
     log.info(f"Executing background command: {command}")
     try:

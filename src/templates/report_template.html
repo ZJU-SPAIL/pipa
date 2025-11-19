@@ -478,6 +478,11 @@
       <button class="tab-button" onclick="openTab(event, 'analysis')">
         Analysis & Insights
       </button>
+      {% if plots.cpu_cluster_analysis %}
+      <button class="tab-button" onclick="openTab(event, 'ml_insights')">
+        ✨ ML Insights
+      </button>
+      {% endif %}
       <button class="tab-button" onclick="openTab(event, 'explorer')">
         Metrics Explorer
       </button>
@@ -499,9 +504,67 @@
       <div class="findings-wrapper">{{ findings_for_tree_html | safe }}</div>
     </div>
 
+    <!-- === 新增 Tab 面板 (文案升级版) === -->
+    {% if plots.cpu_cluster_analysis %}
+    <div id="ml_insights" class="tab-pane">
+      <h2>🤖 CPU Load Stratification (Physics-Aware Engine)</h2>
+      <p>
+        本节展示了 PIPA
+        <strong>物理感知诊断引擎 (Physics-Aware Engine)</strong> 的分析结果。
+        针对多核服务器中常见的“平均值掩盖局部热点”问题，算法结合了<strong>DBSCAN提取</strong>与<strong>物理规则判定</strong>，
+        将 CPU 核心精准划分为不同的负载层级。
+      </p>
+
+      <!-- 步骤 1: K-距离图 -->
+      <div class="plot-container" id="plot-knee_distance">
+        <h3>Step 1: Load Imbalance Detection (K-Distance)</h3>
+        <p>
+          K-Distance 曲线的陡峭程度反映了系统负载的不均衡性。
+          曲线中的剧烈转折（"Elbow Point"）表明 CPU
+          核心之间存在显著的行为断层，这是<strong>“部分核心过载，部分核心空闲”</strong>的数学证据。
+        </p>
+        {{ plots.knee_distance | safe }}
+      </div>
+
+      <!-- 步骤 2: 聚类散点图 -->
+      <div class="plot-container" id="plot-cpu_cluster_analysis">
+        <h3>Step 2: Physics-Aware Core Classification</h3>
+        <p>
+          此散点图展示了最终的核心分层结果，配色已校准为直观的<strong>“红忙绿闲”</strong>模式：
+          <br />
+          <!-- 这里的颜色代码 #EF553B 和 #00CC96 必须与 Python 代码中的 color_map 保持一致 -->
+          1.
+          <span style="color: #ef553b; font-weight: bold; font-size: 1.1em"
+            >● Cluster 1 (Busy)</span
+          >: <strong>高负载核心</strong>。基于
+          <code>100% - Idle</code>
+          判定，精准捕获了所有正在工作的核心（含用户态计算与内核态 I/O）。
+          <br />
+          2.
+          <span style="color: #00cc96; font-weight: bold; font-size: 1.1em"
+            >● Cluster 99 (Idle)</span
+          >: <strong>空闲核心</strong>。基于
+          <code>Idle > 90%</code> 判定，将真正的空闲资源与背景噪音分离。
+        </p>
+        {{ plots.cpu_cluster_analysis | safe }}
+      </div>
+
+      <!-- 步骤 3: 统计特征表 -->
+      <h3>Step 3: Cluster Statistical Fingerprint</h3>
+      <p>
+        下表提供了每个负载层级的<strong
+          >定量指纹 (Quantitative Fingerprint)</strong
+        >。 请重点关注 <strong>Count (核心数量)</strong> 与
+        <strong>Mean_%system/user</strong>，以确定瓶颈的规模与类型。
+      </p>
+      <div id="table-cluster_summary"></div>
+    </div>
+    {% endif %}
+
     <div id="explorer" class="tab-pane">
       <h2>Time-Series Visualizations</h2>
-      {% for name, plot_div in plots.items() %}
+      {% for name, plot_div in plots.items() %} {% if name not in
+      ['knee_distance', 'cpu_cluster_analysis'] %}
       <div class="plot-container" id="plot-{{ name }}">
         {% set filters = context[name ~ '_filters'] %} {% if filters %}
         <!-- 筛选选项汇总表格 -->
@@ -548,7 +611,7 @@
         </div>
         {% endif %} {{ plot_div | safe }}
       </div>
-      {% endfor %} {% if not plots %}
+      {% endif %} {% endfor %} {% if not plots %}
       <p>No time-series data available to generate plots.</p>
       {% endif %}
     </div>

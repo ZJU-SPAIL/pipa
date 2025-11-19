@@ -9,6 +9,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../" && pwd)"
 
+# --- 动态文件名生成 ---
+FOLDER_NAME=$(basename "$SCRIPT_DIR")
+SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
+REPORT_FILE="${FOLDER_NAME}_report.html"
+FLAMEGRAPH_FILE="${FOLDER_NAME}_flamegraph.svg"
+
 # 自动激活虚拟环境
 VENV_DIR="${PROJECT_ROOT}/.venv"
 if [ -d "${VENV_DIR}" ]; then
@@ -67,26 +73,26 @@ pipa sample \
     --attach-to-pid "${MYSQL_PID}" \
     --duration-stat 60 \
     --duration-record 60 \
-    --output ultimate_snapshot.pipa
+    --output "${SNAPSHOT_FILE}"
 
 echo "   -> Snapshot capture complete."
 
 # --- 5. 分析战果 ---
 log "Step 5: Analyzing the ultimate snapshot..."
 pipa analyze \
-    --input ultimate_snapshot.pipa \
-    --output ultimate_report.html
+    --input "${SNAPSHOT_FILE}" \
+    --output "${REPORT_FILE}"
 
 # --- 6. 生成火焰图 (可选但推荐) ---
 log "Step 6: Generating Flame Graph..."
 pipa flamegraph \
-    --input ultimate_snapshot.pipa \
-    --output ultimate_flamegraph.svg
+    --input "${SNAPSHOT_FILE}" \
+    --output "${FLAMEGRAPH_FILE}"
 
 
 echo ""
 echo "====================================================="
 echo "✅ ULTIMATE TEST COMPLETE!"
-echo "➡️  Your final analysis report is ready: ultimate_report.html"
-echo "➡️  Your flame graph is ready: ultimate_flamegraph.svg"
+echo "➡️  Your final analysis report is ready: ${REPORT_FILE}"
+echo "➡️  Your flame graph is ready: ${FLAMEGRAPH_FILE}"
 echo "====================================================="

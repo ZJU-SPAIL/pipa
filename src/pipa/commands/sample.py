@@ -8,14 +8,11 @@ from typing import Optional
 
 import click
 
-# --- 核心修改: 导入路径已根据新结构进行验证 ---
 from src.collector import start_perf_record, start_perf_stat, start_sar, stop_perf_record, stop_perf_stat, stop_sar
 
 log = logging.getLogger(__name__)
 
 
-# --- 核心修改: 原 `run_sampling` 已重命名为 `_run_sampling` ---
-# 它现在是 sample 命令的内部实现细节，而不是一个公开的 engine 函数。
 def _run_sampling(
     output_path: Path,
     attach_pids: str,
@@ -94,11 +91,15 @@ def _run_sampling(
             log.info(f"--- Starting Phase 1: Macro-Scan for {duration_stat}s ---")
             running_collectors = {}
 
+            # 定义TMA metrics列表 - 使用perf官方的Top-Down Microarchitecture Analysis metrics
+            tma_metrics = ["backend_bound", "frontend_bound", "retiring", "bad_speculation"]
+
             perf_proc = start_perf_stat(
                 target_pid=attach_pids,
                 system_wide=system_wide,
                 interval=perf_stat_interval,
                 events_override_str=perf_events_override,
+                metrics_list=tma_metrics,
             )
             if perf_proc:
                 running_collectors[perf_proc.pid] = {
@@ -162,8 +163,6 @@ def _run_sampling(
         shutil.rmtree(work_dir)
 
 
-# --- 核心修改: 从 `commands_old/sample.py` 移入的 CLI 定义 ---
-# 它现在是此模块唯一的公开入口点。
 @click.command()
 @click.option(
     "--output",

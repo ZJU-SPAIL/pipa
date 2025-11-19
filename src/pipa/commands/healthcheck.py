@@ -1,3 +1,10 @@
+"""
+健康检查命令模块
+
+此模块实现healthcheck命令，用于收集系统的静态信息。
+包括CPU、内存、磁盘、网络、内核参数等系统配置信息。
+"""
+
 import logging
 import re
 from pathlib import Path
@@ -220,7 +227,10 @@ def _collect_all_static_info() -> dict:
 )
 def healthcheck(output_path_str: str):
     """
-    Collects static system information and saves it to a file.
+    收集静态系统信息并保存到文件。
+
+    收集系统的硬件和软件配置信息，包括操作系统、内核、
+    CPU、内存、磁盘、网络等，并保存为YAML格式文件。
     """
     output_path = Path(output_path_str)
     try:

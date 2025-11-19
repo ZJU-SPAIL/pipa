@@ -51,8 +51,8 @@ def _extract_summary_metrics(df_sar: pd.DataFrame, df_perf: pd.DataFrame) -> Dic
 
 def _load_timeseries_data(snapshot_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Loads SAR and Perf time-series data from an unpacked snapshot directory,
-    using the centralized parser registry.
+    从解压的快照目录中加载SAR和Perf时间序列数据，
+    使用集中的解析器注册表。
     """
     level_dir = next(snapshot_dir.iterdir(), None)
     if not level_dir or not level_dir.is_dir():
@@ -128,7 +128,6 @@ def _run_comparison(input_a: Path, input_b: Path, output_html_path: Optional[Pat
         return terminal_report
 
 
-# --- 核心修改: 从 `commands_old/compare.py` 移入的 CLI 定义 ---
 @click.command()
 @click.option(
     "--input-a",
@@ -154,7 +153,7 @@ def _run_comparison(input_a: Path, input_b: Path, output_html_path: Optional[Pat
 )
 def compare(input_a_path_str: str, input_b_path_str: str, output_path_str: Optional[str]):
     """
-    Compares two pipa snapshots and generates a comparison report.
+    比较两个pipa快照并生成比较报告。
     """
     input_a_path = Path(input_a_path_str)
     input_b_path = Path(input_b_path_str)

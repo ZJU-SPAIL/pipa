@@ -1,0 +1,45 @@
+user  ${SERVICE_USER};
+worker_processes  ${NGINX_WORKER_PROCESSES};
+
+error_log  ${NGINX_LOGS_DIR}/error.log notice;
+pid        ${NGINX_PID_PATH};
+
+worker_rlimit_nofile 102400;
+
+events {
+    worker_connections 102400;
+    multi_accept on;
+    use epoll;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    access_log  ${NGINX_LOGS_DIR}/access.log;
+
+    sendfile        on;
+    tcp_nopush     on;
+    tcp_nodelay     on;
+
+    keepalive_timeout  65;
+    keepalive_requests 20000;
+    gzip on;
+    gzip_comp_level 9;
+    gzip_min_length 100;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    server {
+        listen       8000;
+        server_name  localhost;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+}

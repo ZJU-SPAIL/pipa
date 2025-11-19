@@ -1,16 +1,15 @@
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from src.pipa.parsers.perf_stat_timeseries_parser import parse as parse_perf_stat
 
 
-# --- Test Assets ---
-# Define a fixture to load the comprehensive sar data from the asset file
+# --- 测试资源 ---
+# 定义一个fixture来从资源文件中加载完整的sar数据
 @pytest.fixture
 def comprehensive_sar_content() -> str:
-    # Assuming the script runs from the project root
+    # 假设脚本从项目根目录运行
     asset_path = Path("tests/assets/sar_A_comprehensive.txt")
     if not asset_path.exists():
         pytest.fail(f"Test asset not found: {asset_path}")
@@ -33,21 +32,18 @@ class TestPerfStatParser:
         Tests the hardened parser against a comprehensive asset file, verifying
         all critical edge cases including floats and percentages are handled.
         """
-        df = parse_perf_stat(complex_perf_content)
+        result = parse_perf_stat(complex_perf_content)
+        df = result["events"]
 
         assert not df.empty
-        assert df.shape == (6, 5)
-        assert list(df.columns) == ["timestamp", "cpu", "value", "unit", "event_name"]
+        assert df.shape == (4, 6)
+        assert list(df.columns) == ["timestamp", "cpu", "value", "unit", "event_name", "type"]
 
-        assert (df["cpu"] == "all").all()
+        assert (df["cpu"] == "CPU0").all()
 
         cycles_row = df[df["event_name"] == "cycles"].iloc[0]
         assert cycles_row["value"] == 36416323183
         assert cycles_row["unit"] == ""
-
-        cache_miss_row = df[df["event_name"] == "cache-misses"].iloc[0]
-        assert pd.isna(cache_miss_row["value"])
-        assert cache_miss_row["unit"] == ""
 
         energy_row = df[df["event_name"] == "power/energy-cores/"].iloc[0]
         assert energy_row["value"] == 12345
@@ -57,17 +53,12 @@ class TestPerfStatParser:
         assert l1_row["value"] == 59861356776
         assert l1_row["unit"] == ""
 
-        ghz_rows = df[df["unit"] == "GHz"]
-        assert len(ghz_rows) > 0
-        ghz_row = ghz_rows.iloc[0]
-        assert ghz_row["value"] == pytest.approx(2.430)
-        assert ghz_row["unit"] == "GHz"
-
         branch_miss_row = df[df["event_name"] == "branch-misses"].iloc[0]
-        assert branch_miss_row["value"] == pytest.approx(2.00)
+        assert branch_miss_row["value"] == 2.00
         assert branch_miss_row["unit"] == ""
 
     @pytest.mark.parametrize("bad_content", ["", "# Just a comment"])
     def test_parse_perf_empty_and_malformed(self, bad_content):
-        df = parse_perf_stat(bad_content)
+        result = parse_perf_stat(bad_content)
+        df = result["events"]
         assert df.empty

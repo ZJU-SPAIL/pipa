@@ -1,3 +1,10 @@
+"""
+性能数据收集模块
+
+此模块负责收集系统和进程的性能数据，包括CPU、内存、网络、I/O等指标。
+使用perf和sar工具来收集数据，并提供启动、停止和处理数据的功能。
+"""
+
 import logging
 import os
 import platform
@@ -10,9 +17,10 @@ from typing import Optional
 from .executor import ExecutionError, PerfPermissionError, run_command
 
 log = logging.getLogger(__name__)
-# --- Built-in Event Sets ---
 
-# A robust, general-purpose event set for x86_64 architectures (Intel/AMD)
+# --- 内置事件集 ---
+
+# x86_64架构（Intel/AMD）的通用事件集
 X86_64_EVENT_SET = [
     ["cycles", "instructions"],
     ["cache-references", "cache-misses"],
@@ -24,8 +32,9 @@ X86_64_EVENT_SET = [
     ["page-faults", "context-switches", "cpu-migrations"],
 ]
 
-# A carefully selected event set for aarch64 architectures (ARM64)
+# aarch64架构（ARM64）的精心选择的事件集
 AARCH64_EVENT_SET = [
+    # 基础事件 (cycles, instructions 其实 Metrics 也会带，但显式加上更保险，方便算 IPC)
     ["cpu-cycles", "instructions"],
     ["branch-misses"],
     ["l1d_cache", "l1d_cache_refill"],
@@ -41,14 +50,33 @@ def start_perf_stat(
     system_wide: bool,
     interval: Optional[int] = 1000,
     events_override_str: Optional[str] = None,
+    metrics_list: Optional[list] = None,  # <--- 新增参数
 ) -> Optional[subprocess.Popen]:
     """
-    Starts perf stat in either process-specific or system-wide mode.
+    启动perf stat以进程特定或系统范围模式运行，强制使用CSV格式。
+
+    根据提供的参数启动perf stat进程，用于收集性能统计数据。
+    支持自定义事件集或使用内置的架构特定事件集。
+
+    参数:
+        target_pid: 可选的目标进程ID。如果提供，将监控特定进程。
+        system_wide: 是否以系统范围模式运行。如果为True，将监控所有CPU核心。
+        interval: 采样间隔（毫秒），默认为1000ms。
+        events_override_str: 可选的自定义事件字符串，覆盖默认事件集。
+        metrics_list: 可选的perf metrics列表，用于TopDown分析。
+
+    返回:
+        启动的subprocess.Popen对象，如果启动失败则返回None。
+
+    异常:
+        ExecutionError: 如果perf命令未找到。
     """
+    # 处理事件集：优先使用用户提供的自定义事件，否则根据架构选择内置事件集
     if events_override_str:
         log.info(f"Using expert-provided perf events: {events_override_str}")
         event_groups = [events_override_str.split(",")]
     else:
+        # 自动检测主机架构并选择相应的事件集
         host_arch = platform.machine()
         log.info(f"Auto-detected host architecture: {host_arch}")
         if host_arch == "aarch64":
@@ -58,22 +86,36 @@ def start_perf_stat(
             log.info("Using built-in x86_64 event set as default.")
             event_groups = X86_64_EVENT_SET
 
+    # 构建perf stat命令的基础部分
     command_parts = ["perf", "stat"]
 
+    # === FIX: 强制开启 CSV 模式，分隔符为分号 ===
+    command_parts.extend(["-x", ";"])
+
+    # 根据模式添加相应的命令行参数
     if system_wide:
         log.info("Running perf stat in system-wide mode with per-core stats (-a -A).")
-        command_parts.extend(["-a", "-A"])
+        # === FIX: 确保 -A 始终存在，这样解析器逻辑才统一 ===
+        command_parts.extend(["-a", "-A"])  # -a: 系统范围，-A: 每核心统计
     elif target_pid:
         log.info(f"Running perf stat in process-specific mode for PID(s): {target_pid}")
-        command_parts.extend(["-p", target_pid])
+        command_parts.extend(["-p", target_pid])  # -p: 指定进程ID
     else:
         raise ValueError("Either target_pid or system_wide must be specified.")
 
+    # 1. 先添加 -M Metrics (让 perf 优先处理指标)
+    if metrics_list:
+        log.info(f"Adding perf metrics: {metrics_list}")
+        command_parts.append("-M")
+        command_parts.append(",".join(metrics_list))
+
+    # 2. 再添加基础 -e 事件 (作为补充)
     for group in event_groups:
         if group:
             command_parts.append("-e")
             command_parts.append(",".join(group))
 
+    # 添加采样间隔参数
     command_parts.extend(
         [
             "-I",
@@ -83,13 +125,14 @@ def start_perf_stat(
 
     log.info(f"Starting background perf stat: {' '.join(command_parts)}")
     try:
+        # 启动后台进程，设置进程组以便独立管理
         proc = subprocess.Popen(
             command_parts,
             shell=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,  # 丢弃标准输出
+            stderr=subprocess.PIPE,  # 捕获标准错误（包含性能数据）
             text=True,
-            preexec_fn=os.setsid,
+            preexec_fn=os.setsid,  # 创建新进程组
         )
         return proc
     except FileNotFoundError:
@@ -99,8 +142,21 @@ def start_perf_stat(
 # 修改 stop_perf_stat 函数的签名和实现
 def stop_perf_stat(proc: subprocess.Popen, output_file: str, timeout: int) -> Optional[str]:
     """
-    Stops perf stat, captures its stderr, writes to file, and returns the content.
-    停止 perf stat，捕获其 stderr，写入文件，并返回内容。
+    停止perf stat进程，捕获其stderr输出，写入文件，并返回内容。
+
+    向perf stat进程发送SIGINT信号，等待其完成，捕获输出，
+    并将结果保存到指定文件。如果遇到权限问题，会抛出PerfPermissionError。
+
+    参数:
+        proc: 要停止的perf stat进程对象。
+        output_file: 输出文件的路径。
+        timeout: 等待进程完成的超时时间（秒）。
+
+    返回:
+        捕获的stderr输出内容，如果进程被杀死则返回"Process killed, no output captured."。
+
+    异常:
+        PerfPermissionError: 如果内核的perf_event_paranoid设置过于严格。
     """
     log.info(f"Sending SIGINT to perf stat process (PID: {proc.pid})...")
     proc.send_signal(signal.SIGINT)
@@ -151,9 +207,21 @@ def start_sar(
     output_bin_file: str,
 ) -> Optional[subprocess.Popen]:
     """
-    Starts `sar -A` in the background, writing binary data to an output file.
-    This is more robust than capturing stdout.
-    在后台启动 `sar -A`，将二进制数据写入输出文件。这比捕获 stdout 更健壮。
+    在后台启动sar -A，将二进制数据写入输出文件。
+
+    启动sar工具以收集系统活动报告，使用二进制模式输出，
+    这比捕获stdout更健壮。收集的数据包括CPU、网络、I/O、内存等指标。
+
+    参数:
+        duration: 收集数据的总持续时间（秒）。
+        interval: 采样间隔（秒）。
+        output_bin_file: 二进制输出文件的路径。
+
+    返回:
+        启动的subprocess.Popen对象，如果duration小于interval则返回None。
+
+    异常:
+        ExecutionError: 如果sar命令未找到。
     """
     if duration < interval:
         log.warning(f"Duration ({duration}) is less than interval ({interval}), skipping sar.")
@@ -185,8 +253,16 @@ def stop_sar(
     timeout: int,
 ) -> None:
     """
-    Waits for sar to finish, then uses sadf to convert its binary output
-    into multiple, categorized CSV files.
+    等待sar进程完成，然后使用sadf将其二进制输出转换为多个分类的CSV文件。
+
+    等待sar进程结束，然后使用sadf工具将二进制数据转换为CSV格式，
+    生成多个CSV文件，每个文件对应不同的系统指标类别。
+
+    参数:
+        proc: 要等待的sar进程对象。
+        output_bin_file: sar生成的二进制输出文件路径。
+        level_dir: 保存CSV文件的目录路径。
+        timeout: 等待进程完成的超时时间（秒）。
     """
     log.info(f"Waiting for sar process (PID: {proc.pid}) to complete...")
     try:
@@ -233,7 +309,21 @@ def start_perf_record(
     freq: Optional[int] = 99,
 ) -> Optional[subprocess.Popen]:
     """
-    Starts `perf record` in the background for flame graph generation.
+    在后台启动perf record以生成火焰图。
+
+    启动perf record进程来收集调用栈样本，用于生成性能火焰图。
+    使用指定的频率采样目标进程的性能数据。
+
+    参数:
+        target_pid: 要监控的目标进程ID。
+        output_file: 输出文件的路径，用于保存perf数据。
+        freq: 采样频率（Hz），默认为99。
+
+    返回:
+        启动的subprocess.Popen对象。
+
+    异常:
+        ExecutionError: 如果perf命令未找到。
     """
     command = [
         "perf",
@@ -264,7 +354,14 @@ def start_perf_record(
 
 def stop_perf_record(proc: subprocess.Popen, timeout: int) -> None:
     """
-    Stops the running `perf record` process gracefully.
+    优雅地停止正在运行的perf record进程。
+
+    向perf record进程发送SIGINT信号，等待其完成写入数据。
+    如果进程没有响应，将强制杀死它。
+
+    参数:
+        proc: 要停止的perf record进程对象。
+        timeout: 等待进程完成的超时时间（秒）。
     """
     log.info(f"Sending SIGINT to perf record process (PID: {proc.pid})...")
     proc.send_signal(signal.SIGINT)

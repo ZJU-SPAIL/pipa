@@ -1,3 +1,9 @@
+"""
+collector模块的单元测试
+
+测试性能数据收集功能，包括perf stat和sar的启动、停止和数据处理。
+"""
+
 import subprocess
 from typing import cast
 from unittest.mock import MagicMock, patch
