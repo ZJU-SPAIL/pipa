@@ -22,7 +22,7 @@ def load_rules(rules_path: Path) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
 def _evaluate_node(
     rule_node: Dict[str, Any], df_dict: Dict[str, pd.DataFrame], context: Dict[str, Any], findings: List[str]
 ):
-    """递归地评估一个规则节点及其子节点。"""
+    """递归地评估一个规则节点及其子节点 (用于提取纯文本 findings)。"""
     try:
         precondition_met = eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context})
         if not precondition_met:
@@ -30,7 +30,9 @@ def _evaluate_node(
 
         if "finding" in rule_node:
             finding = rule_node["finding"].format(**context)
-            findings.append(finding)
+            # 过滤掉为了结构存在但不需要显示的空 finding
+            if finding.strip():
+                findings.append(finding)
 
         for sub_rule in rule_node.get("sub_rules", []):
             _evaluate_node(sub_rule, df_dict, context, findings)
@@ -62,8 +64,9 @@ def _format_rule_to_html_list(
 ) -> tuple[str, str]:
     """
     递归地将节点转换为HTML <li>，并单独返回其finding HTML。
-    现在会考虑父节点的激活状态。
+    实现了“剪枝”逻辑：未激活的分支将完全不渲染，只展示案发现场。
     """
+    # 1. 计算当前节点的激活状态
     is_self_condition_met = False
     try:
         if eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context}):
@@ -71,30 +74,51 @@ def _format_rule_to_html_list(
     except Exception:
         pass
 
+    # 真正的激活状态 = 父节点激活 AND 自己条件满足
     is_truly_active = parent_is_active and is_self_condition_met
 
+    # === 核心修改：剪枝逻辑 (Pruning) ===
+    # 规则：如果节点未激活，且不是根节点，则直接丢弃，不生成 HTML。
+    # 这样前端树形图将只包含红色的、被触发的路径。
+    is_root = rule_node.get("name") == "PIPA 根因分析"
+
+    if not is_truly_active and not is_root:
+        return "", ""
+
+    # 2. 生成 Finding HTML (结论文本框)
     finding_html = ""
     if is_truly_active and (finding_template := rule_node.get("finding")):
         try:
             formatted_finding = finding_template.format(**context)
-            finding_html = f"<div class='finding-box'>{md.render(formatted_finding)}</div>"
+            if formatted_finding.strip():
+                finding_html = f"<div class='finding-box'>{md.render(formatted_finding)}</div>"
         except KeyError as e:
             finding_html = f"<div class='finding-box error'>数据缺失: {e}</div>"
 
+    # 3. 生成 Tree HTML (<li>结构)
+    # 因为我们已经剪枝了，所以能显示出来的节点肯定都是 Active 的 (除了根节点可能只是容器)
+    # 但为了保险，根节点还是给个 CSS 类控制
     active_class = "active-node" if is_truly_active else ""
     li_html = f"<li class='{active_class}'><span>{rule_node['name']}</span>"
 
+    # 4. 递归处理子节点
     all_child_findings = []
+    child_lis = []
+
     if sub_rules := rule_node.get("sub_rules"):
-        li_html += "<ul>"
         for sub_rule in sub_rules:
             sub_li_html, sub_finding_html = _format_rule_to_html_list(
                 sub_rule, df_dict, context, md, parent_is_active=is_truly_active
             )
-            li_html += sub_li_html
+            # 只有当子节点有内容（未被剪枝）时才添加
+            if sub_li_html:
+                child_lis.append(sub_li_html)
             if sub_finding_html:
                 all_child_findings.append(sub_finding_html)
-        li_html += "</ul>"
+
+    # 只有当存在可见的子节点时，才渲染 <ul>
+    if child_lis:
+        li_html += "<ul>" + "".join(child_lis) + "</ul>"
 
     li_html += "</li>"
 
@@ -118,7 +142,8 @@ def format_rules_to_html_tree(
 
     for root_rule in rules_config:
         tree_html, findings_html = _format_rule_to_html_list(root_rule, df_dict, context, md)
-        tree_html_parts.append(tree_html)
+        if tree_html:
+            tree_html_parts.append(tree_html)
         findings_html_parts.append(findings_html)
 
     full_tree_html = f'<div class="tree"><ul>{"".join(tree_html_parts)}</ul></div>'
