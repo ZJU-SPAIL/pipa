@@ -3,10 +3,7 @@
 import logging
 from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
-from sklearn.neighbors import NearestNeighbors
-from sklearn.preprocessing import StandardScaler
 
 log = logging.getLogger(__name__)
 
@@ -43,9 +40,6 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
         log.warning("Not enough CPU cores to perform analysis.")
         return {}
 
-    scaler = StandardScaler()
-    cpu_features_scaled = scaler.fit_transform(cpu_features.reindex(columns=features_to_cluster).fillna(0))
-
     # --- 2. 最终诊断引擎 (V4 - 直观版) ---
 
     # 初始化
@@ -80,17 +74,9 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
 
     log.info(f"Analysis complete. Found {len(final_stats)} groups (0=Mid, 1=Busy, 99=Idle).")
 
-    # --- 4. 辅助数据 (用于图表展示) ---
-    # 我们依然计算 K-Distance，作为数据分布的参考（虽然不用于分类了）
-    k = 4
-    neighbors = NearestNeighbors(n_neighbors=k).fit(cpu_features_scaled)
-    distances, _ = neighbors.kneighbors(cpu_features_scaled)
-    k_distances = np.sort(distances[:, k - 1], axis=0)
-
     return {
         "cpu_clusters_summary": clusters_summary,
         "cpu_clusters_count": len(final_stats),
         "cpu_features_df": cpu_features,
-        "knee_distances": k_distances,
         "optimal_eps": 0.20,  # 固定值作为展示
     }
