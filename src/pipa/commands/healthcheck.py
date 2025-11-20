@@ -68,6 +68,30 @@ def _collect_memory_info() -> dict:
     return _read_proc_file("/proc/meminfo")
 
 
+def _collect_numa_info() -> dict:
+    """Collects NUMA topology info from /sys/devices/system/node/."""
+    try:
+        node_base_path = Path("/sys/devices/system/node")
+        if not node_base_path.is_dir():
+            return {"status": "NUMA not supported or /sys/devices/system/node not found."}
+
+        numa_topology = {}
+        for node_path in sorted(node_base_path.glob("node[0-9]*")):
+            node_name = node_path.name
+            cpulist_path = node_path / "cpulist"
+            if cpulist_path.exists():
+                cpu_list_str = cpulist_path.read_text().strip()
+                numa_topology[node_name] = cpu_list_str
+
+        if not numa_topology:
+            return {"status": "No NUMA nodes detected."}
+
+        return {"numa_topology": numa_topology}
+    except Exception as e:
+        log.warning(f"Could not collect NUMA info: {e}")
+        return {"error": str(e)}
+
+
 def _collect_cpu_governor_info() -> dict:
     """Collects the CPU frequency scaling governor for each CPU."""
     governors = {}
@@ -138,7 +162,8 @@ def _collect_disk_info_from_sys() -> dict:
         return {"error": "/sys/class/block not found."}
     for device_path in sys_block_path.iterdir():
         try:
-            is_partition = (device_path / "partition").exists()
+            if (device_path / "partition").exists():
+                continue
 
             size_sectors = int((device_path / "size").read_text().strip())
             size_bytes = size_sectors * 512
@@ -146,16 +171,15 @@ def _collect_disk_info_from_sys() -> dict:
             device_info = {
                 "name": device_path.name,
                 "size_bytes": size_bytes,
-                "type": "partition" if is_partition else "disk",
+                "type": "disk",
                 "removable": "N/A",
                 "model": "N/A",
             }
 
-            if not is_partition:
-                if (device_path / "removable").exists():
-                    device_info["removable"] = (device_path / "removable").read_text().strip() == "1"
-                if (device_path / "device/model").exists():
-                    device_info["model"] = (device_path / "device/model").read_text().strip()
+            if (device_path / "removable").exists():
+                device_info["removable"] = (device_path / "removable").read_text().strip() == "1"
+            if (device_path / "device/model").exists():
+                device_info["model"] = (device_path / "device/model").read_text().strip()
 
             devices.append(device_info)
         except (IOError, ValueError, FileNotFoundError) as e:
@@ -196,6 +220,7 @@ def _collect_all_static_info() -> dict:
         "os_info": _parse_os_release("/etc/os-release"),
         "kernel_version": {"version": "N/A"},
         "cpu_info": _collect_cpu_info(),
+        "numa_info": _collect_numa_info(),
         "cpu_governor": _collect_cpu_governor_info(),
         "memory_info": _collect_memory_info(),
         "disk_info": _collect_disk_info_from_sys(),
