@@ -46,31 +46,25 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
     scaler = StandardScaler()
     cpu_features_scaled = scaler.fit_transform(cpu_features.reindex(columns=features_to_cluster).fillna(0))
 
-    # --- 2. 最终诊断引擎 (V4 - 物理感知修正版) ---
+    # --- 2. 最终诊断引擎 (V4 - 直观版) ---
 
-    # 初始化：默认为 0 (中间态/未知)
-    # 如果有核心恰好卡在 10% - 15% 之间，它会保留为 0，这很合理
+    # 初始化
     cpu_features["cluster_final"] = 0
 
-    # 规则 A (强力清洗): 定义“绝对空闲”
-    # 物理意义：如果一个核心 90% 的时间都在睡觉 (P95 Idle > 90%)，那它就是 Idle。
-    # 这能有效合并 99.9% 和 95% 的核心到同一类。
-    ABS_IDLE_THRESHOLD = 90.0
+    # 规则 A: 绝对空闲 (User + System < 10%)
+    # 既然看 User+System，那就用它们的和来判断空闲
+    # 注意：我们需要用到 mean_ 或 p95_，为了捕捉峰值，依然建议用 p95
+    total_util_p95 = cpu_features["p95_%user"] + cpu_features["p95_%system"]
 
-    idle_mask = cpu_features["p95_%idle"] > ABS_IDLE_THRESHOLD
-    cpu_features.loc[idle_mask, "cluster_final"] = 99  # 标记: Idle (部落 99)
+    IDLE_THRESHOLD = 10.0
+    idle_mask = total_util_p95 < IDLE_THRESHOLD
+    cpu_features.loc[idle_mask, "cluster_final"] = 99
 
-    # 规则 B (识别瓶颈): 定义“繁忙”
-    # 物理意义：只要不闲着的时间 (100 - Idle) 超过阈值，就是繁忙。
-    # 这涵盖了 User 高、System 高、Softirq 高等所有忙碌情况。
+    # 规则 B: 繁忙 (User + System > 15%)
     BUSY_THRESHOLD = 15.0
+    busy_mask = total_util_p95 > BUSY_THRESHOLD
 
-    # 注意逻辑顺序：我们只把“非空闲”的标记为繁忙。
-    # 实际上 (100 - p95_idle) > 15 等价于 p95_idle < 85。
-    # 这与上面的 > 90 是天然互斥的，不会打架。
-    busy_mask = (100.0 - cpu_features["p95_%idle"]) > BUSY_THRESHOLD
-
-    cpu_features.loc[busy_mask, "cluster_final"] = 1  # 标记: Busy (部落 1)
+    cpu_features.loc[busy_mask, "cluster_final"] = 1
 
     # --- 3. 生成摘要 (用于报告和决策树) ---
     final_stats = cpu_features.groupby("cluster_final").mean().round(2)

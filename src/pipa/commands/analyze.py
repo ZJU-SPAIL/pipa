@@ -19,12 +19,7 @@ from markdown_it import MarkdownIt
 from src.pipa.parsers import PARSER_REGISTRY
 from src.pipa.report.context_builder import build_full_context
 from src.pipa.report.html_generator import generate_html_report
-from src.pipa.report.plotter import (
-    plot_cpu_clusters,
-    plot_knee_distance_educational,
-    plot_sar_cpu,
-    plot_timeseries_generic,
-)
+from src.pipa.report.plotter import plot_cpu_clusters, plot_sar_cpu, plot_timeseries_generic
 from src.utils import get_project_root
 
 from .rules import format_rules_to_html_tree, load_rules
@@ -126,22 +121,14 @@ def _generate_report(level_dir: Path, report_path: Path):
 
     # 如果有CPU特征数据，生成聚类分析图
     if "cpu_features_df" in context:
-        # --- 核心修改：重新启用并适配 K-距离图的生成 ---
 
-        # 1. 生成 K-距离图 (如果数据存在)
-        k_distances = context.get("knee_distances")
-        if k_distances is not None and len(k_distances) > 0:
-            # <<< 调用全新的、为 V3 引擎设计的“教育版”绘图函数 >>>
-            fig_knee = plot_knee_distance_educational(k_distances, k=4)
-            plots["knee_distance"] = fig_knee.to_html(full_html=False, include_plotlyjs="cdn")
-
-        # 2. 生成聚类散点图 (逻辑不变)
+        # 1. 生成聚类散点图
         # 我们从 context 中获取 optimal_eps 只是为了在标题中显示，它不再参与决策
         optimal_eps_for_title = context.get("optimal_eps", 0.0)
         fig_clusters = plot_cpu_clusters(context["cpu_features_df"], optimal_eps_for_title)
         plots["cpu_cluster_analysis"] = fig_clusters.to_html(full_html=False, include_plotlyjs="cdn")
 
-        # 3. 准备聚类摘要表的数据 (逻辑不变)
+        # 2. 准备聚类摘要表的数据
         if "cpu_clusters_summary" in context:
             summary_df = pd.DataFrame(context["cpu_clusters_summary"])
             tables["cluster_summary"] = summary_df.to_json(orient="records")
