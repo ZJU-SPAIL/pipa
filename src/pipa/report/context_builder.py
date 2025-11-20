@@ -217,16 +217,15 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
     clusters_summary = context.get("cpu_clusters_summary", [])
 
     if clusters_summary:
-        # 定义一个“繁忙”部落的峰值阈值
-        BUSY_THRESHOLD_P95_USER = 15.0
+        BUSY_THRESHOLD_P95_USER_SYS = 15.0
 
-        # 检查是否存在任何一个被明确标记为“繁忙”(id=1)的部落
         is_busy_cluster_found = any(c.get("id") == 1 for c in clusters_summary)
 
-        # 或者，作为备用，检查是否存在任何一个“活跃”(id=0)部落，其峰值也超过了阈值
-        # 只要有一个部落被标记为 "Active (id=0)"，且它的繁忙度 (100-idle) 超过阈值，就视为不均
+        # 备用逻辑：检查 Cluster 0 是否有高负载
+        # 改为: p95_user + p95_system > 15
         is_active_cluster_busy = any(
-            c.get("id") == 0 and (100.0 - c.get("p95_%idle", 100.0)) > BUSY_THRESHOLD_P95_USER for c in clusters_summary
+            c.get("id") == 0 and (c.get("p95_%user", 0) + c.get("p95_%system", 0)) > BUSY_THRESHOLD_P95_USER_SYS
+            for c in clusters_summary
         )
 
         if is_busy_cluster_found or is_active_cluster_busy:
