@@ -99,7 +99,8 @@ def test_on_cpu_tma_frontend_bound_path(mock_static_info, full_decision_tree):
     findings_text = "".join(findings)
     assert "ON-CPU" in findings_text
     assert "前端瓶颈" in findings_text, f"诊断结论: {findings_text}"
-    assert 'CPU 大部分时间在"饥饿"状态' in findings_text
+    # --- 核心修复：将断言更新为与新文案匹配 ---
+    assert "指令供给侧" in findings_text and "存在显著延迟" in findings_text
 
 
 def test_on_cpu_tma_backend_bound_path(mock_static_info, full_decision_tree):

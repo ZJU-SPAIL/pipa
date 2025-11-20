@@ -51,52 +51,44 @@ rules:
           系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
           其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
           这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
-          接下来将对高负载核心进行微架构分析...
         # 在这个分支下，我们直接进行 TMA 分析
         sub_rules:
           - name: "微架构瓶颈 (TMA L1)"
             precondition: "True"
-            finding: "开始进行微架构(TMA)分析..."
             sub_rules:
               - name: "前端瓶颈 (Frontend Bound)"
                 precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: 'TMA L1 诊断：<strong>前端瓶颈</strong> 占比显著 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 指令供给不足（取指/解码延迟），限制了后续执行单元的吞吐。数据来源：{tma_source_label}'
+                finding: "TMA L1 诊断：<strong>前端瓶颈 (Frontend Bound)</strong> 占比为 <strong>{tma_frontend_bound:.2f}%</strong>。CPU 指令供给侧（取指/解码）存在显著延迟。 (来源: {tma_source_label})"
               - name: "后端瓶颈 (Backend Bound)"
                 precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: >-
-                  TMA L1 诊断：<strong>后端瓶颈</strong> 占比显著 (<strong>{tma_backend_bound:.2f}%</strong>)。
-                  <br><span style="color:#888; font-size:0.9em;">(数据来源: {tma_source_label})</span>
-                  <br>这意味着 CPU 后端执行单元或内存子系统处理不及，导致流水线堵塞。
+                finding: "TMA L1 诊断：<strong>后端瓶颈 (Backend Bound)</strong> 占比为 <strong>{tma_backend_bound:.2f}%</strong>。CPU 后端执行单元或内存子系统存在显著停顿。 (来源: {tma_source_label})"
               - name: "错误推测 (Bad Speculation)"
                 precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: "TMA L1 诊断：<strong>错误推测</strong> 占比显著 (<strong>{tma_bad_speculation:.2f}%</strong>)。CPU 浪费了大量周期执行无用指令（分支预测失败）。数据来源：{tma_source_label}"
+                finding: "TMA L1 诊断：<strong>错误推测 (Bad Speculation)</strong> 占比为 <strong>{tma_bad_speculation:.2f}%</strong>。CPU 浪费了大量周期在最终被丢弃的指令路径上。 (来源: {tma_source_label})"
               - name: "指令交付 (Retiring)"
                 precondition: "tma_retiring > 0"
-                finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。这代表 CPU 真实有效的工作部分。如果此值较低，说明流水线效率低下。数据来源：{tma_source_label}"
+                finding: "TMA L1 状态：<strong>指令交付率 (Retiring)</strong> 为 <strong>{tma_retiring:.2f}%</strong>，代表 CPU 流水线的实际有效产出。 (来源: {tma_source_label})"
 
       # ===================== ON-CPU 分支 (V3 - 全局繁忙) =====================
       - name: "ON-CPU 瓶颈 (全局繁忙)"
         precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
-        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。系统处于全局繁忙状态，开始进行微架构(TMA)分析..."
+        finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。系统处于全局繁忙状态。"
         sub_rules:
           - name: "微架构瓶颈 (TMA L1)"
             precondition: "True"
-            finding: "开始进行微架构(TMA)分析..."
             sub_rules:
               - name: "前端瓶颈 (Frontend Bound)"
                 precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: 'TMA L1 诊断：<strong>前端瓶颈</strong> 占主导地位 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 大部分时间在"饥饿"状态，等待指令被取指和解码。数据来源：{tma_source_label}'
+                finding: "TMA L1 诊断：<strong>前端瓶颈 (Frontend Bound)</strong> 占比为 <strong>{tma_frontend_bound:.2f}%</strong>。CPU 指令供给侧（取指/解码）存在显著延迟。 (来源: {tma_source_label})"
               - name: "后端瓶颈 (Backend Bound)"
                 precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: >-
-                  TMA L1 诊断：<strong>后端瓶颈</strong> 占主导地位 (<strong>{tma_backend_bound:.2f}%</strong>)。
-                  数据来源：{tma_source_label}
+                finding: "TMA L1 诊断：<strong>后端瓶颈 (Backend Bound)</strong> 占比为 <strong>{tma_backend_bound:.2f}%</strong>。CPU 后端执行单元或内存子系统存在显著停顿。 (来源: {tma_source_label})"
               - name: "错误推测 (Bad Speculation)"
                 precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: "TMA L1 诊断：<strong>错误推测</strong> 占主导地位 (<strong>{tma_bad_speculation:.2f}%</strong>)。数据来源：{tma_source_label}"
+                finding: "TMA L1 诊断：<strong>错误推测 (Bad Speculation)</strong> 占比为 <strong>{tma_bad_speculation:.2f}%</strong>。CPU 浪费了大量周期在最终被丢弃的指令路径上。 (来源: {tma_source_label})"
               - name: "指令交付 (Retiring)"
                 precondition: "tma_retiring > 0"
-                finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。数据来源：{tma_source_label}"
+                finding: "TMA L1 状态：<strong>指令交付率 (Retiring)</strong> 为 <strong>{tma_retiring:.2f}%</strong>，代表 CPU 流水线的实际有效产出。 (来源: {tma_source_label})"
 
       - name: "OFF-CPU 瓶颈"
         precondition: >-
