@@ -60,15 +60,16 @@ rules:
             sub_rules:
               - name: "前端瓶颈 (Frontend Bound)"
                 precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: 'TMA L1 诊断：<strong>前端瓶颈</strong> 占主导地位 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 大部分时间在"饥饿"状态，等待指令被取指和解码。数据来源：{tma_source_label}'
+                finding: 'TMA L1 诊断：<strong>前端瓶颈</strong> 占比显著 (<strong>{tma_frontend_bound:.2f}%</strong>)。CPU 指令供给不足（取指/解码延迟），限制了后续执行单元的吞吐。数据来源：{tma_source_label}'
               - name: "后端瓶颈 (Backend Bound)"
                 precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
                 finding: >-
-                  TMA L1 诊断：<strong>后端瓶颈</strong> 占主导地位 (<strong>{tma_backend_bound:.2f}%</strong>)。
-                  数据来源：{tma_source_label}
+                  TMA L1 诊断：<strong>后端瓶颈</strong> 占比显著 (<strong>{tma_backend_bound:.2f}%</strong>)。
+                  <br><span style="color:#888; font-size:0.9em;">(数据来源: {tma_source_label})</span>
+                  <br>这意味着 CPU 后端执行单元或内存子系统处理不及，导致流水线堵塞。
               - name: "错误推测 (Bad Speculation)"
                 precondition: "tma_bad_speculation > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: "TMA L1 诊断：<strong>错误推测</strong> 占主导地位 (<strong>{tma_bad_speculation:.2f}%</strong>)。CPU 执行了大量最终被丢弃的指令，浪费了宝贵的计算周期，通常由分支预测失败引起。数据来源：{tma_source_label}"
+                finding: "TMA L1 诊断：<strong>错误推测</strong> 占比显著 (<strong>{tma_bad_speculation:.2f}%</strong>)。CPU 浪费了大量周期执行无用指令（分支预测失败）。数据来源：{tma_source_label}"
               - name: "指令交付 (Retiring)"
                 precondition: "tma_retiring > 0"
                 finding: "TMA L1 状态：<strong>指令交付率</strong> 为 <strong>{tma_retiring:.2f}%</strong>。这代表 CPU 真实有效的工作部分。如果此值较低，说明流水线效率低下。数据来源：{tma_source_label}"
