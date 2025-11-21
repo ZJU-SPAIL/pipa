@@ -155,36 +155,89 @@ def _collect_sysctl_info() -> dict:
 
 
 def _collect_disk_info_from_sys() -> dict:
-    """Collects block device info directly from /sys for maximum robustness."""
-    devices = []
+    """
+    从 /sys/class/block 收集块设备信息，构建 磁盘 -> 分区 的层级结构。
+    """
     sys_block_path = Path("/sys/class/block")
     if not sys_block_path.exists():
         return {"error": "/sys/class/block not found."}
-    for device_path in sys_block_path.iterdir():
-        try:
-            if (device_path / "partition").exists():
-                continue
 
+    block_devices = []
+
+    # 1. 遍历所有块设备
+    for device_path in sys_block_path.iterdir():
+        dev_name = device_path.name
+
+        # --- 过滤逻辑 ---
+        # 排除 loop, ram 设备
+        if dev_name.startswith(("loop", "ram")):
+            continue
+
+        # 排除分区 (Partition)
+        # 在 /sys/class/block 下，分区也会作为顶级链接出现，但它们包含 'partition' 文件。
+        # 我们只想处理“物理磁盘”或“逻辑卷根设备”，然后在它们内部找分区。
+        if (device_path / "partition").exists():
+            continue
+
+        # --- 采集物理磁盘信息 ---
+        try:
             size_sectors = int((device_path / "size").read_text().strip())
             size_bytes = size_sectors * 512
 
-            device_info = {
-                "name": device_path.name,
+            disk_info = {
+                "name": dev_name,
+                "type": "disk",  # 默认为 disk，如果是 dm-x 可能会改
                 "size_bytes": size_bytes,
-                "type": "disk",
-                "removable": "N/A",
                 "model": "N/A",
+                "vendor": "N/A",
+                "rotational": "N/A",  # 0=SSD, 1=HDD
+                "partitions": [],  # 准备挂载分区
             }
 
-            if (device_path / "removable").exists():
-                device_info["removable"] = (device_path / "removable").read_text().strip() == "1"
+            # 采集额外属性
             if (device_path / "device/model").exists():
-                device_info["model"] = (device_path / "device/model").read_text().strip()
+                disk_info["model"] = (device_path / "device/model").read_text().strip()
+            if (device_path / "device/vendor").exists():
+                disk_info["vendor"] = (device_path / "device/vendor").read_text().strip()
+            if (device_path / "queue/rotational").exists():
+                rot = (device_path / "queue/rotational").read_text().strip()
+                disk_info["rotational"] = "HDD" if rot == "1" else "SSD"
 
-            devices.append(device_info)
-        except (IOError, ValueError, FileNotFoundError) as e:
-            log.warning(f"Could not fully read info for device {device_path.name}: {e}")
-    return {"block_devices": devices}
+            # 特殊处理 Device Mapper (dm-x)
+            if dev_name.startswith("dm-"):
+                disk_info["type"] = "lvm/dm"
+                # dm 设备通常没有 model/vendor，尝试读取 dm/name
+                if (device_path / "dm/name").exists():
+                    disk_info["model"] = (device_path / "dm/name").read_text().strip()
+
+            # --- 核心：扫描分区 (找儿子) ---
+            # 在 sysfs 中，分区目录通常直接位于磁盘目录下，名字以磁盘名开头 (sda -> sda1)
+            # 或者只是作为子目录存在。最稳健的方法是遍历子目录并检查 'partition' 文件。
+            # 注意：device_path 是个软链接，resolve() 后才能看到真正的物理目录结构
+            real_device_path = device_path.resolve()
+
+            for sub_path in real_device_path.iterdir():
+                # 只有当子目录包含 'partition' 文件时，才认为是分区
+                if sub_path.is_dir() and (sub_path / "partition").exists():
+                    try:
+                        part_sectors = int((sub_path / "size").read_text().strip())
+                        part_info = {"name": sub_path.name, "type": "partition", "size_bytes": part_sectors * 512}
+                        disk_info["partitions"].append(part_info)
+                    except (ValueError, IOError):
+                        continue
+
+            # 对分区按名称排序 (sda1, sda2...)
+            disk_info["partitions"].sort(key=lambda x: x["name"])
+
+            block_devices.append(disk_info)
+
+        except (IOError, ValueError) as e:
+            log.warning(f"Could not fully read info for device {dev_name}: {e}")
+
+    # 对磁盘按名称排序
+    block_devices.sort(key=lambda x: x["name"])
+
+    return {"block_devices": block_devices}
 
 
 def _parse_ip_addr(raw_output: str) -> dict:
