@@ -1,5 +1,5 @@
 # ==========================================================
-# PIPA 决策树 v3 (负载均衡感知版)
+# PIPA 决策树 v3.1 (负载均衡 & NUMA 感知版)
 # ==========================================================
 
 # --- 1. 可配置阈值区 (Config) ---
@@ -7,11 +7,14 @@ config:
   # ON-CPU / OFF-CPU 分界线
   ON_CPU_THRESHOLD_PERCENT: 75
 
-  # 新增: CPU 负载不均的判定阈值 (标准差)
-  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 18.0 # 标准差大于 18% 即可认为不均衡
+  # CPU 负载不均的判定阈值 (标准差)
+  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 18.0
 
-  # 新增: 单核利用率过高的判定阈值
-  CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0 # 任何一个核心的平均利用率超过 80%
+  # 单核利用率过高的判定阈值
+  CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0
+
+  # [NEW] NUMA 节点间最大利用率差异阈值 (%)
+  NUMA_IMBALANCE_THRESHOLD: 20.0
 
   # TMA L1 瓶颈主导地位阈值
   TMA_DOMINANT_THRESHOLD_PERCENT: 20.0
@@ -51,8 +54,18 @@ rules:
           系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
           其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
           这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
-        # 在这个分支下，我们直接进行 TMA 分析
+
         sub_rules:
+          # --- NUMA 不均衡检测 ---
+          - name: "NUMA 节点负载失衡"
+            precondition: "numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD"
+            finding: >-
+              架构风险：检测到 <strong>NUMA 节点间负载失衡</strong>。
+              不同 NUMA 节点之间的 CPU 利用率差异高达 <strong>{numa_max_diff:.1f}%</strong>。
+              <br>节点状态: {numa_status_msg}
+              <br>这可能导致严重的<strong>远程内存访问 (Remote Memory Access)</strong> 延迟。建议检查进程绑核策略 (CPU Affinity) 是否导致某些节点过载而其他节点空闲。
+
+          # --- 现有的 TMA 分析 ---
           - name: "微架构瓶颈 (TMA L1)"
             precondition: "True"
             sub_rules:
@@ -74,6 +87,14 @@ rules:
         precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
         finding: "初步诊断：系统瓶颈为 <strong>ON-CPU</strong>，总 CPU 利用率高达 <strong>{total_cpu:.2f}%</strong>。系统处于全局繁忙状态。"
         sub_rules:
+          # --- 即使全局繁忙，也可能存在 NUMA 倾斜 ---
+          - name: "NUMA 节点负载失衡"
+            precondition: "numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD"
+            finding: >-
+              架构风险：检测到 <strong>NUMA 节点间负载失衡</strong>。
+              虽然系统整体繁忙，但节点间利用率差异仍达 <strong>{numa_max_diff:.1f}%</strong>。
+              <br>节点状态: {numa_status_msg}
+
           - name: "微架构瓶颈 (TMA L1)"
             precondition: "True"
             sub_rules:
