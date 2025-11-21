@@ -613,6 +613,15 @@
 
     <script>
         const reportContext = {{ context | tojson | safe }};
+        // --- Helper: Format Bytes to Human Readable ---
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
         // --- Tab Switching Logic ---
         function openTab(evt, tabName) {
           var i, tabcontent, tablinks;
@@ -748,9 +757,26 @@
               li.appendChild(bracketEnd);
             } else {
               const valueSpan = document.createElement('span');
-              const valueType = typeof value === 'string' ? 'string' : 'other';
-              valueSpan.className = `value ${valueType}`;
-              valueSpan.textContent = JSON.stringify(value);
+              let displayValue = JSON.stringify(value);
+              let valueType = typeof value === 'string' ? 'string' : 'other';
+
+              // --- FEATURE: Auto-format size_bytes ---
+              if (key.endsWith('_bytes') && typeof value === 'number') {
+                  const formatted = formatBytes(value);
+                  // 显示格式: 1073741824 (1.00 GB)
+                  // 我们保留原始值，但在后面追加人类可读格式，用灰色显示
+                  displayValue = `${value} <span style="color: #888; font-size: 0.9em; margin-left: 4px;">(${formatted})</span>`;
+
+                  // 因为我们用了 HTML 标签，所以 textContent 不行了，得用 innerHTML
+                  // 但要注意安全，value 本身要是数字才行，这里我们判定了 typeof value === 'number'
+                  valueSpan.className = `value ${valueType}`;
+                  valueSpan.innerHTML = displayValue;
+              } else {
+                  // 默认处理
+                  valueSpan.className = `value ${valueType}`;
+                  valueSpan.textContent = displayValue;
+              }
+
               li.appendChild(valueSpan);
             }
             tree.appendChild(li);
