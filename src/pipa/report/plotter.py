@@ -1,9 +1,7 @@
 from typing import Dict, Tuple
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 
 
@@ -55,33 +53,52 @@ def plot_sar_cpu(df: pd.DataFrame) -> Figure:
 def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figure], Dict[str, Dict]]:
     """
     Generates interactive Plotly figures for any generic time-series DataFrame.
-    It intelligently splits metrics into subplots based on their units (KB/s, pages/s, faults/s, %).
+    Intelligently splits metrics into subplots based on units and scales.
     """
     generated_plots: Dict[str, Figure] = {}
     generated_filters: Dict[str, Dict] = {}
 
-    # 定义单位分组规则，基于列名中的关键词
+    # --- 1. 数据预处理：内存单位转换 (KB -> GB) ---
+    # 需求：内存显示为 GB
+    if name == "sar_memory":
+        # 找到所有以 kb 开头的列 (如 kbmemfree, kbcached)
+        kb_cols = [c for c in df.columns if c.startswith("kb")]
+        for col in kb_cols:
+            # 转换为 GB (1024 * 1024)
+            new_col = col.replace("kb", "") + "_gb"
+            df[new_col] = df[col] / (1024 * 1024)
+
+        # 重新定义要画的列，排除原始的 kb 列
+        value_cols_all = [c for c in df.columns if c.endswith("_gb") or "%" in c]
+    else:
+        value_cols_all = [c for c in df.columns if df[c].dtype.kind in "if" and c not in ["interval", "hostname"]]
+
+    # --- 2. 智能分组逻辑 (修复 Paging 单位混乱) ---
+    # 优先级：越靠前越优先匹配
     unit_groups = {
-        "rate_per_sec": (["/s", "flt/s"], "Rate (/s)"),
-        "kb_per_sec": (["kb/s", "kB/s"], "Throughput (KB/s)"),
-        "pages_per_sec": (["pgpgin/s", "pgpgout/s"], "Pages (/s)"),
         "percentage": (["%"], "Percentage (%)"),
-        "size_kb": (["kb", "kB"], "Size (KB)"),
-        "absolute": ([], "Value"),  # 默认分组
+        # Paging 修正: pgpgin/s, pgpgout/s 是 KB (Linux sar 手册确认)
+        "throughput_kb": (["kb/s", "kB/s", "pgpgin/s", "pgpgout/s", "rxkB/s", "txkB/s"], "Throughput (KB/s)"),
+        # Paging 修正: pgfree/s, pgscank/s 等是页面数量 (Pages)
+        "pages_count": (["pgfree/s", "pgscank/s", "pgscand/s", "pgsteal/s", "vmeff"], "Pages (/s)"),
+        # Paging 修正: fault/s, majflt/s 是计数 (Count)
+        "rate_per_sec": (["/s", "fault/s", "majflt/s", "cswch/s"], "Rate (/s)"),
+        # 内存修正: GB 单位
+        "size_gb": (["_gb"], "Size (GB)"),
+        "size_kb": (["kb", "kB"], "Size (KB)"),  # 兜底
+        "absolute": ([], "Value"),
     }
 
-    # 识别DataFrame中的所有数值列
-    value_cols_all = [c for c in df.columns if df[c].dtype.kind in "if" and c not in ["interval", "hostname"]]
-
-    # 将数值列分配到不同的单位组
     grouped_cols = {group_name: [] for group_name in unit_groups}
 
     for col in value_cols_all:
         assigned = False
         for group_name, (keywords, _) in unit_groups.items():
-            # 特殊处理 fault/s vs /s 的包含关系
-            if group_name == "rate_per_sec" and any(kw in col for kw in ["pgpgin/s", "pgpgout/s"]):
-                continue
+            # 必须完全匹配关键字逻辑，避免 /s 匹配到 kb/s
+            # 这里做一个特殊处理：如果 group 是 rate_per_sec (通配 /s)，但列名已经被前面的 throughput_kb (kb/s) 匹配过了，
+            # 由于字典顺序，我们需要确保更具体的规则在前。
+            # 上面的 unit_groups 顺序已经调整：throughput_kb 在 rate_per_sec 之前。
+
             if any(kw in col for kw in keywords):
                 grouped_cols[group_name].append(col)
                 assigned = True
@@ -89,19 +106,21 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
         if not assigned:
             grouped_cols["absolute"].append(col)
 
-    # id_col 用于区分设备或接口，如 'IFACE', 'DEV'
     id_col = next((col for col in ["IFACE", "DEV", "cpu"] if col in df.columns), None)
 
-    # 为每个非空的单位组生成一个图表
+    # --- 3. 绘图循环 ---
     for group_name, cols_to_plot in grouped_cols.items():
         if not cols_to_plot:
             continue
 
-        # 针对 perf 指标的百分比图，使用更专业的标题
+        # 标题修正
         base_title = f"{name.replace('_', ' ').title()} Metrics"
+
+        # 需求: Perf Metrics(Percentages)标题改成TMA信息
         if name == "perf" and group_name == "percentage":
             base_title = "TMA L1 Metrics"
 
+        # 拼接单位后缀
         plot_name = f"{name}_{group_name}" if len([g for g in grouped_cols.values() if g]) > 1 else name
         chart_title = base_title if plot_name == name else f"{base_title} ({unit_groups[group_name][1]})"
         y_axis_title = unit_groups[group_name][1]
@@ -206,25 +225,4 @@ def plot_cpu_clusters(cpu_features_df: pd.DataFrame, optimal_eps: float) -> Figu
         },
     )
     fig.update_layout(height=600)
-    return fig
-
-
-def plot_knee_distance(k_distances: np.ndarray, elbow_x: int, optimal_eps: float, k: int) -> Figure:
-    """(V2 使用) 绘制 K-距离图并用垂直线标记肘部。"""
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(range(len(k_distances))), y=k_distances, mode="lines", name="K-Distance"))
-    if elbow_x is not None:
-        fig.add_vline(
-            x=elbow_x,
-            line_width=2,
-            line_dash="dash",
-            line_color="red",
-            annotation_text=f" Elbow at eps={optimal_eps:.2f}",
-            annotation_position="top left",
-        )
-    fig.update_layout(
-        title_text="K-距离图 (DBSCAN eps 自动寻优)",
-        xaxis_title="CPU 核心 (按 K-距离排序)",
-        yaxis_title=f"到第 {k} 个邻居的距离 (Epsilon)",
-    )
     return fig
