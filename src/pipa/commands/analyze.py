@@ -19,12 +19,52 @@ from markdown_it import MarkdownIt
 from src.pipa.parsers import PARSER_REGISTRY
 from src.pipa.report.context_builder import build_full_context
 from src.pipa.report.html_generator import generate_html_report
-from src.pipa.report.plotter import plot_cpu_clusters, plot_sar_cpu, plot_timeseries_generic
+from src.pipa.report.plotter import (
+    plot_cpu_clusters,
+    plot_disk_sunburst,
+    plot_per_disk_pies,
+    plot_sar_cpu,
+    plot_timeseries_generic,
+)
 from src.utils import get_project_root
 
 from .rules import format_rules_to_html_tree, load_rules
 
 log = logging.getLogger(__name__)
+
+
+def _generate_disk_analysis_html(warnings: list) -> str:
+    """生成磁盘分析的 HTML 摘要 (图例 + 警告)。"""
+    legend_html = """
+    <div class="disk-legend" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa;
+         border-radius: 8px; border-left: 4px solid #1f77b4;">
+        <h4 style="margin-top:0;">📊 Storage Color Guide</h4>
+        <ul style="list-style: none; padding: 0; display: flex; gap: 20px; margin-bottom: 10px;">
+            <li><span style="display:inline-block;width:12px;height:12px;background:#2ca02c;
+                 border-radius:50%;margin-right:5px;"></span><strong>SSD / NVMe</strong> (High Performance)</li>
+            <li><span style="display:inline-block;width:12px;height:12px;background:#1f77b4;
+                 border-radius:50%;margin-right:5px;"></span><strong>HDD / SATA</strong> (Standard Storage)</li>
+            <li><span style="display:inline-block;width:12px;height:12px;background:#9467bd;
+                 border-radius:50%;margin-right:5px;"></span><strong>LVM / Logical</strong> (Virtual Volume)</li>
+        </ul>
+        <p style="font-size: 0.9em; color: #666; margin: 0;">
+            * Red text in charts indicates filesystem usage > 90%. Click on any disk slice to zoom in for details.
+        </p>
+    </div>
+    """
+
+    warning_html = ""
+    if warnings:
+        warning_items = "".join([f"<li style='color: #d9534f;'>{w}</li>" for w in warnings])
+        warning_html = f"""
+        <div class="disk-warnings" style="margin-bottom: 20px; padding: 15px; background: #fff3cd;
+             border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h4 style="margin-top:0; color: #856404;">⚠️ Capacity Warnings</h4>
+            <ul style="margin-bottom: 0; padding-left: 20px;">{warning_items}</ul>
+        </div>
+        """
+
+    return legend_html + warning_html
 
 
 def _generate_report(level_dir: Path, report_path: Path):
@@ -171,9 +211,58 @@ def _generate_report(level_dir: Path, report_path: Path):
             df_perf = df_combined.pivot_table(index=["timestamp", "cpu"], columns="name", values="value").reset_index()
             all_dataframes["perf"] = df_perf
 
-    # 为每个数据框生成图表和过滤器
+    # 7. 磁盘分析 (可视化 + 诊断摘要)
+    if static_info_data and "disk_info" in static_info_data:
+        # 7a. 生成图表
+        try:
+            log.info("Generating Disk Visualization Charts...")
+            fig_sunburst = plot_disk_sunburst(static_info_data["disk_info"])
+            if fig_sunburst and fig_sunburst.data:
+                plots["disk_sunburst"] = fig_sunburst.to_html(full_html=False, include_plotlyjs="cdn")
+
+            fig_pies = plot_per_disk_pies(static_info_data["disk_info"])
+            if fig_pies and fig_pies.data:
+                plots["disk_breakdown"] = fig_pies.to_html(full_html=False, include_plotlyjs="cdn")
+        except Exception as e:
+            log.warning(f"Failed to generate disk charts: {e}")
+
+        # 7b. 生成诊断摘要 (Legend + Warnings)
+        warnings = []
+        devices = static_info_data["disk_info"].get("block_devices", [])
+        for disk in devices:
+            # 检查磁盘本身
+            if "fs_usage" in disk:
+                pct = disk["fs_usage"]["percent"]
+                mount = disk["fs_usage"]["mount"]
+                if pct > 90:
+                    warnings.append(
+                        f"Critical: <strong>{disk['name']}</strong> ({mount}) usage is at <strong>{pct}%</strong>"
+                    )
+                elif pct > 80:
+                    warnings.append(
+                        f"Warning: <strong>{disk['name']}</strong> ({mount}) usage is at <strong>{pct}%</strong>"
+                    )
+
+            # 检查分区
+            for part in disk.get("partitions", []):
+                if "fs_usage" in part:
+                    pct = part["fs_usage"]["percent"]
+                    mount = part["fs_usage"]["mount"]
+                    if pct > 90:
+                        warnings.append(
+                            f"Critical: Partition <strong>{part['name']}</strong> ({mount}) "
+                            f"usage is at <strong>{pct}%</strong>"
+                        )
+                    elif pct > 80:
+                        warnings.append(
+                            f"Warning: Partition <strong>{part['name']}</strong> ({mount}) "
+                            f"usage is at <strong>{pct}%</strong>"
+                        )
+
+        context["disk_analysis_html"] = _generate_disk_analysis_html(warnings)
+
+    # 8. 生成时序图表
     for name, df in all_dataframes.items():
-        # 跳过 perf_raw (现在是字典) 和空的 DataFrame
         if name == "perf_raw" or (isinstance(df, pd.DataFrame) and df.empty):
             continue
 
@@ -182,8 +271,7 @@ def _generate_report(level_dir: Path, report_path: Path):
         tables[name] = df.round(2).to_json(orient="records")
 
         try:
-            time_col = "timestamp"
-            if time_col not in df.columns:
+            if "timestamp" not in df.columns:
                 continue
 
             # 特殊处理CPU数据：生成专用图表和过滤器
@@ -196,12 +284,11 @@ def _generate_report(level_dir: Path, report_path: Path):
                 filter_options = {"CPU": sorted(df["CPU"].unique().tolist()), "METRIC": metrics_to_plot}
                 filters_with_hints = {}
                 for key, values in filter_options.items():
-                    source_property = "legendgroup" if key == "CPU" else "name"
                     filters_with_hints[key] = {
                         "values": values,
-                        "sample": values[:3],  # 前3个示例值
-                        "count": len(values),  # 总数量
-                        "source": source_property,  # Plotly属性映射
+                        "sample": values[:3],
+                        "count": len(values),
+                        "source": "legendgroup" if key == "CPU" else "name",
                     }
                 context[f"{name}_filters"] = filters_with_hints
             else:
@@ -213,7 +300,7 @@ def _generate_report(level_dir: Path, report_path: Path):
         except Exception as e:
             log.warning(f"Could not generate plot for '{name}': {e}", exc_info=True)
 
-    # 生成最终的HTML报告
+    # 9. 生成最终报告
     generate_html_report(
         output_path=report_path,
         md_instance=md,
@@ -225,9 +312,7 @@ def _generate_report(level_dir: Path, report_path: Path):
         static_info_data=static_info_data,
         static_info_str=static_info_str,
         context={
-            k: v.tolist() if hasattr(v, "tolist") else v  # 将numpy数组转换为列表
-            for k, v in context.items()
-            if not isinstance(v, pd.DataFrame)  # 过滤掉DataFrame对象，只保留可序列化的数据
+            k: v.tolist() if hasattr(v, "tolist") else v for k, v in context.items() if not isinstance(v, pd.DataFrame)
         },
     )
 

@@ -154,6 +154,47 @@ def _collect_sysctl_info() -> dict:
     return params
 
 
+def _collect_fs_usage() -> dict:
+    """
+    Run `df` to get filesystem usage.
+    Returns a dict mapping device path (e.g. /dev/sda1 or /dev/mapper/x) to usage info.
+    """
+    fs_map = {}
+    try:
+        # -P: POSIX output format (one line per FS)
+        # -k: 1K-blocks (robust across versions)
+        output = run_command("df -P -k")
+        lines = output.splitlines()
+        if len(lines) > 1:
+            for line in lines[1:]:
+                parts = line.split()
+                if len(parts) >= 6:
+                    # Filesystem, 1024-blocks, Used, Available, Capacity, Mounted on
+                    filesystem = parts[0]
+                    try:
+                        # Convert KB to Bytes
+                        total = int(parts[1]) * 1024
+                        used = int(parts[2]) * 1024
+                        avail = int(parts[3]) * 1024
+                        # Remove % from capacity
+                        pct_str = parts[4].replace("%", "")
+                        pct = float(pct_str) if pct_str.isdigit() else 0.0
+                        mount_point = parts[5]
+
+                        fs_map[filesystem] = {
+                            "total": total,
+                            "used": used,
+                            "free": avail,
+                            "percent": pct,
+                            "mount": mount_point,
+                        }
+                    except ValueError:
+                        continue
+    except Exception as e:
+        log.warning(f"Failed to collect filesystem usage: {e}")
+    return fs_map
+
+
 def _collect_disk_info_from_sys() -> dict:
     """
     从 /sys/class/block 收集块设备信息，构建 磁盘 -> 分区 的层级结构。
@@ -234,7 +275,38 @@ def _collect_disk_info_from_sys() -> dict:
         except (IOError, ValueError) as e:
             log.warning(f"Could not fully read info for device {dev_name}: {e}")
 
-    # 对磁盘按名称排序
+    # [新增] 1. 获取文件系统使用情况
+    fs_usage_map = _collect_fs_usage()
+
+    # [新增] 2. 辅助函数：在 fs_usage_map 中查找设备
+    def find_usage(dev_name, dm_name=None):
+        # 尝试 1: 直接匹配 /dev/name (普通分区)
+        path1 = f"/dev/{dev_name}"
+        if path1 in fs_usage_map:
+            return fs_usage_map[path1]
+
+        # 尝试 2: 如果是 LVM，匹配 /dev/mapper/name
+        if dm_name:
+            path2 = f"/dev/mapper/{dm_name}"
+            if path2 in fs_usage_map:
+                return fs_usage_map[path2]
+
+        return None
+
+    # [新增] 3. 遍历并注入数据
+    for disk in block_devices:
+        # 检查磁盘本身 (可能是 LVM 卷，如 dm-0)
+        usage = find_usage(disk["name"], disk.get("model"))  # model 字段存了 dm-name
+        if usage:
+            disk["fs_usage"] = usage
+
+        # 检查分区 (如 sda1)
+        for part in disk.get("partitions", []):
+            part_usage = find_usage(part["name"])
+            if part_usage:
+                part["fs_usage"] = part_usage
+
+    # 对磁盘按名称排序 (保持不变)
     block_devices.sort(key=lambda x: x["name"])
 
     return {"block_devices": block_devices}
