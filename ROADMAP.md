@@ -22,15 +22,13 @@ This document outlines the planned development milestones for the pipa project, 
   - [x] **Modernized data pipeline**: Replaced fragile text parsing with robust binary collection (`sar -o`) and reliable conversion (`sadf`). / **现代化了数据管道**：用健壮的二进制采集（`sar -o`）和可靠的转换（`sadf`）取代了脆弱的文本解析。
   - [x] **Implemented per-core data collection** for `perf stat` (`-A`) to enable finer-grained analysis. / **实现了 `perf stat` 的 per-core 数据采集**（`-A`），以支持更精细的分析。
 
-## 🚀 Version 0.3.0: Enhancing Analysis & Visualization
+## 🚀 Version 0.3.0: Deep Analysis & Physics-Aware Engine (Released)
 
-## 🚀 版本 0.3.0：增强分析与可视化
-
-- **Status:** 📋 Planned
-- **状态:** 📋 计划中
-- **Goal:** To make the analysis report more insightful and interactive.
-- **目标：** 使分析报告更具洞察力、更具交互性。
+- **Status:** ✔️ Released
+- **Goal:** 引入物理感知诊断引擎，实现从宏观到微观的全链路可视化。
 - **Key Features / 关键特性:**
-  - [ ] **Implement `compare` command**: A new command `pipa compare snapshot1.pipa snapshot2.pipa` to generate a side-by-side comparison report. / **实现 `compare` 命令**：一个新的 `pipa compare snapshot1.pipa snapshot2.pipa` 命令，用于生成并排的对比报告。
-  - [ ] **Per-Core Visualization**: Enhance the HTML report to visualize and analyze per-core data from `perf` and `sar`. / **Per-Core 可视化**：增强 HTML 报告，以可视化和分析来自 `perf` 和 `sar` 的 per-core 数据。
-  - [ ] **Flame Graph Integration**: Integrate `perf record` into the collection workflow and generate flame graphs in the report. / **火焰图集成**：将 `perf record` 集成到采集工作流中，并在报告中生成火焰图。
+  - [x] **Physics-Aware Clustering**: 基于 DBSCAN 的物理感知核心聚类，破除平均值掩盖效应。
+  - [x] **NUMA Diagnostics**: 跨节点负载失衡检测与架构风险告警。
+  - [x] **Storage Visualization**: 交互式磁盘旭日图 + 分区级容量预警。
+  - [x] **TMA Integration**: 微架构瓶颈分析 (Frontend/Backend Bound) 与决策树集成。
+  - [ ] **Compare Command**: (Planned for v0.3.1) 差分对比分析。
