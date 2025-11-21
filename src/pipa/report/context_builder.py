@@ -5,11 +5,39 @@
 从原始数据计算各种性能指标和统计信息。
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Set
 
 import pandas as pd
 
 from src.pipa.report.cluster_analyzer import analyze_cpu_clusters
+
+
+def _parse_cpu_list_str(cpu_list_str: str) -> Set[str]:
+    """
+    解析 Linux 格式的 CPU 列表字符串 (例如 "0-3,8,10-11") 为字符串集合。
+    返回集合中的元素是字符串类型的 CPU ID (例如 {"0", "1", "2", "3", "8", "10", "11"})
+    """
+    cpus = set()
+    if not cpu_list_str:
+        return cpus
+
+    # 移除可能存在的空白字符
+    cpu_list_str = cpu_list_str.strip()
+
+    parts = cpu_list_str.split(",")
+    for part in parts:
+        part = part.strip()
+        if "-" in part:
+            try:
+                start, end = map(int, part.split("-"))
+                for i in range(start, end + 1):
+                    cpus.add(str(i))
+            except ValueError:
+                continue
+        else:
+            if part.isdigit():
+                cpus.add(part)
+    return cpus
 
 
 def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,6 +72,11 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
         "cpu_min_util": 0.0,
         "cpu_clusters_count": 0,
         "cpu_clusters_summary": [],
+        # NUMA 相关默认值
+        "is_numa_imbalanced": False,
+        "numa_nodes_count": 1,
+        "numa_max_diff": 0.0,
+        "numa_status_msg": "Non-NUMA or Single Node",
     }
 
     # 从静态信息中获取CPU数量
@@ -58,7 +91,7 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
         if clustering_results:
             context.update(clustering_results)
 
-        # 计算每核心的平均利用率
+        # 2. 预处理：计算 %total 利用率
         df_per_core = df_cpu[df_cpu["CPU"] != "all"].copy()
         if not df_per_core.empty:
             # 计算总利用率（用户+系统）
@@ -75,7 +108,48 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
             context["cpu_max_util"] = core_avg_utils.max()
             context["cpu_min_util"] = core_avg_utils.min()
 
-        # 处理聚合的CPU数据（CPU == "all"）
+            # === 4. 新增：NUMA 负载均衡分析 ===
+            numa_info = static_info.get("numa_info", {}) if static_info else {}
+            numa_topology = numa_info.get("numa_topology", {})
+
+            # 只有当存在拓扑信息且节点数 > 1 时才分析
+            if numa_topology and len(numa_topology) > 1:
+                context["numa_nodes_count"] = len(numa_topology)
+
+                # 构建 CPU -> Node 的映射表
+                cpu_to_node = {}
+                for node_name, cpu_list_str in numa_topology.items():
+                    cpu_set = _parse_cpu_list_str(str(cpu_list_str))
+                    for cpu_id in cpu_set:
+                        cpu_to_node[cpu_id] = node_name
+
+                # 将每个核心的数据映射到 NUMA 节点
+                # 注意：df_per_core["CPU"] 是字符串类型，map 需要匹配
+                df_per_core["NUMA_Node"] = df_per_core["CPU"].map(cpu_to_node)
+
+                # 计算每个节点的平均利用率
+                node_stats = df_per_core.groupby("NUMA_Node")["%total"].mean()
+
+                if not node_stats.empty:
+                    min_node_util = node_stats.min()
+                    max_node_util = node_stats.max()
+                    max_diff = max_node_util - min_node_util
+
+                    context["numa_max_diff"] = max_diff
+
+                    # 生成详细的节点状态描述字符串
+                    # 例如: "node0: 85.2%, node1: 12.4%"
+                    status_parts = []
+                    for node, util in node_stats.items():
+                        status_parts.append(f"{node}: <strong>{util:.1f}%</strong>")
+                    context["numa_status_msg"] = ", ".join(status_parts)
+
+                    # 标记是否不均衡 (阈值将在 Rules 中定义，这里只提供数据，或者预判)
+                    # 这里我们预置一个 flag，方便前端或简单逻辑使用，
+                    # 但核心判定还是交给 rules/decision_tree.yaml
+                    pass
+
+        # 处理聚合的CPU数据 (CPU == "all")
         df_cpu_all = df_cpu[df_cpu["CPU"] == "all"]
         if not df_cpu_all.empty:
             # 计算总CPU利用率
