@@ -1,8 +1,10 @@
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.graph_objects import Figure
+from plotly.subplots import make_subplots
 
 
 def plot_sar_cpu(df: pd.DataFrame) -> Figure:
@@ -225,4 +227,282 @@ def plot_cpu_clusters(cpu_features_df: pd.DataFrame, optimal_eps: float) -> Figu
         },
     )
     fig.update_layout(height=600)
+    return fig
+
+
+# === Shared Helpers ===
+
+
+def _fmt_bytes(size_bytes: float) -> str:
+    """简单的人类可读格式化 (GB/TB)"""
+    if size_bytes >= 1024**4:
+        return f"{size_bytes / (1024**4):.2f} TB"
+    elif size_bytes >= 1024**3:
+        return f"{size_bytes / (1024**3):.2f} GB"
+    elif size_bytes >= 1024**2:
+        return f"{size_bytes / (1024**2):.2f} MB"
+    return f"{size_bytes} B"
+
+
+def _get_fs_text(item_info: dict) -> str:
+    """生成 Label 上的 Usage 文本"""
+    if "fs_usage" in item_info:
+        u = item_info["fs_usage"]
+        pct = u["percent"]
+        color_style = "color:red;" if pct > 90 else ""
+        return f"<br><span style='{color_style}'>Used: {pct}%</span>"
+    return ""
+
+
+def _get_fs_hover(item_info: dict) -> str:
+    """生成 Hover 上的详细文本"""
+    if "fs_usage" in item_info:
+        u = item_info["fs_usage"]
+        return f"<br>Used: {u['percent']}%<br>Mount: {u['mount']}"
+    return ""
+
+
+# === Chart Generators ===
+
+
+def plot_disk_sunburst(disk_info: Dict[str, Any]) -> Figure:
+    """
+    生成全局磁盘旭日图 (Left Side)。
+    特性：
+    1. 无论是否分区，物理磁盘始终在内环，点击可放大。
+    2. 显示使用率警告。
+    """
+    if not disk_info or "block_devices" not in disk_info:
+        return go.Figure()
+
+    ids, labels, parents, values, hover_texts, colors = [], [], [], [], [], []
+
+    # 1. 根节点
+    root_id = "Total Storage"
+    ids.append(root_id)
+    labels.append("Total<br>Storage")  # 稍后更新大小
+    parents.append("")
+    values.append(0)
+    hover_texts.append("All Disks")
+    colors.append("#dddddd")
+
+    devices = disk_info.get("block_devices", [])
+    total_size = 0
+
+    for disk in devices:
+        disk_name = disk.get("name")
+        if disk_name.startswith(("loop", "ram")):
+            continue
+        disk_size = disk.get("size_bytes", 0)
+        if disk_size == 0:
+            continue
+
+        total_size += disk_size
+        rotational = disk.get("rotational", "N/A")
+
+        # --- 构建物理磁盘节点 (Inner Ring) ---
+        disk_node_id = f"disk_{disk_name}"
+        ids.append(disk_node_id)
+        parents.append(root_id)
+        values.append(disk_size)
+
+        readable_size = _fmt_bytes(disk_size)
+        usage_label = _get_fs_text(disk)  # 如果是 Whole Disk 直接挂载
+
+        # Label: sda (HDD)
+        labels.append(f"{disk_name}<br><sub>{rotational}</sub><br><b>{readable_size}</b>{usage_label}")
+
+        # Hover
+        disk_desc = (
+            f"<b>Disk: {disk_name}</b><br>Model: {disk.get('model', 'N/A')}<br>"
+            f"Size: {readable_size}{_get_fs_hover(disk)}"
+        )
+        hover_texts.append(disk_desc)
+
+        # Color
+        if rotational == "SSD":
+            colors.append("#2ca02c")
+        elif rotational == "HDD":
+            colors.append("#1f77b4")
+        else:
+            colors.append("#9467bd")
+
+        # --- 构建子节点 (Outer Ring) ---
+        partitions = disk.get("partitions", [])
+
+        # 关键逻辑：如果没有分区，我们必须手动创建一个“虚拟子节点”
+        # 这样 `disk_node` 就变成了父节点，点击它可以 Zoom In。
+        if not partitions:
+            # Virtual Child for Whole Disk
+            v_id = f"v_part_{disk_name}"
+            ids.append(v_id)
+            parents.append(disk_node_id)
+            values.append(disk_size)
+            labels.append(f"Primary<br>Volume<br><b>{readable_size}</b>")  # 显示在 Zoom 后的视图里
+            hover_texts.append("Whole Disk Volume")
+            colors.append(colors[-1])  # 继承颜色
+        else:
+            # Normal Partitions
+            for part in partitions:
+                part_name = part.get("name")
+                part_size = part.get("size_bytes", 0)
+
+                ids.append(f"part_{part_name}")
+                parents.append(disk_node_id)
+                values.append(part_size)
+
+                p_read_size = _fmt_bytes(part_size)
+                p_usage = _get_fs_text(part)
+
+                labels.append(f"{part_name}<br><b>{p_read_size}</b>{p_usage}")
+                hover_texts.append(f"Partition: {part_name}<br>Size: {p_read_size}{_get_fs_hover(part)}")
+                colors.append(colors[-1])  # 继承颜色
+
+    # 更新根节点大小
+    values[0] = total_size
+    labels[0] = f"Total<br>Storage<br><b>{_fmt_bytes(total_size)}</b>"
+
+    fig = go.Figure(
+        go.Sunburst(
+            ids=ids,
+            labels=labels,
+            parents=parents,
+            values=values,
+            branchvalues="total",
+            hovertext=hover_texts,
+            hoverinfo="text",
+            marker=dict(colors=colors),
+            insidetextorientation="radial",
+            textinfo="label",
+        )
+    )
+    fig.update_layout(margin=dict(t=0, l=0, r=0, b=0), height=500, template="plotly_white")
+    return fig
+
+
+def plot_per_disk_pies(disk_info: Dict[str, Any]) -> Figure:
+    """
+    生成单盘详情图 (Right Side)。
+    【升级】将 Pie Chart 升级为独立的 Sunburst Subplots。
+    这样无论分区多小，交互体验和视觉风格都与左侧大图保持一致。
+    """
+    if not disk_info or "block_devices" not in disk_info:
+        return go.Figure()
+
+    # 筛选目标
+    targets = []
+    for disk in disk_info.get("block_devices", []):
+        if disk.get("name", "").startswith(("loop", "ram")):
+            continue
+        if disk.get("size_bytes", 0) > 0:
+            targets.append(disk)
+
+    if not targets:
+        return go.Figure()
+
+    # 布局计算
+    cols = 3
+    rows = (len(targets) + cols - 1) // cols
+    titles = [f"{d['name']} ({d.get('rotational', 'N/A')})" for d in targets]
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        subplot_titles=titles,
+        specs=[[{"type": "domain"}] * cols] * rows,
+        vertical_spacing=0.15,
+        horizontal_spacing=0.05,
+    )
+
+    for idx, disk in enumerate(targets):
+        row = (idx // cols) + 1
+        col = (idx % cols) + 1
+
+        disk_name = disk.get("name")
+        disk_size = disk.get("size_bytes", 0)
+        rotational = disk.get("rotational", "N/A")
+
+        # --- 构建 Mini Sunburst 数据 ---
+        # 结构: Disk (Root) -> Partitions (Leaves)
+        ids, labels, parents, values, hovers, colors = [], [], [], [], [], []
+
+        # 1. Root Node (The Disk itself)
+        root_id = disk_name
+        ids.append(root_id)
+        parents.append("")
+        values.append(disk_size)
+
+        readable_total = _fmt_bytes(disk_size)
+        labels.append(f"{disk_name}<br>{readable_total}")  # 中心显示总大小
+        hovers.append(f"Device: {disk_name}<br>Total: {readable_total}")
+
+        # Base Color
+        base_color = "#1f77b4"
+        if rotational == "SSD":
+            base_color = "#2ca02c"
+        elif disk.get("type") == "lvm/dm":
+            base_color = "#9467bd"
+        colors.append(base_color)
+
+        # 2. Children (Partitions)
+        partitions = disk.get("partitions", [])
+
+        if not partitions:
+            # Case A: Whole Disk (无分区) -> 添加一个满圆的子节点
+            # 这样看起来像一个完整的圆，且鼠标放上去有反应
+            ids.append(f"{disk_name}_vol")
+            parents.append(root_id)
+            values.append(disk_size)
+
+            usage_txt = _get_fs_text(disk)
+            labels.append(f"Primary Volume{usage_txt}")
+            hovers.append(f"Volume: {disk_name}{_get_fs_hover(disk)}")
+            colors.append(base_color)  # 同色
+        else:
+            # Case B: Partitioned
+            used_size = 0
+            for part in partitions:
+                p_size = part.get("size_bytes", 0)
+                used_size += p_size
+
+                ids.append(f"{disk_name}_{part['name']}")
+                parents.append(root_id)
+                values.append(p_size)
+
+                p_read = _fmt_bytes(p_size)
+                p_use = _get_fs_text(part)
+
+                labels.append(f"{part['name']}<br>{p_read}{p_use}")
+                hovers.append(f"Partition: {part['name']}<br>Size: {p_read}{_get_fs_hover(part)}")
+                colors.append(base_color)
+
+            # Case C: Unallocated Space (Visual Aid)
+            free = disk_size - used_size
+            if free > 0 and (free / disk_size > 0.01):
+                ids.append(f"{disk_name}_free")
+                parents.append(root_id)
+                values.append(free)
+                labels.append(f"Unallocated<br>{_fmt_bytes(free)}")
+                hovers.append("Unpartitioned Space")
+                colors.append("#dddddd")  # 灰色表示空闲
+
+        # Add Trace
+        fig.add_trace(
+            go.Sunburst(
+                ids=ids,
+                labels=labels,
+                parents=parents,
+                values=values,
+                branchvalues="total",
+                hovertext=hovers,
+                hoverinfo="text",
+                marker=dict(colors=colors, line=dict(color="#ffffff", width=1)),
+                textinfo="label",
+                insidetextorientation="radial",
+            ),
+            row=row,
+            col=col,
+        )
+
+    fig.update_layout(height=350 * rows, margin=dict(t=30, l=10, r=10, b=10), template="plotly_white")  # 稍微增加高度
     return fig

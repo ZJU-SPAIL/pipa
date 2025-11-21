@@ -456,6 +456,21 @@
       .filter-summary tbody tr:last-child td {
         border-bottom: none;
       }
+
+      .disk-viz-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* 左右各占 50% */
+        gap: 20px;
+        margin-bottom: 40px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+      }
+
+      @media (max-width: 1200px) {
+        .disk-viz-wrapper {
+          grid-template-columns: 1fr; /* 屏幕窄时自动变为上下布局 */
+        }
+      }
     </style>
   </head>
 
@@ -541,8 +556,10 @@
 
     <div id="explorer" class="tab-pane">
       <h2>Time-Series Visualizations</h2>
-      {% for name, plot_div in plots.items() %} {% if name not in
-      ['knee_distance', 'cpu_cluster_analysis'] %}
+      {% for name, plot_div in plots.items() %}
+      <!-- 排除某些特殊图表 -->
+      {% if name not in ['knee_distance', 'cpu_cluster_analysis',
+      'disk_sunburst', 'disk_breakdown'] %}
       <div class="plot-container" id="plot-{{ name }}">
         {% set filters = context[name ~ '_filters'] %} {% if filters %}
         <!-- 筛选选项汇总表格 -->
@@ -607,6 +624,35 @@
     {% if static_info_data %}
     <div id="system" class="tab-pane">
       <h2>System Information</h2>
+      <!-- [新增] 磁盘分析摘要 -->
+      {% if context.disk_analysis_html %} {{ context.disk_analysis_html | safe
+      }} {% endif %}
+      <!-- Disk Visualization Section (Grid Layout) -->
+      {% if plots.disk_sunburst or plots.disk_breakdown %}
+      <div class="disk-viz-wrapper">
+        <!-- 左侧：全局旭日图 -->
+        <div class="plot-container" style="margin-bottom: 0">
+          <h3>Storage Overview</h3>
+          {% if plots.disk_sunburst %} {{ plots.disk_sunburst | safe }} {% else
+          %}
+          <p>No global view available.</p>
+          {% endif %}
+        </div>
+
+        <!-- 右侧：单盘详情 (可滚动) -->
+        <div
+          class="plot-container"
+          style="margin-bottom: 0; max-height: 800px; overflow-y: auto"
+        >
+          <h3>Per-Device Details</h3>
+          {% if plots.disk_breakdown %} {{ plots.disk_breakdown | safe }} {%
+          else %}
+          <p>No detailed view available.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <div id="json-tree-container"></div>
     </div>
     {% endif %}
