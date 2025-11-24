@@ -5,7 +5,7 @@
 从原始数据计算各种性能指标和统计信息。
 """
 
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 
 import pandas as pd
 
@@ -40,7 +40,9 @@ def _parse_cpu_list_str(cpu_list_str: str) -> Set[str]:
     return cpus
 
 
-def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, Any]) -> Dict[str, Any]:
+def build_full_context(
+    df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, Any], rule_configs: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     构建包含规则引擎、绘图器和HTML模板所需的所有派生指标的综合上下文字典。
 
@@ -85,7 +87,7 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
 
     df_cpu = df_dict.get("sar_cpu")
     if df_cpu is not None and not df_cpu.empty:
-        clustering_results = analyze_cpu_clusters(df_cpu)
+        clustering_results = analyze_cpu_clusters(df_cpu, config=rule_configs)
         if clustering_results:
             context.update(clustering_results)
 

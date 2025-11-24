@@ -1,14 +1,14 @@
 # src/pipa/report/cluster_analyzer.py
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
 log = logging.getLogger(__name__)
 
 
-def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
+def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Current Strategy: A deterministic, physics-based expert system.
     Why? To avoid noise amplification on 128-core systems where relative clustering
@@ -16,6 +16,11 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
     We use absolute physical thresholds (Idle < 10%, Busy > 15%) combined with
     P95 statistical features.
     """
+    # 1. 获取配置 (如果没有传 config，就用空字典，进而使用默认值)
+    cfg = config or {}
+    idle_th = cfg.get("CPU_CLUSTER_IDLE_THRESHOLD", 10.0)
+    busy_th = cfg.get("CPU_CLUSTER_BUSY_THRESHOLD", 15.0)
+
     if df_sar_cpu is None or df_sar_cpu.empty:
         return {}
 
@@ -52,14 +57,11 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
     # 注意：我们需要用到 mean_ 或 p95_，为了捕捉峰值，依然建议用 p95
     total_util_p95 = cpu_features["p95_%user"] + cpu_features["p95_%system"]
 
-    IDLE_THRESHOLD = 10.0
-    idle_mask = total_util_p95 < IDLE_THRESHOLD
+    idle_mask = total_util_p95 < idle_th
     cpu_features.loc[idle_mask, "cluster_final"] = 99
 
     # 规则 B: 繁忙 (User + System > 15%)
-    BUSY_THRESHOLD = 15.0
-    busy_mask = total_util_p95 > BUSY_THRESHOLD
-
+    busy_mask = total_util_p95 > busy_th
     cpu_features.loc[busy_mask, "cluster_final"] = 1
 
     # --- 3. 生成摘要 (用于报告和决策树) ---
