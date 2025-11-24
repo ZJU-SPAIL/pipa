@@ -32,11 +32,14 @@ log "负载将施加在 CPU 核心: ${ES_BENCHMARK_CPU_AFFINITY}"
 
 # 使用 taskset 绑定 esrally 进程到指定的 CPU 核心
 # --kill-running-processes 确保每次都是一个干净的运行
+# 魔改: 增加 --track-params "bulk_indexing_clients=24"
+# 我们有 12 个 ES 核心，用 24 个客户端去轰炸它 (2:1 比例)，保证队列不空
 taskset -c "$ES_BENCHMARK_CPU_AFFINITY" stdbuf -oL "$PYTHON_VENV_PATH/bin/esrally" race \
     --offline \
     --pipeline=benchmark-only \
     --target-hosts=127.0.0.1:9200,127.0.0.1:9201,127.0.0.1:9202 \
     --track="$ES_RALLY_TRACK" \
+    --track-params='{"bulk_indexing_clients":24, "number_of_shards": 6}' \
     --challenge="$ES_RALLY_CHALLENGE" \
     --kill-running-processes
 

@@ -24,18 +24,18 @@ export NGINX_CONF_PATH="$NGINX_INSTALL_DIR/conf/nginx.conf"
 # --- Nginx 配置参数 ---
 export NGINX_VERSION="1.24.0"
 export NGINX_DOWNLOAD_URL="http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"
-export NGINX_WORKER_PROCESSES=4
-export NGINX_CPU_AFFINITY="0-3"
+export NGINX_WORKER_PROCESSES=32
+export NGINX_CPU_AFFINITY="0-31"
 
 # --- WRK 基准测试工具配置 ---
 export WRK_VERSION="4.1.0"
 export WRK_DOWNLOAD_URL="http://gitlab.youtune.tech/pymirror/wrk.git"
 
-export WRK_THREADS=4
-export WRK_CONNECTIONS=100
+export WRK_THREADS=32
+export WRK_CONNECTIONS=1000
 export WRK_DURATION="300s"
-export WRK_CPU_AFFINITY="4-7"
-export WRK_TARGET_URL="http://localhost:8000/"
+export WRK_CPU_AFFINITY="32-63"
+export WRK_TARGET_URL="http://localhost:8000/big_payload.txt"
 
 # --- 输出目录 ---
 export NGINX_OUTPUT_DIR="$BASE_DIR/output"

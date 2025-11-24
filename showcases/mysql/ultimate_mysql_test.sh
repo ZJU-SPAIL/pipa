@@ -41,6 +41,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# --- 步骤 0: 自动化环境准备 (防呆) ---
+log "Step 0: Ensuring environment is ready..."
+# 这一步是安全的，因为 setup.sh 内部有幂等性检查。
+# 如果已安装，它会瞬间结束；如果未安装，它会救命。
+"$SHOWCASE_DIR/setup.sh"
+
 # --- 1. 环境准备 ---
 log "Step 1: Preparing MySQL and Sysbench environment..."
 # 加载 showcase 配置
