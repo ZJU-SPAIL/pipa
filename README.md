@@ -38,21 +38,22 @@ pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 ### 3. Core Usage / 核心用法
 
-_**Goal:** My application (PID 12345) is running slow. I want to take a 60-second performance snapshot to investigate._
-_**目标:** 我的应用（PID 12345）运行缓慢。我想进行一次 60 秒的性能快照以供调查。_
+_**Goal:** My application (PID 12345) is running slow. I want to take a performance snapshot to investigate._
+_**目标:** 我的应用（PID 12345）运行缓慢。我想进行一次性能快照以供调查。_
 
 ```bash
-# 0. Collect Static Infomation
+# 0. Collect Static Infomation (Recommended once per machine)
 pipa healthcheck
 
-# 1. Attach pipa to the PID and monitor for 60 seconds
-#    Pipa will use a built-in, general-purpose set of collectors.
-pipa sample --attach-to-pid 12345 --duration 60 --output my_snapshot.pipa
+# 1. Attach pipa to the PID and monitor
+#    By default, it runs a 60s macro-scan (stat) + 60s micro-profiling (record).
+pipa sample --attach-to-pid 12345 \
+    --duration-stat 60 \
+    --duration-record 60 \
+    --output my_snapshot.pipa
 
-# 2. (Optional) For advanced users with custom collector needs:
-#    pipa sample --attach-to-pid 12345 --duration 60 \
-#    --collectors-config my_custom_collectors.yaml \
-#    --output my_advanced_snapshot.pipa
+# 2. (Optional) System-wide mode (monitor everything)
+#    pipa sample --system-wide --output system_snapshot.pipa
 
 # 3. Analyze the snapshot and generate the report
 pipa analyze --input my_snapshot.pipa --output report.html
