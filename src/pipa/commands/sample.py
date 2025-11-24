@@ -243,9 +243,10 @@ def sample(
     static_info_path_str: Optional[str],
 ):
     """
-    Captures a standardized, two-phase performance snapshot.
-    Phase 1: Macro-scan (perf stat + sar).
-    Phase 2: Micro-profiling (perf record for flamegraphs).
+    执行标准化的双阶段性能快照采集。
+
+    阶段 1: 宏观扫描 (perf stat + sar)。
+    阶段 2: 微观剖析 (perf record 用于生成火焰图)。
     """
     if system_wide and attach_pid_str:
         raise click.UsageError("Cannot specify both --attach-to-pid and --system-wide.")
