@@ -50,7 +50,7 @@ rules:
       - name: "CPU 负载不均瓶颈"
         precondition: "is_cpu_imbalanced"
         finding: >-
-          初步诊断：系统瓶颈为 <strong>CPU 负载严重不均 (通过聚类分析发现)</strong>。
+          初步诊断：系统瓶颈为 <strong>CPU 负载严重不均 (通过核心分析发现)</strong>。
           系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
           其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
           这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。

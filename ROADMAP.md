@@ -27,7 +27,6 @@ This document outlines the planned development milestones for the pipa project, 
 - **Status:** ✔️ Released
 - **Goal:** 引入物理感知诊断引擎，实现从宏观到微观的全链路可视化。
 - **Key Features / 关键特性:**
-  - [x] **Physics-Aware Clustering**: 基于 DBSCAN 的物理感知核心聚类，破除平均值掩盖效应。
   - [x] **NUMA Diagnostics**: 跨节点负载失衡检测与架构风险告警。
   - [x] **Storage Visualization**: 交互式磁盘旭日图 + 分区级容量预警。
   - [x] **TMA Integration**: 微架构瓶颈分析 (Frontend/Backend Bound) 与决策树集成。

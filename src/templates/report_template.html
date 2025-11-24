@@ -495,7 +495,7 @@
       </button>
       {% if plots.cpu_cluster_analysis %}
       <button class="tab-button" onclick="openTab(event, 'ml_insights')">
-        ✨ ML Insights
+        ✨ Core Insights
       </button>
       {% endif %}
       <button class="tab-button" onclick="openTab(event, 'explorer')">
@@ -526,13 +526,14 @@
       <p>
         本节展示了 PIPA
         <strong>物理感知诊断引擎 (Physics-Aware Engine)</strong> 的分析结果。
-        针对多核服务器中常见的“平均值掩盖局部热点”问题，算法结合了<strong>DBSCAN提取</strong>与<strong>物理规则判定</strong>，
-        将 CPU 核心精准划分为不同的负载层级。
+        针对多核服务器中常见的“平均值掩盖局部热点”问题，算法采用<strong
+          >统计特征提取 (P95 Features)</strong
+        >与<strong>确定性物理分层</strong>策略， 将 CPU
+        核心精准划分为不同的负载层级，有效避免了在低负载下的噪声干扰。
       </p>
-
-      <!-- 步骤 1: 聚类散点图 -->
+      <!-- 步骤 1: 散点图 -->
       <div class="plot-container" id="plot-cpu_cluster_analysis">
-        <h3>Step 2: Physics-Aware Core Classification</h3>
+        <h3>Step 1: Physics-Aware Core Classification</h3>
         <p>
           此散点图展示了 CPU 核心的<strong>负载分布形态</strong>。
           <br />

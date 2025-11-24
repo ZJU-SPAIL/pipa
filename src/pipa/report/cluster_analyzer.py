@@ -10,9 +10,11 @@ log = logging.getLogger(__name__)
 
 def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame) -> Dict[str, Any]:
     """
-    对 per-core CPU 数据执行基于物理规则的分类分析 (V4 - 物理感知修正版)。
-    虽然名为“聚类”，但实际上采用了更符合系统物理特性的阈值分层策略，
-    同时保留 K-Distance 计算用于展示数据分布特性。
+    Current Strategy: A deterministic, physics-based expert system.
+    Why? To avoid noise amplification on 128-core systems where relative clustering
+    might misclassify idle cores (0.1% vs 0.5%) as distinct groups.
+    We use absolute physical thresholds (Idle < 10%, Busy > 15%) combined with
+    P95 statistical features.
     """
     if df_sar_cpu is None or df_sar_cpu.empty:
         return {}
