@@ -83,10 +83,8 @@ def build_full_context(df_dict: Dict[str, pd.DataFrame], static_info: Dict[str, 
     if static_info and (cpu_info := static_info.get("cpu_info")):
         context["num_cpu"] = cpu_info.get("CPU(s)", 1)
 
-    # 处理CPU数据：计算利用率统计和聚类分析
     df_cpu = df_dict.get("sar_cpu")
     if df_cpu is not None and not df_cpu.empty:
-        # 执行CPU聚类分析
         clustering_results = analyze_cpu_clusters(df_cpu)
         if clustering_results:
             context.update(clustering_results)

@@ -159,16 +159,13 @@ def _generate_report(level_dir: Path, report_path: Path):
     plots = {}  # 存储生成的图表HTML
     tables = {}  # 存储数据表的JSON表示
 
-    # 如果有CPU特征数据，生成聚类分析图
     if "cpu_features_df" in context:
 
-        # 1. 生成聚类散点图
         # 我们从 context 中获取 optimal_eps 只是为了在标题中显示，它不再参与决策
         optimal_eps_for_title = context.get("optimal_eps", 0.0)
         fig_clusters = plot_cpu_clusters(context["cpu_features_df"], optimal_eps_for_title)
         plots["cpu_cluster_analysis"] = fig_clusters.to_html(full_html=False, include_plotlyjs="cdn")
 
-        # 2. 准备聚类摘要表的数据
         if "cpu_clusters_summary" in context:
             summary_df = pd.DataFrame(context["cpu_clusters_summary"])
             tables["cluster_summary"] = summary_df.to_json(orient="records")
