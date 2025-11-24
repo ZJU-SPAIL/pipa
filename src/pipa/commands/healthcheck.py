@@ -46,21 +46,89 @@ def _parse_os_release(filepath: str) -> dict:
     return data
 
 
-# --- Robust Data Collectors (v2.1) ---
 def _collect_cpu_info() -> dict:
-    """Collects CPU info directly from /proc/cpuinfo, reading the file only once."""
-    processors = 0
-    model_name = "N/A"
+    """
+    Collects CPU info using a hybrid strategy:
+    1. Try `lscpu` first (Rich info, handles ARM models well).
+    2. Fallback to /proc/cpuinfo if lscpu is missing.
+    """
+    info = {
+        "Architecture": "N/A",
+        "CPU(s)": 0,
+        "Model name": "N/A",
+        "Vendor ID": "N/A",
+        "CPU MHz": "N/A",
+        "BogoMIPS": "N/A",
+        "Flags": "N/A",
+    }
+
+    # === Strategy 1: Try lscpu (Preferred) ===
+    try:
+        # Use LC_ALL=C to ensure English output
+        lscpu_out = run_command("lscpu", env={"LC_ALL": "C"})
+        if lscpu_out:
+            for line in lscpu_out.splitlines():
+                if ":" not in line:
+                    continue
+                key, value = [p.strip() for p in line.split(":", 1)]
+
+                if key == "Architecture":
+                    info["Architecture"] = value
+                elif key == "CPU(s)":
+                    info["CPU(s)"] = int(value) if value.isdigit() else value
+                elif key == "Model name":
+                    info["Model name"] = value
+                elif key == "Vendor ID":
+                    info["Vendor ID"] = value
+                elif key == "CPU max MHz":  # Prefer max freq if available
+                    info["CPU MHz"] = value
+                elif key == "BogoMIPS":
+                    info["BogoMIPS"] = value
+                elif key == "Flags":
+                    info["Flags"] = value
+
+            # If we got the basics, return immediately
+            if info["Model name"] != "N/A":
+                return info
+
+    except (ExecutionError, Exception) as e:
+        log.debug(f"lscpu failed, falling back to /proc/cpuinfo: {e}")
+
+    # === Strategy 2: Fallback to /proc/cpuinfo ===
+    import platform
+
+    info["Architecture"] = platform.machine()
+
     try:
         with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+            processors = 0
             for line in f:
-                if line.startswith("processor"):
-                    processors += 1
-                elif line.lower().startswith("model name") or line.lower().startswith("model"):
-                    model_name = line.split(":", 1)[1].strip()
+                line = line.strip()
+                if not line:
+                    continue
+                if ":" in line:
+                    key, value = [p.strip() for p in line.split(":", 1)]
+                    if key == "processor":
+                        processors += 1
+                    elif key in ["model name", "Model", "Processor"] and info["Model name"] == "N/A":
+                        if not value.isdigit():
+                            info["Model name"] = value
+                    elif key in ["vendor_id", "CPU implementer"] and info["Vendor ID"] == "N/A":
+                        info["Vendor ID"] = value
+                    elif key in ["cpu MHz", "clock"] and info["CPU MHz"] == "N/A":
+                        info["CPU MHz"] = value
+                    elif key in ["bogomips", "BogoMIPS"] and info["BogoMIPS"] == "N/A":
+                        info["BogoMIPS"] = value
+                    elif key in ["flags", "Features"] and info["Flags"] == "N/A":
+                        info["Flags"] = value
+
+            if info["CPU(s)"] == 0:  # Only update if lscpu didn't set it
+                info["CPU(s)"] = processors
+
     except Exception as e:
         log.warning(f"Could not parse /proc/cpuinfo: {e}")
-    return {"CPU(s)": processors, "Model name": model_name}
+
+    return info
 
 
 def _collect_memory_info() -> dict:
