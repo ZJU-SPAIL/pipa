@@ -95,7 +95,7 @@ def _generate_flamegraph_from_snapshot(snapshot_path: Path, output_svg_path: Pat
 )
 def flamegraph(input_path_str: str, output_path_str: str):
     """
-    Generates an interactive Flame Graph from a .pipa snapshot.
+    从 .pipa 快照生成交互式火焰图 (SVG)。
     """
     input_path = Path(input_path_str)
     output_path = Path(output_path_str)
