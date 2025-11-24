@@ -24,7 +24,10 @@ http {
 
     keepalive_timeout  65;
     keepalive_requests 20000;
-
+    gzip on;
+    gzip_comp_level 9;
+    gzip_min_length 100;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     server {
         listen       8000;
         server_name  localhost;

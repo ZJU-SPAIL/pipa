@@ -14,3 +14,6 @@ ${INITIAL_MASTER_NODE_CONFIG}
 
 # Disable security for simplicity in this showcase
 xpack.security.enabled: false
+
+# --- 魔改: 开启高强度压缩 (燃烧 CPU!) ---
+index.codec: best_compression

@@ -104,6 +104,21 @@ if [ ! -f "$NGINX_CONF_TEMPLATE" ]; then
     exit 1
 fi
 
+# --- 新增步骤: 生成大文件以供 Gzip 压缩 ---
+log "--- 步骤 6/6: 生成 10MB 测试数据 (big_payload.txt) ---"
+# 确保 html 目录存在
+mkdir -p "$NGINX_INSTALL_DIR/html"
+
+# 生成一个约 10MB 的随机文本文件 (base64 编码保证是纯文本，符合 gzip 压缩场景)
+# 如果文件不存在才生成
+if [ ! -f "$NGINX_INSTALL_DIR/html/big_payload.txt" ]; then
+    log "正在生成随机数据..."
+    dd if=/dev/urandom bs=1M count=8 2>/dev/null | base64 > "$NGINX_INSTALL_DIR/html/big_payload.txt"
+    log "✅ 测试数据生成完毕: $NGINX_INSTALL_DIR/html/big_payload.txt"
+else
+    log "检测到测试数据已存在。"
+fi
+
 # 使用 envsubst 动态替换模板中的变量
 envsubst < "$NGINX_CONF_TEMPLATE" > "$NGINX_CONF_PATH"
 

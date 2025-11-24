@@ -22,24 +22,24 @@ export ES_DATA_DIR="$BASE_DIR/es_data"
 # Python 虚拟环境将用于安装 esrally
 export PYTHON_VENV_PATH="$BASE_DIR/venv_esrally"
 
-# --- 集群与节点配置 ---
+# --- 集群与节点配置 (魔改：每节点只给 4 个核，更容易打满) ---
 export ES_CLUSTER_NAME="pipa-es-cluster"
 export ES_NODE_1_NAME="node-1"
 export ES_NODE_2_NAME="node-2"
 export ES_NODE_3_NAME="node-3"
-export ES_NODE_1_CPU_AFFINITY="0-7"
-export ES_NODE_2_CPU_AFFINITY="8-15"
-export ES_NODE_3_CPU_AFFINITY="16-23"
+export ES_NODE_1_CPU_AFFINITY="0-3"
+export ES_NODE_2_CPU_AFFINITY="4-7"
+export ES_NODE_3_CPU_AFFINITY="8-11"
 
 # --- JVM 配置 ---
 # 为每个 Elasticsearch 节点配置 16GB 的堆内存，以确保在高负载下稳定运行
 export ES_JVM_HEAP="16g"
 
-# --- 负载生成 (esrally) 配置 ---
-export ES_BENCHMARK_CPU_AFFINITY="24-31"
+# --- 负载生成配置 (魔改：给 Rally 足够多的核，保证它不是瓶颈) ---
+export ES_BENCHMARK_CPU_AFFINITY="12-31"
 export ES_RALLY_TRACK="geonames"
 export ES_RALLY_CHALLENGE="append-no-conflicts"
 
 # --- 信号配置 ---
 # 这是 esrally 在后台日志中，标志着核心压测开始的真实信号
-export ES_RALLY_WORKLOAD_SIGNAL="executing tasks: ['default']"
+export ES_RALLY_WORKLOAD_SIGNAL="executing tasks: ['index-append']"

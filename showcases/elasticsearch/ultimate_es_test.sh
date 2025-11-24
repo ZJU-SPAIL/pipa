@@ -3,8 +3,9 @@ set -e
 set -o pipefail
 
 # --- 核心配置区 ---
-DURATION_STAT=600
-DURATION_RECORD=600
+# 魔改: 只跑 60s + 60s
+DURATION_STAT=60
+DURATION_RECORD=60
 ESRALLY_PROBE_TIMEOUT=1200 # 最长等待 5 分钟
 
 # --- 脚本初始化 ---
@@ -42,6 +43,12 @@ cleanup() {
     rm -f /tmp/pipa_es_probe.log
 }
 trap cleanup EXIT
+
+# --- 步骤 0: 自动化环境准备 (防呆) ---
+log "Step 0: Ensuring environment is ready..."
+# 这一步是安全的，因为 setup.sh 内部有幂等性检查。
+# 如果已安装，它会瞬间结束；如果未安装，它会救命。
+"$SHOWCASE_DIR/setup.sh"
 
 log "步骤 1: 运行 $PIPA_CMD healthcheck..."
 $PIPA_CMD healthcheck
