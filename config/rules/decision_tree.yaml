@@ -7,8 +7,8 @@ config:
   # ON-CPU / OFF-CPU 分界线
   ON_CPU_THRESHOLD_PERCENT: 75
 
-  # CPU 负载不均的判定阈值 (标准差)
-  CPU_UTIL_STD_DEV_HIGH_THRESHOLD: 18.0
+  CPU_CLUSTER_IDLE_THRESHOLD: 10.0 # 低于此值视为 Idle (Background)
+  CPU_CLUSTER_BUSY_THRESHOLD: 15.0 # 高于此值视为 Busy (High Load)
 
   # 单核利用率过高的判定阈值
   CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0

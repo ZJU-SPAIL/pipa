@@ -153,7 +153,7 @@ def _generate_report(level_dir: Path, report_path: Path):
     rules, rule_configs = load_rules(rules_path)
 
     # 构建完整的分析上下文，包含所有派生指标
-    context = build_full_context(all_dataframes, static_info_data)
+    context = build_full_context(all_dataframes, static_info_data, rule_configs)
     context.update(rule_configs)
 
     plots = {}  # 存储生成的图表HTML
