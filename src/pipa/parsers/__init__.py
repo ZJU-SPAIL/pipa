@@ -16,6 +16,7 @@ PARSER_REGISTRY = {
     "perf_stat": parse_perf_stat,
     "sar_cpu": parse_sar_cpu,
     "sar_io": generic_sar_parse,
+    "sar_disk": generic_sar_parse,
     "sar_load": generic_sar_parse,
     "sar_memory": generic_sar_parse,
     "sar_network": generic_sar_parse,

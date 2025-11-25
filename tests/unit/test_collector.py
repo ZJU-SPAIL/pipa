@@ -56,7 +56,6 @@ def test_start_perf_stat_system_wide_mode(mock_popen):
 
     assert "perf stat" in final_command
     assert "-a" in final_command
-    assert "-A" in final_command
     assert "-p" not in final_command
 
 

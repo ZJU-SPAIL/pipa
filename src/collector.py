@@ -50,7 +50,7 @@ def start_perf_stat(
     system_wide: bool,
     interval: Optional[int] = 1000,
     events_override_str: Optional[str] = None,
-    metrics_list: Optional[list] = None,  # <--- 新增参数
+    metrics_list: Optional[list] = None,
 ) -> Optional[subprocess.Popen]:
     """
     启动perf stat以进程特定或系统范围模式运行，强制使用CSV格式。
@@ -94,9 +94,9 @@ def start_perf_stat(
 
     # 根据模式添加相应的命令行参数
     if system_wide:
-        log.info("Running perf stat in system-wide mode with per-core stats (-a -A).")
-        # === FIX: 确保 -A 始终存在，这样解析器逻辑才统一 ===
-        command_parts.extend(["-a", "-A"])  # -a: 系统范围，-A: 每核心统计
+        log.info("Running perf stat in system-wide mode (aggregated).")
+        # 而且我们 Analyze 阶段反正也要聚合，不如直接让内核聚合。
+        command_parts.extend(["-a"])
     elif target_pid:
         log.info(f"Running perf stat in process-specific mode for PID(s): {target_pid}")
         command_parts.extend(["-p", target_pid])  # -p: 指定进程ID
@@ -280,6 +280,7 @@ def stop_sar(
         "cpu": "-d -- -P ALL",
         "network": "-d -- -n DEV",
         "io": "-d -- -b",
+        "disk": "-d -- -d -p",
         "memory": "-d -- -r",
         "paging": "-d -- -B",
         "load": "-d -- -q",

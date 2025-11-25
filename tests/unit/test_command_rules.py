@@ -38,6 +38,9 @@ def mock_off_cpu_io_dataframes():
     """提供一个模拟 OFF-CPU 磁盘瓶颈场景的数据字典。"""
     return {
         "sar_io": pd.DataFrame({"%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [10.0]}),
+        "sar_disk": pd.DataFrame(
+            {"DEV": ["sda"], "%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [10.0]}
+        ),
         "sar_cpu": pd.DataFrame({"CPU": ["all"], "%user": [10.0], "%system": [5.0], "%iowait": [20.0]}),
     }
 

@@ -46,7 +46,6 @@ rules:
   - name: "PIPA 根因分析"
     precondition: "True"
     sub_rules:
-      # ===================== 核心变更：新增独立的 CPU 负载不均分支 =====================
       - name: "CPU 负载不均瓶颈"
         precondition: "is_cpu_imbalanced"
         finding: >-
@@ -54,8 +53,19 @@ rules:
           系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
           其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
           这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
-
+          <br>但需注意：<strong>I/O 等待 (iowait)</strong> 或 <strong>中断集中</strong> 也常表现为负载不均。
+        # --- IO 不均衡检测 ---
         sub_rules:
+          - name: "I/O 导致的不均衡"
+            # 判定条件：看 max_disk_util
+            precondition: "max_disk_util > IO_UTIL_HIGH_THRESHOLD or avg_iowait > IO_WAIT_HIGH_THRESHOLD"
+            finding: "根因修正：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 处于饱和状态 (利用率 <strong>{max_disk_util:.2f}%</strong>)。"
+            sub_rules:
+              - name: "高延迟"
+                # 判定条件：看 max_disk_await
+                precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD"
+                finding: "关键指标：<strong>I/O 高延迟</strong>。磁盘 {busiest_disk_name} 的平均响应时间高达 <strong>{max_disk_await:.2f}ms</strong>。"
+
           # --- NUMA 不均衡检测 ---
           - name: "NUMA 节点负载失衡"
             precondition: "numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD"
@@ -121,31 +131,28 @@ rules:
         sub_rules:
           # --- 磁盘 I/O 瓶颈分支 ---
           - name: "磁盘 I/O 瓶颈"
-            precondition: "avg_util > IO_UTIL_HIGH_THRESHOLD"
-            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。磁盘利用率持续处于高位 (平均 <strong>{avg_util:.2f}%</strong>)。"
+            # 要么利用率高 (吞吐瓶颈)，要么延迟高 (寻道/响应瓶颈)
+            # 机械硬盘经常是利用率不高，但延迟已经几百毫秒了
+            precondition: "max_disk_util > IO_UTIL_HIGH_THRESHOLD or max_disk_await > IO_AWAIT_HIGH_THRESHOLD"
+            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 存在性能问题（利用率 <strong>{max_disk_util:.2f}%</strong> 或 响应时间 <strong>{max_disk_await:.2f}ms</strong>）。"
             sub_rules:
               - name: "吞吐量饱和"
                 precondition: "avg_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD"
                 finding: "诊断细化：<strong>吞吐量饱和</strong>。磁盘请求队列过长 (平均 <strong>{avg_avgqu_sz:.2f}</strong>)，表明 I/O 并发请求过多，磁盘已无法及时处理。"
               - name: "高延迟"
-                precondition: "avg_await > IO_AWAIT_HIGH_THRESHOLD and avg_iowait > IO_WAIT_HIGH_THRESHOLD"
-                finding: "诊断细化：<strong>高延迟</strong>。单次 I/O 请求平均等待时间 (<strong>{avg_await:.2f}ms</strong>) 和 CPU 等待 I/O 的时间比例 (<strong>{avg_iowait:.2f}%</strong>) 均处于高位，明确指向磁盘为瓶颈。"
+                precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD and avg_iowait > IO_WAIT_HIGH_THRESHOLD"
+                finding: "诊断细化：<strong>高延迟</strong>。磁盘 {busiest_disk_name} 的平均响应时间高达 <strong>{max_disk_await:.2f}ms</strong>，且 CPU 等待 I/O 的时间比例 (<strong>{avg_iowait:.2f}%</strong>) 处于高位，明确指向磁盘为瓶颈。"
                 sub_rules:
                   - name: "随机读写过多"
                     precondition: "avg_avgrq_sz < IO_SMALL_REQ_SIZE_THRESHOLD"
                     finding: "具体模式：<strong>随机 I/O 密集</strong>。平均请求尺寸非常小 (<strong>{avg_avgrq_sz:.2f} KB</strong>)，这加剧了磁盘寻道时间，导致高延迟。"
           - name: "网络瓶颈"
-            precondition: >-
-              avg_ifutil > NET_UTIL_HIGH_THRESHOLD or
-              avg_ifutil < NET_UTIL_LOW_THRESHOLD
-            finding: "网络状态分析：检测到网络利用率异常。平均网络接口利用率为 <strong>{avg_ifutil:.2f}%</strong>。"
+            precondition: "avg_ifutil > NET_UTIL_HIGH_THRESHOLD"
+            finding: "网络严重拥塞。平均利用率高达 <strong>{avg_ifutil:.2f}%</strong>。"
             sub_rules:
               - name: "带宽过载/吞吐瓶颈"
                 precondition: "avg_ifutil > NET_UTIL_HIGH_THRESHOLD"
                 finding: "根因推断：<strong>网络带宽过载</strong>。网络接口利用率持续高于 <strong>{NET_UTIL_HIGH_THRESHOLD}%</strong>，物理链路已饱和。"
-              - name: "物理链路未被充分利用"
-                precondition: "avg_ifutil < NET_UTIL_LOW_THRESHOLD"
-                finding: "诊断提示：<strong>物理链路未被充分利用</strong>。网络接口利用率低于 <strong>{NET_UTIL_LOW_THRESHOLD}%</strong>，瓶颈可能存在于应用层或 TCP/IP 协议栈。"
 
           # --- 内存瓶颈分支
           - name: "内存瓶颈"
@@ -174,7 +181,8 @@ rules:
               (avg_cswch > HIGH_CSWCH_RATE_PER_SEC) or
               (avg_irq_percent > HIGH_IRQ_PERCENT_THRESHOLD) or
               (avg_softirq_percent > HIGH_SOFTIRQ_PERCENT_THRESHOLD)
-            finding: "调度分析：检测到系统调度层存在压力或瓶颈。"
+            # === 在这里直接打印证据 ===
+            finding: "调度分析：检测到系统调度层存在压力。平均负载: <strong>{avg_load1:.2f}</strong> (CPU核数 {num_cpu}), 上下文切换: <strong>{avg_cswch:.0f}/s</strong>, 硬中断: <strong>{avg_irq_percent:.2f}%</strong>, 软中断: <strong>{avg_softirq_percent:.2f}%</strong>。"
             sub_rules:
               - name: "系统负载过高"
                 precondition: "avg_load1 / num_cpu > HIGH_LOAD_AVG_RATIO_TO_CPU"
@@ -194,3 +202,8 @@ rules:
                   - name: "软中断瓶颈"
                     precondition: "avg_softirq_percent > HIGH_SOFTIRQ_PERCENT_THRESHOLD"
                     finding: "具体原因：<strong>软中断 (softirq) 瓶颈</strong>。通常与网络数据包处理 (NET_RX/NET_TX) 或定时器有关。需深入分析 (`/proc/softirqs`) 是哪种软中断占主导。"
+          - name: "系统空闲"
+            # 不仅 CPU 要低，磁盘利用率(max_disk_util) 和 网络利用率(avg_ifutil) 也必须极低才算空闲
+            # 这里我们设个 10.0 的安全线，超过 10% 就不算空闲了
+            precondition: "total_cpu < 5.0 and max_disk_util < 10.0 and avg_ifutil < 10.0"
+            finding: "诊断结论：<strong>系统处于空闲状态</strong>。CPU、磁盘 I/O 及网络指标均处于低水位，未检测到负载。"

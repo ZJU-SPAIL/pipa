@@ -172,6 +172,31 @@ def build_full_context(
         context["avg_bread_s"] = df_io.get("bread/s", pd.Series(0)).mean()
         context["avg_bwrtn_s"] = df_io.get("bwrtn/s", pd.Series(0)).mean()
 
+    # 处理 Per-Disk 数据 (寻找单点瓶颈 )
+    df_disk = df_dict.get("sar_disk")
+    context["max_disk_util"] = 0.0
+    context["max_disk_await"] = 0.0
+    context["busiest_disk_name"] = "None"
+
+    if df_disk is not None and not df_disk.empty:
+        # 排除 loop 设备和 ram 设备，只看物理盘或 DM 卷
+        # DEV 列是设备名
+        valid_disks = df_disk[~df_disk["DEV"].str.contains("loop|ram|zram")]
+
+        if not valid_disks.empty:
+            # 计算每块盘在采样期间的平均各项指标
+            # 我们只关心利用率最高的那个盘
+            disk_stats = valid_disks.groupby("DEV")[["%util", "await"]].mean()
+
+            # 找到利用率最高的盘
+            busiest_dev = disk_stats["%util"].idxmax()
+            max_util = disk_stats.loc[busiest_dev, "%util"]
+            max_await = disk_stats.loc[busiest_dev, "await"]
+
+            context["max_disk_util"] = max_util
+            context["max_disk_await"] = max_await
+            context["busiest_disk_name"] = busiest_dev
+
     # 处理分页数据：计算交换和页面错误指标
     df_paging = df_dict.get("sar_paging")
     if df_paging is not None and not df_paging.empty:
