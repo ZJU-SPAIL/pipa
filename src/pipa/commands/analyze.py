@@ -101,6 +101,7 @@ def _generate_report(level_dir: Path, report_path: Path):
         "sar_cpu.csv": "sar_cpu",
         "sar_network.csv": "sar_network",
         "sar_io.csv": "sar_io",
+        "sar_disk.csv": "sar_disk",
         "sar_memory.csv": "sar_memory",
         "sar_paging.csv": "sar_paging",
         "sar_load.csv": "sar_load",
@@ -204,8 +205,21 @@ def _generate_report(level_dir: Path, report_path: Path):
         # 3. 合并并透视
         if frames_to_merge:
             df_combined = pd.concat(frames_to_merge)
-            # 透视表：行是时间戳+CPU，列是指标名
+
+            # === FIX: 简化逻辑 ===
+            # 现在 collector 不再输出 Per-Core 数据，数据天然就是聚合的。
+            # Parser 会将 system-wide 的数据标记为 cpu='all' (或空)。
+            # 我们只需要确保 cpu 列存在且一致。
+
+            if "cpu" not in df_combined.columns:
+                df_combined["cpu"] = "all"
+
+            # 填补可能的空值
+            df_combined["cpu"] = df_combined["cpu"].replace("", "all").fillna("all")
+
+            # 直接透视。如果有重复时间戳(极少见)，pivot_table 默认 mean 聚合，也是安全的。
             df_perf = df_combined.pivot_table(index=["timestamp", "cpu"], columns="name", values="value").reset_index()
+
             all_dataframes["perf"] = df_perf
 
     # 7. 磁盘分析 (可视化 + 诊断摘要)
