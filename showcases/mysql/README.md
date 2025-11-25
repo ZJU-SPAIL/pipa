@@ -1,71 +1,81 @@
-# Pipa Showcase: 手动分析 MySQL 性能
+# Pipa Showcase: MySQL 性能分析场景
 
-这是一个展示如何使用 Pipa 对一个**外部管理的** MySQL 数据库进行性能快照的教程。它完美地演示了 Pipa 作为纯粹“观察者”的核心哲学。
-
-## 🚀 快速开始
-
-### 1️⃣ 准备环境 (仅需一次)
-
-1.  **配置密码**: 打开 `env.sh` 并设置你的 `MYSQL_ROOT_PASSWORD`。
-2.  **运行安装脚本**:
-    ```bash
-    ./showcases/mysql/setup.sh
-    # 这将花费 30-60 分钟编译并初始化 MySQL 和 Sysbench。
-    ```
-
-### 2️⃣ 核心分析工作流 (可重复)
-
-这是一个典型的、手动的性能分析场景：
-
-**第 1 步: 启动 MySQL 服务**
-
-```bash
-./showcases/mysql/start_mysql.sh
-# 输出: ✅ MySQL 服务器已在运行，PID: 12345
-```
-
-**第 2 步: 施加负载**
-_在后台启动 Sysbench 压测，模拟生产负载。_
-
-```bash
-# 使用 32 个线程进行压测
-./showcases/mysql/run_sysbench.sh 32 &
-```
-
-**第 3 步: 使用 Pipa 进行快照！**
-_这是核心步骤。我们告诉 Pipa 去观察正在运行的 `mysqld` 进程。_
-
-```bash
-# 找到 mysqld 的 PID
-MYSQL_PID=$(pgrep -x mysqld)
-
-# 运行 pipa sample！
-pipa sample \
-    --attach-to-pid "${MYSQL_PID}" \
-    --duration 60 \
-    --collectors-config showcases/mysql/mysql_collectors.yaml \
-    --output mysql_snapshot_32threads.pipa
-```
-
-**第 5 步: 分析结果**
-
-```bash
-pipa analyze --input mysql_snapshot_32threads.pipa --output report_32threads.html
-```
-
-_在浏览器中打开 `report_32threads.html` 查看分析报告。_
-
-**第 6 步: 清理**
-_停止压测（如果仍在运行）和 MySQL 服务。_
-
-```bash
-# 停止 sysbench (如果需要)
-pkill sysbench
-
-# 停止 MySQL
-./showcases/mysql/stop_mysql.sh
-```
+本案例演示了如何使用 PIPA 对一个**高负载 MySQL 数据库**进行“无侵入式”性能快照与诊断。
 
 ---
 
-这个工作流完美地体现了 Pipa 的设计理念：**你管理应用，Pipa 负责观察。**
+## 📋 前置要求
+
+在开始之前，请确保已执行环境准备脚本。该脚本会自动编译 MySQL 8.0 和 Sysbench，并初始化测试数据。
+
+```bash
+# 首次运行需执行（耗时较长，请耐心等待）
+./showcases/mysql/setup.sh
+```
+
+## 🚀 一键式终极测试 (推荐)
+
+我们提供了一个自动化脚本，能够自动完成“启动服务 -> 施加极限负载 -> 执行 PIPA 采样 -> 生成报告 -> 清理环境”的全流程。
+
+```bash
+./showcases/mysql/ultimate_mysql_test.sh
+```
+
+**产出物：**
+
+- `mysql_snapshot.pipa`: 原始数据快照包
+- `mysql_report.html`: 交互式分析报告
+- `mysql_flamegraph.svg`: 性能火焰图
+
+---
+
+## 🔬 手动分步操作指南
+
+如果您希望手动控制分析流程，请参考以下步骤：
+
+### 1. 启动 MySQL 服务
+
+```bash
+source ./showcases/mysql/env.sh
+./showcases/mysql/start_mysql.sh
+```
+
+_脚本会输出 MySQL 进程的 PID，请留意。_
+
+### 2. 施加压力 (Sysbench)
+
+在另一个终端窗口中运行：
+
+```bash
+# 启动 32 线程的高并发读写测试
+./showcases/mysql/run_sysbench.sh 32 &
+```
+
+### 3. 执行 PIPA 采样
+
+```bash
+# 1. 获取 MySQL PID
+MYSQL_PID=$(pgrep -x mysqld)
+
+# 2. 执行双阶段快照 (60秒宏观统计 + 60秒微观剖析)
+pipa sample \
+    --attach-to-pid "$MYSQL_PID" \
+    --duration-stat 60 \
+    --duration-record 60 \
+    --output mysql_manual.pipa
+```
+
+### 4. 生成分析报告
+
+```bash
+pipa analyze --input mysql_manual.pipa --output report.html
+```
+
+### 5. 环境清理
+
+测试完成后，请务必清理环境：
+
+```bash
+./showcases/mysql/stop_mysql.sh
+pkill sysbench
+```
