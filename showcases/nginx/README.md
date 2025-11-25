@@ -22,29 +22,35 @@
 ```
 
 **产出物：**
-*   `nginx_snapshot.pipa`: 原始数据快照包
-*   `nginx_report.html`: 交互式分析报告（包含 TMA 微架构分析）
-*   `nginx_flamegraph.svg`: 性能火焰图
+
+- `nginx_snapshot.pipa`: 原始数据快照包 使用`tar -xzf .\nginx_snapshot.pipa`
+- `nginx_report.html`: 交互式分析报告（包含 TMA 微架构分析）
+- `nginx_flamegraph.svg`: 性能火焰图
 
 ---
 
 ## 🔬 手动分步操作指南
 
 ### 1. 启动 Nginx 服务
+
 ```bash
 source ./showcases/nginx/env.sh
 ./showcases/nginx/start_nginx.sh
 ```
-*注意：Nginx 将绑定到 CPU 0-31 核心运行。*
+
+_注意：Nginx 将绑定到 CPU 0-31 核心运行。_
 
 ### 2. 施加压力 (wrk)
+
 在另一个终端窗口中运行：
+
 ```bash
 # 启动 wrk 进行持续的高并发请求
 ./showcases/nginx/run_load.sh &
 ```
 
 ### 3. 执行 PIPA 采样
+
 ```bash
 # 1. 自动捕获所有 Nginx Worker PIDs
 NGINX_PIDS=$(pgrep -f "nginx: worker process" | tr '\n' ',' | sed 's/,$//')
@@ -58,12 +64,14 @@ pipa sample \
 ```
 
 ### 4. 生成分析报告与火焰图
+
 ```bash
 pipa analyze --input nginx_manual.pipa --output report.html
 pipa flamegraph --input nginx_manual.pipa --output flame.svg
 ```
 
 ### 5. 环境清理
+
 ```bash
 ./showcases/nginx/stop_nginx.sh
 ```
