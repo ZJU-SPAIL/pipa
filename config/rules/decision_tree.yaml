@@ -46,6 +46,23 @@ rules:
   - name: "PIPA 根因分析"
     precondition: "True"
     sub_rules:
+      # === 新增：配置合规性检查 (上帝视角) ===
+      - name: "配置合规性检查"
+        # 只有在用户传入参数时才激活
+        precondition: "affinity_check_enabled"
+        finding: "配置审计：已启用 CPU 亲和性验证 (预期核心: {expected_cpus_str})。"
+        sub_rules:
+          - name: "验证通过"
+            precondition: "affinity_leakage_count == 0 and affinity_absent_count == 0"
+            finding: "验证结论：✅ <strong>亲和性设置符合预期</strong>。高负载核心与预期配置完全一致，无干扰或闲置。"
+
+          - name: "发现干扰 (Leakage)"
+            precondition: "affinity_leakage_count > 0"
+            finding: "严重警告：检测到 <strong>{affinity_leakage_count}</strong> 个非预期核心处于高负载状态！<br>异常核心: <strong>{leakage_cores_str}</strong>。<br>可能原因：未隔离中断 (IRQ)、其他进程干扰或绑核策略失效。"
+
+          - name: "负载未达预期 (Absent)"
+            precondition: "affinity_absent_count > 0"
+            finding: "资源提示：检测到 <strong>{affinity_absent_count}</strong> 个预留核心未处于高负载状态。<br>空闲预留核心: {absent_cores_str}。<br>说明：应用并发度可能不足以吃满预留资源。"
       - name: "CPU 负载不均瓶颈"
         precondition: "is_cpu_imbalanced"
         finding: >-

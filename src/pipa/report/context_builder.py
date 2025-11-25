@@ -336,4 +336,50 @@ def build_full_context(
     if "HIGH_LOAD_AVG_RATIO_TO_CPU" in context:
         context["high_load_avg_ratio_to_cpu_percent"] = context["HIGH_LOAD_AVG_RATIO_TO_CPU"] * 100
 
+    # === FEATURE: CPU Affinity/Configuration Validation ===
+    # 只有当用户提供了 --expected-cpus 时才执行
+    expected_str = rule_configs.get("expected_cpus_str") if rule_configs else None
+
+    context["affinity_check_enabled"] = False
+    context["affinity_leakage_count"] = 0
+    context["affinity_absent_count"] = 0
+    context["leakage_cores_str"] = "None"
+    context["absent_cores_str"] = "None"
+
+    if expected_str and "cpu_features_df" in context:
+        try:
+            context["affinity_check_enabled"] = True
+
+            # 1. 解析用户预期 (Expected)
+            expected_set = _parse_cpu_list_str(expected_str)
+
+            # 2. 获取实际繁忙核心 (Actual Busy)
+            # 逻辑：Cluster ID = 1 (Busy) 的核心
+            df_features = context["cpu_features_df"]
+
+            # 注意：索引可能是 Int 或 String，统一转 String 处理
+            actual_busy_set = set(df_features[df_features["cluster_final"] == 1].index.astype(str))
+
+            # 3. 计算差异
+            # 泄露 (Leakage): 实际忙，但不在预期列表里 (干扰/逃逸)
+            leakage_set = actual_busy_set - expected_set
+
+            # 缺席 (Absent): 预期忙，但实际不忙 (利用率不足/配置未生效)
+            absent_set = expected_set - actual_busy_set
+
+            # 4. 注入上下文
+            context["affinity_leakage_count"] = len(leakage_set)
+            context["affinity_absent_count"] = len(absent_set)
+
+            if leakage_set:
+                # 排序并转字符串，为了报告美观
+                context["leakage_cores_str"] = ",".join(sorted(leakage_set, key=lambda x: int(x) if x.isdigit() else x))
+
+            if absent_set:
+                context["absent_cores_str"] = ",".join(sorted(absent_set, key=lambda x: int(x) if x.isdigit() else x))
+
+        except Exception as e:
+            # 容错处理，防止乱填参数导致崩溃
+            print(f"Warning: Failed to validate CPU affinity: {e}")
+
     return context
