@@ -1,0 +1,17 @@
+# Pipa Showcase: Redis Configuration Template
+
+# --- 网络配置 ---
+port ${REDIS_PORT}
+bind 127.0.0.1
+
+# --- 通用配置 ---
+daemonize yes
+pidfile ${REDIS_PID_PATH}
+
+# 为了性能测试，关闭持久化
+save ""
+
+# 日志级别
+loglevel notice
+# 日志文件（可选，调试时可开启）
+# logfile ""
