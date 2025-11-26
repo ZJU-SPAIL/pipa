@@ -116,11 +116,17 @@ $PIPA_CMD sample \
 
 log "   -> 快照捕获完成。"
 
+# --- 动态构建预期 CPU 列表 ---
+# 拼接所有组件的绑核范围
+EXPECTED_CPUS="${ES_NODE_1_CPU_AFFINITY},${ES_NODE_2_CPU_AFFINITY},${ES_NODE_3_CPU_AFFINITY},${ES_BENCHMARK_CPU_AFFINITY}"
+log "   -> 预期活跃 CPU 列表 (用于审计): ${EXPECTED_CPUS}"
+
 # --- 步骤 5: 分析快照并生成报告 ---
 log "步骤 5: 分析快照..."
 $PIPA_CMD analyze \
     --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}"
+    --output "${REPORT_FILE}" \
+    --expected-cpus "${EXPECTED_CPUS}"
 
 # --- 步骤 6: 生成火焰图 ---
 log "步骤 6: 生成火焰图..."

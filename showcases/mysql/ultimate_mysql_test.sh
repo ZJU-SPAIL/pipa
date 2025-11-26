@@ -45,7 +45,7 @@ trap cleanup EXIT
 log "Step 0: Ensuring environment is ready..."
 # 这一步是安全的，因为 setup.sh 内部有幂等性检查。
 # 如果已安装，它会瞬间结束；如果未安装，它会救命。
-"$SHOWCASE_DIR/setup.sh"
+$SCRIPT_DIR/setup.sh
 
 # --- 1. 环境准备 ---
 log "Step 1: Preparing MySQL and Sysbench environment..."
@@ -83,11 +83,20 @@ pipa sample \
 
 echo "   -> Snapshot capture complete."
 
+# --- 动态构建预期 CPU 列表 ---
+# MySQL 占下半区，Sysbench 占上半区 -> 也就是所有核心 (0 到 N-1)
+TOTAL_CORES=$(nproc)
+LAST_CORE=$((TOTAL_CORES - 1))
+EXPECTED_CPUS="0-${LAST_CORE}"
+
+log "   -> 预期活跃 CPU 列表 (MySQL+Sysbench 覆盖全核): ${EXPECTED_CPUS}"
+
 # --- 5. 分析战果 ---
 log "Step 5: Analyzing the ultimate snapshot..."
 pipa analyze \
     --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}"
+    --output "${REPORT_FILE}" \
+    --expected-cpus "${EXPECTED_CPUS}"
 
 # --- 6. 生成火焰图 (可选但推荐) ---
 log "Step 6: Generating Flame Graph..."

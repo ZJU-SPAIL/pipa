@@ -85,12 +85,17 @@ $PIPA_CMD sample \
 
 log "   -> 快照捕获完成: ${SNAPSHOT_FILE}"
 
+# --- 动态构建预期 CPU 列表 ---
+EXPECTED_CPUS="${NGINX_CPU_AFFINITY},${WRK_CPU_AFFINITY}"
+log "   -> 预期活跃 CPU 列表 (用于审计): ${EXPECTED_CPUS}"
+
 # --- 步骤 4: 自动分析并生成报告 ---
 
 log "步骤 4a: 分析快照并生成报告..."
 $PIPA_CMD analyze \
     --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}"
+    --output "${REPORT_FILE}" \
+    --expected-cpus "${EXPECTED_CPUS}"
 
 log "步骤 4b: 生成火焰图..."
 $PIPA_CMD flamegraph \
