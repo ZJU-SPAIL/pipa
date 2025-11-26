@@ -67,20 +67,29 @@ def analyze_cpu_clusters(df_sar_cpu: pd.DataFrame, config: Optional[Dict[str, An
     # --- 3. 生成摘要 (用于报告和决策树) ---
     final_stats = cpu_features.groupby("cluster_final").mean().round(2)
     final_counts = cpu_features["cluster_final"].value_counts()
+    cluster_label_map = {1: "Busy (High Load)", 0: "Active (Mid)", 99: "Idle (Background)"}
 
     clusters_summary = []
     for cluster_id in final_stats.index:
         stats = final_stats.loc[cluster_id]
         summary = stats.to_dict()
-        summary["id"] = int(cluster_id)
-        summary["count"] = int(final_counts.loc[cluster_id])
-        clusters_summary.append(summary)
 
-    log.info(f"Analysis complete. Found {len(final_stats)} groups (0=Mid, 1=Busy, 99=Idle).")
+        # === ID 语义化 ===
+        cid = int(cluster_id)
+        summary["id"] = int(cluster_id)
+        summary["Status"] = cluster_label_map.get(cid, f"Unknown ({cid})")
+        summary["Count"] = int(final_counts.loc[cluster_id])
+        ordered_summary = {"Status": summary["Status"], "Count": summary["Count"]}
+        for k, v in summary.items():
+            if k not in ["Status", "Count", "id"]:
+                ordered_summary[k] = v
+        clusters_summary.append(ordered_summary)
+
+    log.info(f"Analysis complete. Found {len(final_stats)} groups.")
 
     return {
         "cpu_clusters_summary": clusters_summary,
         "cpu_clusters_count": len(final_stats),
         "cpu_features_df": cpu_features,
-        "optimal_eps": 0.20,  # 固定值作为展示
+        "optimal_eps": 0.20,
     }

@@ -318,16 +318,12 @@ def build_full_context(
     if clusters_summary:
         BUSY_THRESHOLD_P95_USER_SYS = 15.0
 
-        is_busy_cluster_found = any(c.get("id") == 1 for c in clusters_summary)
-
-        # 备用逻辑：检查 Cluster 0 是否有高负载
-        # 改为: p95_user + p95_system > 15
-        is_active_cluster_busy = any(
-            c.get("id") == 0 and (c.get("p95_%user", 0) + c.get("p95_%system", 0)) > BUSY_THRESHOLD_P95_USER_SYS
-            for c in clusters_summary
+        # 不依赖于特定的集群 ID 语义
+        is_any_cluster_busy = any(
+            (c.get("p95_%user", 0) + c.get("p95_%system", 0)) > BUSY_THRESHOLD_P95_USER_SYS for c in clusters_summary
         )
 
-        if is_busy_cluster_found or is_active_cluster_busy:
+        if is_any_cluster_busy:
             is_imbalanced = True
 
     context["is_cpu_imbalanced"] = is_imbalanced
