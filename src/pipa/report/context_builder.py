@@ -323,7 +323,7 @@ def build_full_context(
             (c.get("p95_%user", 0) + c.get("p95_%system", 0)) > BUSY_THRESHOLD_P95_USER_SYS for c in clusters_summary
         )
 
-        if is_any_cluster_busy:
+        if is_any_cluster_busy and len(clusters_summary) > 1:
             is_imbalanced = True
 
     context["is_cpu_imbalanced"] = is_imbalanced
