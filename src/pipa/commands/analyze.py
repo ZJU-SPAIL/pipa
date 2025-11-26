@@ -10,6 +10,7 @@ import pprint
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 import click
 import pandas as pd
@@ -67,8 +68,9 @@ def _generate_disk_analysis_html(warnings: list) -> str:
     return legend_html + warning_html
 
 
-def _generate_report(level_dir: Path, report_path: Path):
+def _generate_report(level_dir: Path, report_path: Path, expected_cpus: Optional[str] = None):
     """
+    分析所有可用的采样数据并生成综合HTML报告。
     分析所有可用的采样数据并生成综合HTML报告。
 
     这是核心引擎逻辑，从采样目录加载数据，解析文件，
@@ -152,6 +154,10 @@ def _generate_report(level_dir: Path, report_path: Path):
     project_root = get_project_root()
     rules_path = project_root / "config/rules/decision_tree.yaml"
     rules, rule_configs = load_rules(rules_path)
+
+    # === 把参数注入到配置里 ===
+    if expected_cpus:
+        rule_configs["expected_cpus_str"] = expected_cpus
 
     # 构建完整的分析上下文，包含所有派生指标
     context = build_full_context(all_dataframes, static_info_data, rule_configs)
@@ -368,7 +374,12 @@ def _get_unique_output_path(base_path: Path) -> Path:
     default=None,
     help="Path to save the generated HTML report. If not specified, generates 'report.html' in current directory.",
 )
-def analyze(input_path_str: str, output_path_str: str):
+@click.option(
+    "--expected-cpus",
+    default=None,
+    help="Validation: Comma-separated list of CPUs expected to be busy (e.g. '0-7,16').",
+)
+def analyze(input_path_str: str, output_path_str: str, expected_cpus: str):
     """
     分析采样结果并生成综合HTML报告。
 
@@ -403,7 +414,7 @@ def analyze(input_path_str: str, output_path_str: str):
             raise click.Abort()
 
         try:
-            _generate_report(level_dir, output_path)
+            _generate_report(level_dir, output_path, expected_cpus=expected_cpus)
             click.secho(f"\n✅ Analysis complete. Report saved to: {output_path}", fg="green")
         except Exception as e:
             click.secho(f"❌ An error occurred during report generation: {e}", fg="red")
