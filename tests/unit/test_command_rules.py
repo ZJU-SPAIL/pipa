@@ -37,11 +37,19 @@ def mock_tma_dataframes():
 def mock_off_cpu_io_dataframes():
     """提供一个模拟 OFF-CPU 磁盘瓶颈场景的数据字典。"""
     return {
-        "sar_io": pd.DataFrame({"%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [10.0]}),
+        "sar_io": pd.DataFrame({"%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [85.0]}),
         "sar_disk": pd.DataFrame(
-            {"DEV": ["sda"], "%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [10.0]}
+            {"DEV": ["sda"], "%util": [85.0], "await": [30.0], "avgrq-sz": [8.0], "avgqu-sz": [85.0]}
         ),
-        "sar_cpu": pd.DataFrame({"CPU": ["all"], "%user": [10.0], "%system": [5.0], "%iowait": [20.0]}),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0", "1", "2", "3", "4", "5", "6", "7"],
+                "%user": [10.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
+                "%system": [5.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+                "%iowait": [20.0, 25.0, 20.0, 15.0, 10.0, 5.0, 5.0, 5.0, 5.0],
+                "%idle": [65.0, 68.0, 73.0, 78.0, 83.0, 88.0, 88.0, 88.0, 88.0],
+            }
+        ),
     }
 
 

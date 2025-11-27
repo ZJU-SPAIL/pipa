@@ -108,7 +108,14 @@ def build_full_context(
             context["cpu_max_util"] = core_avg_utils.max()
             context["cpu_min_util"] = core_avg_utils.min()
 
-            # === 4. 新增：NUMA 负载均衡分析 ===
+            # === 计算单核 I/O 等待峰值 ===
+            # 逻辑：找出在这个时间段内，受 I/O 折磨最深的那颗 CPU 的平均 iowait 值
+            if "%iowait" in df_per_core.columns:
+                context["max_single_core_iowait"] = df_per_core.groupby("CPU")["%iowait"].mean().max()
+            else:
+                context["max_single_core_iowait"] = 0.0
+
+            # === 4. NUMA 负载均衡分析 ===
             numa_info = static_info.get("numa_info", {}) if static_info else {}
             numa_topology = numa_info.get("numa_topology", {})
 
@@ -177,6 +184,7 @@ def build_full_context(
     context["max_disk_util"] = 0.0
     context["max_disk_await"] = 0.0
     context["busiest_disk_name"] = "None"
+    context["avg_avgrq_sz"] = 0.0
 
     if df_disk is not None and not df_disk.empty:
         # 排除 loop 设备和 ram 设备，只看物理盘或 DM 卷
@@ -196,6 +204,20 @@ def build_full_context(
             context["max_disk_util"] = max_util
             context["max_disk_await"] = max_await
             context["busiest_disk_name"] = busiest_dev
+
+            # === 直接从最忙的盘上取 avgrq-sz/areq-sz ===
+            # 不同的 sar 版本列名可能不同 (avgrq-sz 或 areq-sz)
+            sz_col = None
+            for col in ["avgrq-sz", "areq-sz"]:
+                if col in valid_disks.columns:
+                    sz_col = col
+                    break
+
+            if sz_col:
+                # 获取该盘的平均扇区数
+                avg_sectors = valid_disks[valid_disks["DEV"] == busiest_dev][sz_col].mean()
+                # 转换为 KB (1 Sector = 512 B = 0.5 KB)
+                context["avg_avgrq_sz"] = avg_sectors / 2.0
 
     # 处理分页数据：计算交换和页面错误指标
     df_paging = df_dict.get("sar_paging")
