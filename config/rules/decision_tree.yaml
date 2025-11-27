@@ -29,7 +29,7 @@ config:
   HIGH_SWAP_RATE_PER_SEC: 10
   IO_UTIL_HIGH_THRESHOLD: 75.0
   IO_AWAIT_HIGH_THRESHOLD: 20.0 # ms
-  IO_QUEUE_HIGH_THRESHOLD: 5.0
+  IO_QUEUE_HIGH_THRESHOLD: 80.0
   IO_SMALL_REQ_SIZE_THRESHOLD: 16.0 # KB
   NET_UTIL_HIGH_THRESHOLD: 90.0 # %
   NET_UTIL_LOW_THRESHOLD: 20.0 # %
@@ -38,7 +38,7 @@ config:
   MAJFLT_HIGH_THRESHOLD: 100.0 # major faults per second
   HIGH_IRQ_PERCENT_THRESHOLD: 20.0 # %
   HIGH_SOFTIRQ_PERCENT_THRESHOLD: 20.0 # %
-  IO_WAIT_HIGH_THRESHOLD: 15.0 # %
+  IO_WAIT_HIGH_THRESHOLD: 10.0 # %
   HIGH_NVCSWCH_RATE_PER_SEC: 10000 # 非自愿切换/秒
 
 # --- 2. 规则定义区 (Rules) ---
@@ -73,15 +73,18 @@ rules:
           <br>但需注意：<strong>I/O 等待 (iowait)</strong> 或 <strong>中断集中</strong> 也常表现为负载不均。
         # --- IO 不均衡检测 ---
         sub_rules:
-          - name: "I/O 导致的不均衡"
-            # 判定条件：看 max_disk_util
-            precondition: "max_disk_util > IO_UTIL_HIGH_THRESHOLD or avg_iowait > IO_WAIT_HIGH_THRESHOLD"
-            finding: "根因修正：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 处于饱和状态 (利用率 <strong>{max_disk_util:.2f}%</strong>)。"
+          - name: "磁盘 I/O 瓶颈"
+            # 逻辑：磁盘慢 (await) 且 至少有一颗核在等 (max_single_core_iowait)
+            # 这样既避免了 128 核的稀释，又保证了逻辑的严谨 (AND)
+            precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD and max_single_core_iowait > IO_WAIT_HIGH_THRESHOLD"
+            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 响应过慢 (<strong>{max_disk_await:.2f}ms</strong>)，且单核最大 I/O 等待高达 <strong>{max_single_core_iowait:.2f}%</strong>。"
             sub_rules:
-              - name: "高延迟"
-                # 判定条件：看 max_disk_await
-                precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD"
-                finding: "关键指标：<strong>I/O 高延迟</strong>。磁盘 {busiest_disk_name} 的平均响应时间高达 <strong>{max_disk_await:.2f}ms</strong>。"
+              - name: "吞吐量饱和"
+                precondition: "avg_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD"
+                finding: "诊断细化：<strong>吞吐量饱和</strong>。磁盘请求队列过长 (平均 <strong>{avg_avgqu_sz:.2f}</strong>)，表明 I/O 并发请求过多，磁盘已无法及时处理。"
+              - name: "随机 I/O 密集"
+                precondition: "avg_avgrq_sz < IO_SMALL_REQ_SIZE_THRESHOLD"
+                finding: "具体模式：<strong>随机 I/O 密集</strong>。平均请求尺寸非常小 (<strong>{avg_avgrq_sz:.2f} KB</strong>)，这加剧了磁盘寻道时间，导致高延迟。"
 
           # --- NUMA 不均衡检测 ---
           - name: "NUMA 节点负载失衡"
@@ -146,23 +149,18 @@ rules:
           )
         finding: "初步诊断：系统瓶颈为 <strong>OFF-CPU</strong>，总 CPU 利用率仅为 <strong>{total_cpu:.2f}%</strong>，CPU 有大量时间在等待外部资源。"
         sub_rules:
-          # --- 磁盘 I/O 瓶颈分支 ---
           - name: "磁盘 I/O 瓶颈"
-            # 要么利用率高 (吞吐瓶颈)，要么延迟高 (寻道/响应瓶颈)
-            # 机械硬盘经常是利用率不高，但延迟已经几百毫秒了
-            precondition: "max_disk_util > IO_UTIL_HIGH_THRESHOLD or max_disk_await > IO_AWAIT_HIGH_THRESHOLD"
-            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 存在性能问题（利用率 <strong>{max_disk_util:.2f}%</strong> 或 响应时间 <strong>{max_disk_await:.2f}ms</strong>）。"
+            # 逻辑：磁盘慢 (await) 且 至少有一颗核在等 (max_single_core_iowait)
+            # 这样既避免了 128 核的稀释，又保证了逻辑的严谨 (AND)
+            precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD and max_single_core_iowait > IO_WAIT_HIGH_THRESHOLD"
+            finding: "根因推断：<strong>磁盘 I/O 瓶颈</strong>。检测到磁盘 <strong>{busiest_disk_name}</strong> 响应过慢 (<strong>{max_disk_await:.2f}ms</strong>)，且单核最大 I/O 等待高达 <strong>{max_single_core_iowait:.2f}%</strong>。"
             sub_rules:
               - name: "吞吐量饱和"
                 precondition: "avg_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD"
                 finding: "诊断细化：<strong>吞吐量饱和</strong>。磁盘请求队列过长 (平均 <strong>{avg_avgqu_sz:.2f}</strong>)，表明 I/O 并发请求过多，磁盘已无法及时处理。"
-              - name: "高延迟"
-                precondition: "max_disk_await > IO_AWAIT_HIGH_THRESHOLD and avg_iowait > IO_WAIT_HIGH_THRESHOLD"
-                finding: "诊断细化：<strong>高延迟</strong>。磁盘 {busiest_disk_name} 的平均响应时间高达 <strong>{max_disk_await:.2f}ms</strong>，且 CPU 等待 I/O 的时间比例 (<strong>{avg_iowait:.2f}%</strong>) 处于高位，明确指向磁盘为瓶颈。"
-                sub_rules:
-                  - name: "随机读写过多"
-                    precondition: "avg_avgrq_sz < IO_SMALL_REQ_SIZE_THRESHOLD"
-                    finding: "具体模式：<strong>随机 I/O 密集</strong>。平均请求尺寸非常小 (<strong>{avg_avgrq_sz:.2f} KB</strong>)，这加剧了磁盘寻道时间，导致高延迟。"
+              - name: "随机 I/O 密集"
+                precondition: "avg_avgrq_sz < IO_SMALL_REQ_SIZE_THRESHOLD"
+                finding: "具体模式：<strong>随机 I/O 密集</strong>。平均请求尺寸非常小 (<strong>{avg_avgrq_sz:.2f} KB</strong>)，这加剧了磁盘寻道时间，导致高延迟。"
           - name: "网络瓶颈"
             precondition: "avg_ifutil > NET_UTIL_HIGH_THRESHOLD"
             finding: "网络严重拥塞。平均利用率高达 <strong>{avg_ifutil:.2f}%</strong>。"
