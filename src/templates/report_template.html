@@ -686,6 +686,33 @@
         </ul>
       </div>
 
+      <!-- 插入这段：视图切换开关 -->
+      <div
+        style="
+          margin: 15px 0;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        "
+      >
+        <label
+          style="
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+          "
+        >
+          <input
+            type="checkbox"
+            id="hotspots-mode-toggle"
+            style="margin-right: 8px; transform: scale(1.2)"
+          />
+          Show Raw JIT Symbols (Split by TID)
+        </label>
+      </div>
+
       <!-- 表格容器 -->
       <div id="table-hotspots"></div>
 
@@ -956,6 +983,108 @@
                   continue;
               }
 
+              // =========================================================
+              // [Feature] Hotspots 专属逻辑：聚合与切换
+              // =========================================================
+              if (name === 'hotspots') {
+                  // 1. 定义聚合函数
+                  const aggregateHotspots = (rawData) => {
+                      const map = new Map();
+                      rawData.forEach(row => {
+                          // 清洗 TID 前缀 (兼容有无 Symbol 字段的情况)
+                          const rawSymbol = row.Symbol || "";
+                          const cleanSymbol = rawSymbol.replace(/^tid\s+\d+\s+/, '');
+
+                          const key = `${cleanSymbol}|${row.Library}|${row.Scope}`;
+
+                          if (map.has(key)) {
+                              const entry = map.get(key);
+                              entry.Overhead += row.Overhead;
+                              entry.Samples += row.Samples;
+                          } else {
+                              const newRow = Object.assign({}, row);
+                              newRow.Symbol = cleanSymbol;
+                              map.set(key, newRow);
+                          }
+                      });
+                      return Array.from(map.values()).sort((a, b) => b.Overhead - a.Overhead);
+                  };
+
+                  // 2. 准备两份数据
+                  const cleanData = aggregateHotspots(tableData); // 默认聚合
+
+                  // 3. 定义列 (带进度条 + 列宽调整)
+                  let hotspotColumns = [];
+                  if (tableData.length > 0) {
+                      hotspotColumns = Object.keys(tableData[0]).map(key => {
+                          let colDef = { title: key, field: key, headerFilter: "input" };
+                          // === [UI Tuning] 列宽精细化调整 ===
+                          if (key === "Overhead") {
+                              colDef.formatter = "progress";
+                              colDef.formatterParams = {
+                                  color: ["#52c41a", "#faad14", "#f5222d"],
+                                  min: 0, max: 100, legend: true
+                              };
+                              colDef.width = 150; // 进度条给固定 150px
+                          }
+                          else if (key === "Symbol") {
+                              // Symbol 列不设固定 width，让它自动撑满剩余空间
+                              // 设置 minWidth 防止在小屏幕上被挤得太小
+                              colDef.minWidth = 400;
+                          }
+                          else if (key === "Samples") {
+                              colDef.width = 80; // 数字列窄一点
+                          }
+                          else if (key === "Scope") {
+                              colDef.width = 80; // User/Kernel 窄一点
+                          }
+                          else if (key === "Process") {
+                              colDef.width = 100; // 进程名通常不长
+                          }
+                          else if (key === "Library") {
+                              colDef.width = 150; // 库名给一点空间
+                          }
+                          else {
+                              colDef.width = 120; // 其他未知列兜底宽度
+                          }
+
+                          return colDef;
+                      });
+                  }
+
+                  // 4. 渲染表格
+                  const tableDivId = '#table-hotspots';
+                  if (document.querySelector(tableDivId)) {
+                      const tableInstance = new Tabulator(tableDivId, {
+                          data: cleanData, // <--- 默认显示聚合后的数据
+                          columns: hotspotColumns,
+                          layout: "fitColumns",
+                          pagination: "local",
+                          paginationSize: 15,
+                          paginationSizeSelector: [10, 15, 25, 50, 100],
+                          placeholder: "No Data Available",
+                      });
+                      window.hotspotsTable = tableInstance;
+
+                      // 5. 绑定开关事件
+                      const toggle = document.getElementById('hotspots-mode-toggle');
+                      if (toggle) {
+                          toggle.addEventListener('change', (e) => {
+                              if (e.target.checked) {
+                                  // 选中：显示原始数据
+                                  tableInstance.replaceData(tableData);
+                              } else {
+                                  // 未选中：显示聚合数据
+                                  tableInstance.replaceData(cleanData);
+                              }
+                          });
+                      }
+                  }
+                  continue; // 处理完 hotspots，跳过后续通用逻辑
+              }
+              // =========================================================
+
+              // 通用逻辑 (非 Hotspots 表格)
               let columns = [];
               if (tableData.length > 0) {
                 columns = Object.keys(tableData[0]).map(key => {
@@ -973,26 +1102,14 @@
                       colDef.headerFilterFunc = "like";
                       colDef.headerFilterPlaceholder = "Filter...";
                   }
-
-                  // [Feature] 特殊处理 Hotspots 表格的 Overhead 列 -> 进度条
-                  if (name === 'hotspots' && key === "Overhead") {
-                      colDef.formatter = "progress";
-                      colDef.formatterParams = {
-                          color: ["#52c41a", "#faad14", "#f5222d"], // Green -> Yellow -> Red
-                          min: 0,
-                          max: 100,
-                          legend: true, // Show value text
-                      };
-                      colDef.width = 180;
-                  }
                   return colDef;
                 });
               }
 
-              // 渲染表格
+              // 渲染通用表格
               const tableDiv = document.querySelector(`#table-${name}`);
               if (tableDiv) {
-                  const tableInstance = new Tabulator(`#table-${name}`, {
+                  new Tabulator(`#table-${name}`, {
                     data: tableData,
                     columns: columns,
                     layout: "fitColumns",
@@ -1001,11 +1118,6 @@
                     paginationSizeSelector: [10, 15, 25, 50, 100],
                     placeholder: "No Data Available",
                   });
-
-                  // 保存 hotspots 表格实例到全局，以便 Tab 切换时重绘
-                  if (name === 'hotspots') {
-                      window.hotspotsTable = tableInstance;
-                  }
               }
             }
         }
