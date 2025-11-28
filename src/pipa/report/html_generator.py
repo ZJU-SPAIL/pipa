@@ -21,6 +21,7 @@ def generate_html_report(
     static_info_data: Dict,
     static_info_str: str,
     context: Dict[str, Any],
+    audit_html: str = "",  # 新增参数
 ):
     """
     Renders the final HTML report using Jinja2 and writes it to disk.
@@ -42,6 +43,7 @@ def generate_html_report(
         static_info_str=static_info_str,
         static_info_data=static_info_data,
         context=context,
+        audit_html=audit_html,
     )
 
     try:

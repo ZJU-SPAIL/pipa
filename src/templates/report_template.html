@@ -513,6 +513,22 @@
 
     <!-- Tab Content -->
     <div id="analysis" class="tab-pane">
+      <!-- 新增：配置审计区块 (如果有内容) -->
+      {% if audit_html %}
+      <h2>Configuration Audit</h2>
+      <!-- 复用 tree 的样式，但因为是独立的 div，视觉上是分开的 -->
+      <div
+        class="tree-wrapper"
+        style="
+          margin-bottom: 30px;
+          border-bottom: 1px dashed #ccc;
+          padding-bottom: 20px;
+        "
+      >
+        {{ audit_html | safe }}
+      </div>
+      {% endif %}
+
       <h2>Decision Tree Visualization</h2>
       <div class="tree-wrapper">{{ decision_tree_html | safe }}</div>
       <h2 style="margin-top: 2em">Diagnostic Findings</h2>

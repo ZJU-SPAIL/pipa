@@ -183,7 +183,9 @@ def _generate_report(level_dir: Path, report_path: Path, expected_cpus: Optional
 
     # 生成决策树HTML和发现结果
     md = MarkdownIt("commonmark", {"html": True})  # 启用HTML支持，允许在Markdown中嵌入HTML标签
-    decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(rules, all_dataframes, context, md)
+    audit_html, decision_tree_html, findings_for_tree_html = format_rules_to_html_tree(
+        rules, all_dataframes, context, md
+    )
 
     # 处理perf数据：将原始数据透视为宽格式，便于分析
     # 注意：perf_raw 现在是字典 {'events': df, 'metrics': df}
@@ -331,6 +333,7 @@ def _generate_report(level_dir: Path, report_path: Path, expected_cpus: Optional
         context={
             k: v.tolist() if hasattr(v, "tolist") else v for k, v in context.items() if not isinstance(v, pd.DataFrame)
         },
+        audit_html=audit_html,
     )
 
 
