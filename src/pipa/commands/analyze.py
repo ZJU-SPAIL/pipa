@@ -19,6 +19,7 @@ from markdown_it import MarkdownIt
 
 from src.pipa.parsers import PARSER_REGISTRY
 from src.pipa.report.context_builder import build_full_context
+from src.pipa.report.hotspots import extract_hotspots
 from src.pipa.report.html_generator import generate_html_report
 from src.pipa.report.plotter import (
     plot_cpu_clusters,
@@ -68,7 +69,13 @@ def _generate_disk_analysis_html(warnings: list) -> str:
     return legend_html + warning_html
 
 
-def _generate_report(level_dir: Path, report_path: Path, expected_cpus: Optional[str] = None):
+def _generate_report(
+    level_dir: Path,
+    report_path: Path,
+    expected_cpus: Optional[str] = None,
+    symfs: Optional[str] = None,
+    kallsyms: Optional[str] = None,
+):
     """
     分析所有可用的采样数据并生成综合HTML报告。
     分析所有可用的采样数据并生成综合HTML报告。
@@ -319,6 +326,21 @@ def _generate_report(level_dir: Path, report_path: Path, expected_cpus: Optional
         except Exception as e:
             log.warning(f"Could not generate plot for '{name}': {e}", exc_info=True)
 
+    # 提取热点函数 (Best Effort)
+    perf_data_path = level_dir / "perf.data"
+    if perf_data_path.exists():
+        log.info("Attempting to extract hotspots from perf.data...")
+        # 传入新的参数
+        hotspots_data = extract_hotspots(perf_data_path, symfs_dir=symfs, kallsyms_path=kallsyms)
+
+        if hotspots_data:
+            import json
+
+            tables["hotspots"] = json.dumps(hotspots_data)
+            log.info(f"Extracted {len(hotspots_data)} hotspots.")
+        else:
+            log.info("No hotspots extracted (perf report returned empty or failed).")
+
     # 9. 生成最终报告
     generate_html_report(
         output_path=report_path,
@@ -382,7 +404,17 @@ def _get_unique_output_path(base_path: Path) -> Path:
     default=None,
     help="Validation: Comma-separated list of CPUs expected to be busy (e.g. '0-7,16').",
 )
-def analyze(input_path_str: str, output_path_str: str, expected_cpus: str):
+@click.option(
+    "--symfs",
+    default=None,
+    help="[Advanced] Path to a directory with debug symbols (for perf report --symfs). Useful for offline analysis.",
+)
+@click.option(
+    "--kallsyms",
+    default=None,
+    help="[Advanced] Path to a kallsyms file (for perf report --kallsyms).",
+)
+def analyze(input_path_str: str, output_path_str: str, expected_cpus: str, symfs: str, kallsyms: str):
     """
     分析采样结果并生成综合HTML报告。
 
@@ -417,7 +449,7 @@ def analyze(input_path_str: str, output_path_str: str, expected_cpus: str):
             raise click.Abort()
 
         try:
-            _generate_report(level_dir, output_path, expected_cpus=expected_cpus)
+            _generate_report(level_dir, output_path, expected_cpus=expected_cpus, symfs=symfs, kallsyms=kallsyms)
             click.secho(f"\n✅ Analysis complete. Report saved to: {output_path}", fg="green")
         except Exception as e:
             click.secho(f"❌ An error occurred during report generation: {e}", fg="red")

@@ -504,6 +504,9 @@
       <button class="tab-button" onclick="openTab(event, 'rawdata')">
         Raw Data Tables
       </button>
+      <button class="tab-button" onclick="openTab(event, 'hotspots')">
+        Top CPU Hotspots
+      </button>
       {% if static_info_str %}
       <button class="tab-button" onclick="openTab(event, 'system')">
         System Information
@@ -630,12 +633,84 @@
 
     <div id="rawdata" class="tab-pane">
       <h2>Raw Data (Interactive Tables)</h2>
-      {% for name, table_json in tables_json.items() %}
+      {% for name, table_json in tables_json.items() %} {% if name != 'hotspots'
+      %}
       <h3>{{ name.replace('_', ' ')|title }} Data</h3>
       <div id="table-{{ name }}"></div>
-      {% else %}
+      {% endif %} {% else %}
       <p>No raw data available to display.</p>
       {% endfor %}
+    </div>
+
+    <!-- === Hotspots Tab === -->
+    <div id="hotspots" class="tab-pane">
+      <h2>Top CPU Hotspots</h2>
+
+      <!-- Case A: 有数据 (解析成功) -->
+      {% if tables_json.hotspots %}
+      <div
+        class="warnings-container"
+        style="background-color: #e6f7ff; border-color: #91d5ff"
+      >
+        <h3 style="margin-top: 0; color: #0050b3; font-size: 1.1em">
+          ℹ️ 符号解析说明 (Symbol Resolution)
+        </h3>
+        <ul
+          style="
+            margin: 5px 0 0 0;
+            padding-left: 20px;
+            color: #555;
+            line-height: 1.6;
+          "
+        >
+          <li>
+            <strong>缺失现象：</strong> 若表格中出现十六进制地址
+            (<code>0x...</code>) 或 <code>[unknown]</code>，说明<strong
+              >当前执行 analyze 的机器</strong
+            >缺少对应的调试符号。
+          </li>
+          <li>
+            <strong>通用解决：</strong> 推荐使用包管理器安装 debuginfo (如
+            <code>yum install gzip-debuginfo</code
+            >)；或者手动指定符号路径：<br />
+            <code
+              >pipa analyze ... --symfs /path/to/debug/root --kallsyms
+              /local/kallsyms</code
+            >
+          </li>
+          <li>
+            <strong>Java/JIT：</strong> 对于 Java 等 JIT 应用，需用户自行配置
+            (如使用 <code>perf-map-agent</code>) 生成符号映射文件，PIPA 遵循
+            perf 标准读取，不干涉运行时环境。
+          </li>
+        </ul>
+      </div>
+
+      <!-- 表格容器 -->
+      <div id="table-hotspots"></div>
+
+      <!-- Case B: 没数据 (perf.data 缺失或解析失败) -->
+      {% else %}
+      <div
+        style="
+          padding: 40px;
+          text-align: center;
+          background-color: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 8px;
+        "
+      >
+        <div style="font-size: 48px; margin-bottom: 20px">🕵️‍♂️</div>
+        <h3 style="color: #495057">No Profiling Data Available</h3>
+        <p style="color: #6c757d; max-width: 600px; margin: 0 auto">
+          Could not generate hotspot table. Possible reasons:<br />
+          1. Sample was taken with <code>--no-record</code>.<br />
+          2. The <code>perf</code> tool is not installed on this analysis
+          machine.<br />
+          3. The workload was too short/light to capture samples.
+        </p>
+      </div>
+      {% endif %}
     </div>
 
     {% if static_info_data %}
@@ -675,235 +750,294 @@
     {% endif %}
 
     <script>
-        const reportContext = {{ context | tojson | safe }};
-        // --- Helper: Format Bytes to Human Readable ---
-        function formatBytes(bytes, decimals = 2) {
-            if (!+bytes) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+      // ==========================================
+      // 1. 全局变量定义
+      // ==========================================
+      const reportContext = {{ context | tojson | safe }};
+      const tablesJsonData = {{ tables_json | tojson | safe }};
+      const staticInfoData = {{ static_info_data | tojson | safe }};
+
+      // ==========================================
+      // 2. 全局工具函数
+      // ==========================================
+
+      function formatBytes(bytes, decimals = 2) {
+          if (!+bytes) return '0 Bytes';
+          const k = 1024;
+          const dm = decimals < 0 ? 0 : decimals;
+          const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+      }
+
+      // Tab 切换逻辑 (HTML onclick 需要调用它，必须全局)
+      function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-pane");
+        for (i = 0; i < tabcontent.length; i++) {
+          tabcontent[i].style.display = "none";
         }
-        // --- Tab Switching Logic ---
-        function openTab(evt, tabName) {
-          var i, tabcontent, tablinks;
-          tabcontent = document.getElementsByClassName("tab-pane");
-          for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-          }
-          tablinks = document.getElementsByClassName("tab-button");
-          for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-          }
-          var activeTab = document.getElementById(tabName);
-          activeTab.style.display = "block";
+        tablinks = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tablinks.length; i++) {
+          tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        var activeTab = document.getElementById(tabName);
+        if (activeTab) {
+            activeTab.style.display = "block";
+        }
+        if (evt) {
           evt.currentTarget.className += " active";
-
-          if (tabName === 'explorer') {
-            setTimeout(function() {
-              const plotContainers = document.querySelectorAll('.plot-container');
-              plotContainers.forEach(container => {
-                const plotDiv = container.querySelector('.plotly-graph-div');
-                if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
-                  Plotly.Plots.resize(plotDiv);
-                }
-              });
-            }, 0);
-          }
         }
 
-        // --- Universal Chart Filtering Logic ---
-        function applyChartFilter(plotName) {
-          const filterContainer = document.querySelector(`.chart-filter-container[data-plot-id="${plotName}"]`);
-          if (!filterContainer) return;
-          const plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
-          if (!plotDiv || !plotDiv.data) return;
-          const filterContext = reportContext[`${plotName}_filters`];
-          if (!filterContext) return;
-
-          const inputs = filterContainer.querySelectorAll('input[type="text"]');
-          const activeFilters = {};
-
-          inputs.forEach((input) => {
-            const filterKey = input.id.split('-filter-input')[0];
-            const filterValue = input.value.trim();
-            if (filterValue) {
-              const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
-              if (isNumericPattern && (filterKey.toUpperCase() === 'CPU' || !isNaN(parseInt(filterValue.replace(/[,-]/g, ''))))) {
-                const parseRange = (str) => new Set(str.split(',').flatMap((part) => {
-                  part = part.trim();
-                  if (part.includes('-')) {
-                    const [start, end] = part.split('-').map(Number);
-                    return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
-                  }
-                  return part;
-                }));
-                activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
-              } else {
-                activeFilters[filterKey] = {
-                  type: 'fuzzy',
-                  keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
-                };
+        // 触发 Plotly 重绘 (解决 Tab 隐藏时图表尺寸计算错误问题)
+        if (tabName === 'explorer' || tabName === 'ml_insights') {
+          setTimeout(function() {
+            const plotContainers = document.querySelectorAll('.plot-container');
+            plotContainers.forEach(container => {
+              const plotDiv = container.querySelector('.plotly-graph-div');
+              if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
+                Plotly.Plots.resize(plotDiv);
               }
-            }
-          });
-
-          const visibilityArray = plotDiv.data.map((trace) => {
-            for (const [key, filterInfo] of Object.entries(activeFilters)) {
-              const sourceProperty = filterContext[key]?.source || 'name';
-              let traceValueRaw = trace[sourceProperty];
-              let traceValue = traceValueRaw;
-
-              if (sourceProperty === "legendgroup" && key === "CPU") {
-                traceValue = String(traceValueRaw).split(', ')[0];
-              } else if (sourceProperty === "legendgroup" && key === "METRIC") {
-                traceValue = String(traceValueRaw).split(', ').slice(1).join(', ');
-              }
-              if (traceValue === undefined) continue;
-
-              const traceValueStr = String(traceValue).toLowerCase();
-
-              if (filterInfo.type === 'exact') {
-                if (!filterInfo.values.has(String(traceValue))) return false;
-              } else if (filterInfo.type === 'fuzzy') {
-                const anyKeywordMatched = filterInfo.keywords.some(keyword => {
-                  if (keyword.startsWith('^')) {
-                    return traceValueStr === keyword.slice(1);
-                  } else {
-                    return traceValueStr.includes(keyword);
-                  }
-                });
-                if (!anyKeywordMatched) return false;
-              }
-            }
-            return true;
-          });
-          Plotly.restyle(plotDiv, 'visible', visibilityArray);
-        }
-
-        // --- JSON Tree Viewer (v3 - Robust & Recursive) ---
-        function createJsonTree(container, data) {
-          const tree = document.createElement('ul');
-          tree.className = 'json-tree';
-
-          for (const key in data) {
-            if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
-
-            const li = document.createElement('li');
-            const keySpan = document.createElement('span');
-            keySpan.className = 'key';
-            if (!Array.isArray(data)) {
-              keySpan.textContent = `"${key}": `;
-            }
-            li.appendChild(keySpan);
-
-            const value = data[key];
-
-            if (typeof value === 'object' && value !== null) {
-              const isArray = Array.isArray(value);
-              const bracketStart = document.createTextNode(isArray ? '[' : '{');
-              const bracketEnd = document.createTextNode(isArray ? ']' : '}');
-              li.appendChild(bracketStart);
-
-              const toggler = document.createElement('span');
-              toggler.className = 'toggler open';
-              li.insertBefore(toggler, keySpan);
-
-              const nestedUl = createJsonTree(li, value);
-
-              toggler.onclick = (e) => {
-                e.stopPropagation();
-                toggler.classList.toggle('open');
-                nestedUl.style.display = nestedUl.style.display === 'none' ? '' : 'none';
-              };
-              li.appendChild(bracketEnd);
-            } else {
-              const valueSpan = document.createElement('span');
-              let displayValue = JSON.stringify(value);
-              let valueType = typeof value === 'string' ? 'string' : 'other';
-
-              // --- FEATURE: Auto-format size_bytes ---
-              if (key.endsWith('_bytes') && typeof value === 'number') {
-                  const formatted = formatBytes(value);
-                  // 显示格式: 1073741824 (1.00 GB)
-                  // 我们保留原始值，但在后面追加人类可读格式，用灰色显示
-                  displayValue = `${value} <span style="color: #888; font-size: 0.9em; margin-left: 4px;">(${formatted})</span>`;
-
-                  // 因为我们用了 HTML 标签，所以 textContent 不行了，得用 innerHTML
-                  // 但要注意安全，value 本身要是数字才行，这里我们判定了 typeof value === 'number'
-                  valueSpan.className = `value ${valueType}`;
-                  valueSpan.innerHTML = displayValue;
-              } else {
-                  // 默认处理
-                  valueSpan.className = `value ${valueType}`;
-                  valueSpan.textContent = displayValue;
-              }
-
-              li.appendChild(valueSpan);
-            }
-            tree.appendChild(li);
-          }
-          container.appendChild(tree);
-          return tree;
-        }
-
-
-        // --- Page Initialization Logic ---
-        document.addEventListener('DOMContentLoaded', function() {
-          // Tabulator Tables
-          const tablesJsonData = {{ tables_json | tojson | safe }};
-          for (const [name, jsonData] of Object.entries(tablesJsonData)) {
-            const tableData = JSON.parse(jsonData);
-            let columns = [];
-            if (tableData.length > 0) {
-              columns = Object.keys(tableData[0]).map(key => ({
-                title: key.charAt(0).toUpperCase() + key.slice(1),
-                field: key,
-                headerFilter: "input",
-                headerFilterFunc: key.toUpperCase() === 'CPU' ? "=" : "like",
-                headerFilterPlaceholder: key.toUpperCase() === 'CPU' ? "Exact (e.g., 0)" : "Filter...",
-              }));
-            }
-            new Tabulator(`#table-${name}`, {
-              data: tableData,
-              columns: columns,
-              layout: "fitColumns",
-              pagination: "local",
-              paginationSize: 15,
-              paginationSizeSelector: [10, 15, 25, 50, 100],
             });
-          }
+          }, 0);
+        }
 
-          // JSON Tree for System Info
-          const staticInfoData = {{ static_info_data | tojson | safe }};
-          const sysInfoContainer = document.getElementById('json-tree-container');
-          if (sysInfoContainer && staticInfoData) {
-            createJsonTree(sysInfoContainer, staticInfoData);
-          }
+        // [Fix] 触发 Tabulator 重绘 (解决 Hotspots 表格在隐藏 Tab 中初始化可能高度为0的问题)
+        if (tabName === 'hotspots') {
+           setTimeout(function() {
+               if(window.hotspotsTable) window.hotspotsTable.redraw();
+           }, 100);
+        }
+      }
 
-          // Default Tab Activation
-          const defaultTabButton = document.querySelectorAll(".tab-button")[0];
-          if (defaultTabButton) {
-            defaultTabButton.click();
-          }
+      function applyChartFilter(plotName) {
+        const filterContainer = document.querySelector(`.chart-filter-container[data-plot-id="${plotName}"]`);
+        if (!filterContainer) return;
+        const plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
+        if (!plotDiv || !plotDiv.data) return;
+        const filterContext = reportContext[`${plotName}_filters`];
+        if (!filterContext) return;
 
-      // Default Filters for sar_cpu
-          const filterContext = reportContext['sar_cpu_filters'];
-          if (filterContext) {
-            const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
-            if (cpuInput && filterContext['CPU']?.values.includes('all')) {
-              cpuInput.value = 'all';
-            }
-            const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
-            if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
-              metricInput.value = '%user,%system';
-            }
-            if (document.getElementById('plot-sar_cpu')) {
-              applyChartFilter('sar_cpu');
+        const inputs = filterContainer.querySelectorAll('input[type="text"]');
+        const activeFilters = {};
+
+        inputs.forEach((input) => {
+          const filterKey = input.id.split('-filter-input')[0];
+          const filterValue = input.value.trim();
+          if (filterValue) {
+            const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
+            if (isNumericPattern && (filterKey.toUpperCase() === 'CPU' || !isNaN(parseInt(filterValue.replace(/[,-]/g, ''))))) {
+              const parseRange = (str) => new Set(str.split(',').flatMap((part) => {
+                part = part.trim();
+                if (part.includes('-')) {
+                  const [start, end] = part.split('-').map(Number);
+                  return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
+                }
+                return part;
+              }));
+              activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
+            } else {
+              activeFilters[filterKey] = {
+                type: 'fuzzy',
+                keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
+              };
             }
           }
         });
+
+        const visibilityArray = plotDiv.data.map((trace) => {
+          for (const [key, filterInfo] of Object.entries(activeFilters)) {
+            const sourceProperty = filterContext[key]?.source || 'name';
+            let traceValueRaw = trace[sourceProperty];
+            let traceValue = traceValueRaw;
+
+            if (sourceProperty === "legendgroup" && key === "CPU") {
+              traceValue = String(traceValueRaw).split(', ')[0];
+            } else if (sourceProperty === "legendgroup" && key === "METRIC") {
+              traceValue = String(traceValueRaw).split(', ').slice(1).join(', ');
+            }
+            if (traceValue === undefined) continue;
+
+            const traceValueStr = String(traceValue).toLowerCase();
+
+            if (filterInfo.type === 'exact') {
+              if (!filterInfo.values.has(String(traceValue))) return false;
+            } else if (filterInfo.type === 'fuzzy') {
+              const anyKeywordMatched = filterInfo.keywords.some(keyword => {
+                if (keyword.startsWith('^')) {
+                  return traceValueStr === keyword.slice(1);
+                } else {
+                  return traceValueStr.includes(keyword);
+                }
+              });
+              if (!anyKeywordMatched) return false;
+            }
+          }
+          return true;
+        });
+        Plotly.restyle(plotDiv, 'visible', visibilityArray);
+      }
+
+      // JSON Tree Viewer Logic
+      function createJsonTree(container, data) {
+        const tree = document.createElement('ul');
+        tree.className = 'json-tree';
+
+        for (const key in data) {
+          if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+
+          const li = document.createElement('li');
+          const keySpan = document.createElement('span');
+          keySpan.className = 'key';
+          if (!Array.isArray(data)) {
+            keySpan.textContent = `"${key}": `;
+          }
+          li.appendChild(keySpan);
+
+          const value = data[key];
+
+          if (typeof value === 'object' && value !== null) {
+            const isArray = Array.isArray(value);
+            const bracketStart = document.createTextNode(isArray ? '[' : '{');
+            const bracketEnd = document.createTextNode(isArray ? ']' : '}');
+            li.appendChild(bracketStart);
+
+            const toggler = document.createElement('span');
+            toggler.className = 'toggler open';
+            li.insertBefore(toggler, keySpan);
+
+            const nestedUl = createJsonTree(li, value);
+
+            toggler.onclick = (e) => {
+              e.stopPropagation();
+              toggler.classList.toggle('open');
+              nestedUl.style.display = nestedUl.style.display === 'none' ? '' : 'none';
+            };
+            li.appendChild(bracketEnd);
+          } else {
+            const valueSpan = document.createElement('span');
+            let displayValue = JSON.stringify(value);
+            let valueType = typeof value === 'string' ? 'string' : 'other';
+
+            if (key.endsWith('_bytes') && typeof value === 'number') {
+                const formatted = formatBytes(value);
+                displayValue = `${value} <span style="color: #888; font-size: 0.9em; margin-left: 4px;">(${formatted})</span>`;
+                valueSpan.className = `value ${valueType}`;
+                valueSpan.innerHTML = displayValue;
+            } else {
+                valueSpan.className = `value ${valueType}`;
+                valueSpan.textContent = displayValue;
+            }
+
+            li.appendChild(valueSpan);
+          }
+          tree.appendChild(li);
+        }
+        container.appendChild(tree);
+        return tree;
+      }
+
+
+      // ==========================================
+      // 3. 页面初始化逻辑 (DOMContentLoaded)
+      // ==========================================
+      document.addEventListener('DOMContentLoaded', function() {
+
+        // 3.1 Initialize Tabulator Tables
+        if (tablesJsonData) {
+            for (const [name, jsonData] of Object.entries(tablesJsonData)) {
+              if (!jsonData) continue;
+
+              let tableData;
+              try {
+                  tableData = JSON.parse(jsonData);
+              } catch (e) {
+                  console.error("Failed to parse JSON for table: " + name, e);
+                  continue;
+              }
+
+              let columns = [];
+              if (tableData.length > 0) {
+                columns = Object.keys(tableData[0]).map(key => {
+                  let colDef = {
+                      title: key.charAt(0).toUpperCase() + key.slice(1),
+                      field: key,
+                      headerFilter: "input",
+                  };
+
+                  // 特殊处理 CPU 列
+                  if (key.toUpperCase() === 'CPU') {
+                      colDef.headerFilterFunc = "=";
+                      colDef.headerFilterPlaceholder = "Exact";
+                  } else {
+                      colDef.headerFilterFunc = "like";
+                      colDef.headerFilterPlaceholder = "Filter...";
+                  }
+
+                  // [Feature] 特殊处理 Hotspots 表格的 Overhead 列 -> 进度条
+                  if (name === 'hotspots' && key === "Overhead") {
+                      colDef.formatter = "progress";
+                      colDef.formatterParams = {
+                          color: ["#52c41a", "#faad14", "#f5222d"], // Green -> Yellow -> Red
+                          min: 0,
+                          max: 100,
+                          legend: true, // Show value text
+                      };
+                      colDef.width = 180;
+                  }
+                  return colDef;
+                });
+              }
+
+              // 渲染表格
+              const tableDiv = document.querySelector(`#table-${name}`);
+              if (tableDiv) {
+                  const tableInstance = new Tabulator(`#table-${name}`, {
+                    data: tableData,
+                    columns: columns,
+                    layout: "fitColumns",
+                    pagination: "local",
+                    paginationSize: 15,
+                    paginationSizeSelector: [10, 15, 25, 50, 100],
+                    placeholder: "No Data Available",
+                  });
+
+                  // 保存 hotspots 表格实例到全局，以便 Tab 切换时重绘
+                  if (name === 'hotspots') {
+                      window.hotspotsTable = tableInstance;
+                  }
+              }
+            }
+        }
+
+        // 3.2 Initialize System Info Tree
+        const sysInfoContainer = document.getElementById('json-tree-container');
+        if (sysInfoContainer && staticInfoData) {
+          createJsonTree(sysInfoContainer, staticInfoData);
+        }
+
+        // 3.3 Default Tab Activation
+        const defaultTabButton = document.querySelectorAll(".tab-button")[0];
+        if (defaultTabButton) {
+          defaultTabButton.click();
+        }
+
+        // 3.4 Default Filters for sar_cpu
+        const filterContext = reportContext ? reportContext['sar_cpu_filters'] : null;
+        if (filterContext) {
+          const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
+          if (cpuInput && filterContext['CPU']?.values.includes('all')) {
+            cpuInput.value = 'all';
+          }
+          const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
+          if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
+            metricInput.value = '%user,%system';
+          }
+          if (document.getElementById('plot-sar_cpu')) {
+            applyChartFilter('sar_cpu');
+          }
+        }
+      });
     </script>
   </body>
 </html>

@@ -43,5 +43,10 @@ def setup_logging(verbosity: int):
 
     root_logger.addHandler(handler)
 
+    # 屏蔽第三方库的各种啰嗦日志
+    logging.getLogger("markdown_it").setLevel(logging.WARNING)
+    # 屏蔽可能的网络库噪声
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     if verbosity >= 2:
         logging.debug("Debug logging enabled.")
