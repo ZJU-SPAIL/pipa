@@ -132,21 +132,49 @@ def format_rules_to_html_tree(
     df_dict: Dict[str, pd.DataFrame],
     context: Dict[str, Any],
     md: MarkdownIt,
-) -> tuple[str, str]:
-    """将整个规则配置转换为一个树状图HTML和一个结论HTML。"""
+) -> tuple[str, str, str]:
+    """
+    将规则转换为 HTML。
+    返回三个部分: (audit_html, tree_html, findings_html)
+    """
     if not rules_config:
-        return "", ""
+        return "", "", ""
 
+    audit_html_parts = []
     tree_html_parts = []
     findings_html_parts = []
 
-    for root_rule in rules_config:
-        tree_html, findings_html = _format_rule_to_html_list(root_rule, df_dict, context, md)
-        if tree_html:
-            tree_html_parts.append(tree_html)
-        findings_html_parts.append(findings_html)
+    for rule_node in rules_config:
+        # 复用之前的递归生成逻辑
+        li_html, finding_html = _format_rule_to_html_list(rule_node, df_dict, context, md)
 
-    full_tree_html = f'<div class="tree"><ul>{"".join(tree_html_parts)}</ul></div>'
+        # 收集所有的 findings (不管是审计还是诊断，结论都放在下面的大框里)
+        if finding_html:
+            findings_html_parts.append(finding_html)
+
+        # 分离 UI 展示逻辑
+        if rule_node.get("name") == "配置合规性检查":
+            # 审计模块：如果激活了（生成了内容），就单独存起来
+            # 我们去掉外层的 li 包装，直接取内部信息，或者重新包装成一个独立的 div
+            if li_html:
+                # 这里的 li_html 是 <li>...</li>。我们为了 UI 自由度，简单清洗一下
+                # 或者直接原样返回，在模板里用 ul 包裹
+                audit_html_parts.append(li_html)
+        else:
+            # 其他模块（根因分析）：放入决策树
+            if li_html:
+                tree_html_parts.append(li_html)
+
+    # 组装
+    audit_section_html = ""
+    if audit_html_parts:
+        # 给审计模块一个独立的 CSS 类，方便不想显示树状连线时隐藏
+        audit_section_html = f'<div class="audit-panel"><ul>{"".join(audit_html_parts)}</ul></div>'
+
+    tree_section_html = ""
+    if tree_html_parts:
+        tree_section_html = f'<div class="tree"><ul>{"".join(tree_html_parts)}</ul></div>'
+
     full_findings_html = "".join(findings_html_parts)
 
-    return full_tree_html, full_findings_html
+    return audit_section_html, tree_section_html, full_findings_html

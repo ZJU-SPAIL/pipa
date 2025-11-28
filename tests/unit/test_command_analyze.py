@@ -70,7 +70,7 @@ def mock_dependencies(mock_perf_data, mock_sar_data):
 
     mock_load_rules = MagicMock(return_value=([], {}))
     mock_calculate_context = MagicMock(return_value={"num_cpu": 8})
-    mock_format_tree = MagicMock(return_value=("<tree>", "<findings>"))
+    mock_format_tree = MagicMock(return_value=("<audit>", "<tree>", "<findings>"))
 
     mock_template = MagicMock()
     mock_template.render.return_value = "<html>Mocked Report</html>"
@@ -223,7 +223,7 @@ def test_generate_report_writes_html_file(mock_level_dir, tmp_path):
         ),
         patch("src.pipa.commands.analyze.load_rules", return_value=([], {})),
         patch("src.pipa.commands.analyze.build_full_context", return_value={}),
-        patch("src.pipa.commands.analyze.format_rules_to_html_tree", return_value=("", "")),
+        patch("src.pipa.commands.analyze.format_rules_to_html_tree", return_value=("", "", "")),
         patch("src.pipa.report.html_generator.Environment") as mock_env,
     ):
         mock_template = MagicMock()
