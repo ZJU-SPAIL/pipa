@@ -169,5 +169,5 @@ def test_off_cpu_disk_io_path(mock_off_cpu_io_dataframes, mock_static_info, full
     assert "OFF-CPU" in findings_text
     assert "磁盘 I/O 瓶颈" in findings_text
     assert "吞吐量饱和" in findings_text
-    assert "高延迟" in findings_text
+    assert "存在性能瓶颈" in findings_text
     assert "随机 I/O 密集" in findings_text

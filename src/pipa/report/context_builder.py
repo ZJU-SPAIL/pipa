@@ -179,45 +179,65 @@ def build_full_context(
         context["avg_bread_s"] = df_io.get("bread/s", pd.Series(0)).mean()
         context["avg_bwrtn_s"] = df_io.get("bwrtn/s", pd.Series(0)).mean()
 
-    # 处理 Per-Disk 数据 (寻找单点瓶颈 )
+    # 处理 Per-Disk 数据 (寻找单点瓶颈)
     df_disk = df_dict.get("sar_disk")
+
+    # 初始化默认值
     context["max_disk_util"] = 0.0
     context["max_disk_await"] = 0.0
     context["busiest_disk_name"] = "None"
     context["avg_avgrq_sz"] = 0.0
+    context["avg_avgqu_sz"] = 0.0
 
     if df_disk is not None and not df_disk.empty:
-        # 排除 loop 设备和 ram 设备，只看物理盘或 DM 卷
-        # DEV 列是设备名
+        # [DEBUG] 打印列名，确证数据结构，不再盲猜
+        # 你可以在运行 analyze 时加上 -vv 看到这行日志
+        import logging
+
+        log = logging.getLogger(__name__)
+        log.debug(f"DEBUG: sar_disk columns found: {df_disk.columns.tolist()}")
+
+        # 排除干扰项
         valid_disks = df_disk[~df_disk["DEV"].str.contains("loop|ram|zram")]
 
         if not valid_disks.empty:
-            # 计算每块盘在采样期间的平均各项指标
-            # 我们只关心利用率最高的那个盘
+            # 1. 锁定瓶颈盘
             disk_stats = valid_disks.groupby("DEV")[["%util", "await"]].mean()
-
-            # 找到利用率最高的盘
             busiest_dev = disk_stats["%util"].idxmax()
-            max_util = disk_stats.loc[busiest_dev, "%util"]
-            max_await = disk_stats.loc[busiest_dev, "await"]
 
-            context["max_disk_util"] = max_util
-            context["max_disk_await"] = max_await
+            # 提取基础指标
             context["busiest_disk_name"] = busiest_dev
+            context["max_disk_util"] = disk_stats.loc[busiest_dev, "%util"]
+            context["max_disk_await"] = disk_stats.loc[busiest_dev, "await"]
 
-            # === 直接从最忙的盘上取 avgrq-sz/areq-sz ===
-            # 不同的 sar 版本列名可能不同 (avgrq-sz 或 areq-sz)
-            sz_col = None
-            for col in ["avgrq-sz", "areq-sz"]:
-                if col in valid_disks.columns:
-                    sz_col = col
-                    break
+            # 2. 提取瓶颈盘的详细数据
+            busiest_disk_data = valid_disks[valid_disks["DEV"] == busiest_dev]
+            cols = busiest_disk_data.columns
 
-            if sz_col:
-                # 获取该盘的平均扇区数
-                avg_sectors = valid_disks[valid_disks["DEV"] == busiest_dev][sz_col].mean()
-                # 转换为 KB (1 Sector = 512 B = 0.5 KB)
+            # 3. 精准匹配请求大小 (Request Size)
+            # 优先匹配截图中确认存在的 areq-sz
+            if "areq-sz" in cols:
+                avg_sectors = busiest_disk_data["areq-sz"].mean()
                 context["avg_avgrq_sz"] = avg_sectors / 2.0
+            elif "avgrq-sz" in cols:
+                # 兼容旧版 sysstat，显式 fallback
+                avg_sectors = busiest_disk_data["avgrq-sz"].mean()
+                context["avg_avgrq_sz"] = avg_sectors / 2.0
+
+            # 4. 精准匹配队列深度 (Queue Length)
+            # 优先匹配截图中确认存在的 aqu-sz
+            if "aqu-sz" in cols:
+                context["avg_avgqu_sz"] = busiest_disk_data["aqu-sz"].mean()
+            elif "avgqu-sz" in cols:
+                # 兼容旧版 sysstat
+                context["avg_avgqu_sz"] = busiest_disk_data["avgqu-sz"].mean()
+
+            # [DEBUG] 打印提取到的关键值，验证逻辑
+            log.debug(
+                f"DEBUG: Disk Analysis for {busiest_dev} -> "
+                f"Queue(aqu-sz/avgqu-sz): {context['avg_avgqu_sz']:.2f}, "
+                f"ReqSize(KB): {context['avg_avgrq_sz']:.2f}"
+            )
 
     # 处理分页数据：计算交换和页面错误指标
     df_paging = df_dict.get("sar_paging")
