@@ -57,7 +57,9 @@ unit-tests:
       - junit-report.xml
     reports:
       junit: junit-report.xml
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.d+)?\%)$/'
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
