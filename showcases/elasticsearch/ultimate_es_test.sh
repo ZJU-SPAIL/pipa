@@ -13,6 +13,15 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 SHOWCASE_DIR="$SCRIPT_DIR"
 PROJECT_ROOT=$(cd "$SHOWCASE_DIR/../../" && pwd)
 
+# ==================== 安全检查 ====================
+SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
+if [ -f "$SAFETY_GUARD_SCRIPT" ]; then
+    source "$SAFETY_GUARD_SCRIPT"
+else
+    echo "⚠️ 警告: 未找到安全检查脚本: $SAFETY_GUARD_SCRIPT"
+fi
+# =======================================================
+
 # --- 动态文件名生成 ---
 FOLDER_NAME=$(basename "$SHOWCASE_DIR")
 SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"

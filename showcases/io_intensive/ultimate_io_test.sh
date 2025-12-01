@@ -8,6 +8,16 @@ set -o pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
+
+# ==================== 安全检查 ====================
+SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
+if [ -f "$SAFETY_GUARD_SCRIPT" ]; then
+    source "$SAFETY_GUARD_SCRIPT"
+else
+    echo "⚠️ 警告: 未找到安全检查脚本: $SAFETY_GUARD_SCRIPT"
+fi
+# =======================================================
+
 source "$SCRIPT_DIR/env.sh"
 
 # --- 输出定义 ---

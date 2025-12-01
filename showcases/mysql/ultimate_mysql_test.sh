@@ -9,6 +9,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../" && pwd)"
 
+# ==================== 安全检查 ====================
+SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
+if [ -f "$SAFETY_GUARD_SCRIPT" ]; then
+    source "$SAFETY_GUARD_SCRIPT"
+else
+    echo "⚠️ 警告: 未找到安全检查脚本: $SAFETY_GUARD_SCRIPT"
+fi
+# =======================================================
+
 # --- 动态文件名生成 ---
 FOLDER_NAME=$(basename "$SCRIPT_DIR")
 SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
@@ -45,7 +54,7 @@ trap cleanup EXIT
 log "Step 0: Ensuring environment is ready..."
 # 这一步是安全的，因为 setup.sh 内部有幂等性检查。
 # 如果已安装，它会瞬间结束；如果未安装，它会救命。
-$SCRIPT_DIR/setup.sh
+"$SCRIPT_DIR/setup.sh"
 
 # --- 1. 环境准备 ---
 log "Step 1: Preparing MySQL and Sysbench environment..."
