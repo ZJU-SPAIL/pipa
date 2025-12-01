@@ -101,7 +101,7 @@ def extract_hotspots(
 
                 hotspots.append(
                     {
-                        "Overhead": float(overhead),  # 转为数字方便前端排序
+                        "Overhead": round(float(overhead), 2),  # 转为数字方便前端排序,强制保留2位小数，拒绝无限循环
                         "Samples": int(samples),
                         "Process": comm,
                         "Library": dso,
