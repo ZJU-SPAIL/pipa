@@ -1,69 +1,68 @@
-# PIPA (A Pure Performance Snapshot Tool)
+# PIPA (Performance Insight & Profiling Agent)
 
-# PIPA (一款纯粹的性能快照工具)
+**v0.4.0 - Physics-Aware Edition / 物理感知版**
 
-**Pipa is a command-line performance snapshot tool for running systems. It attaches to existing processes and captures a comprehensive, multi-source performance snapshot (`perf`, `sar`, etc.) without disturbing the target application. Its sole purpose is to make complex performance data collection simple, reliable, and repeatable.**
+**Pipa is a non-intrusive, physics-aware performance diagnostic tool for modern Linux systems. It captures comprehensive snapshots (`perf`, `sar`) and uses an expert system to diagnose bottlenecks from the hardware layer up to the code level.**
 
-**Pipa 是一款为正在运行的系统设计的、命令行的性能快照工具。它依附于现有进程，在不干扰目标应用的前提下，捕获一个全面的、多来源的性能快照（`perf`, `sar` 等）。其唯一的目标，就是让复杂的性能数据采集变得简单、可靠、可复现。**
+**Pipa 是一款针对现代 Linux 系统的非侵入式、物理感知型性能诊断工具。它捕获全面的性能快照（`perf`, `sar`），并利用内置专家系统，从硬件层到代码层进行全栈瓶颈诊断。**
 
 ---
 
-## ✨ Core Philosophy / 核心哲学
+## ✨ Key Features / 核心特性
 
-- **Observer, Not an Actor:** Pipa **observes** running systems; it never starts, stops, or manages any process's lifecycle. It is a pure data collector.
-  - **观察者，而非执行者:** Pipa **观察**正在运行的系统；它从不启动、停止或管理任何进程的生命周期。它是一个纯粹的数据采集器。
-- **User in Control:** The user is responsible for the workload. Pipa's job is to provide a high-quality "CT scan" of the system's performance at the exact moment the user needs it.
-  - **用户掌控一切:** 用户对工作负载负责。Pipa 的职责是在用户需要的确切时刻，为系统性能提供一次高质量的“CT 扫描”。
-- **Simplicity by Subtraction:** We achieve simplicity not by adding features, but by ruthlessly removing everything that is not essential to the core mission of performance snapshotting.
-  - **少即是多:** 我们的简洁性并非通过增加功能实现，而是通过无情地移除一切与性能快照这一核心使命无关的东西。
+### 1. 🧠 Physics-Aware Diagnostics (物理感知诊断)
+
+Unlike traditional tools that rely on global averages, Pipa understands the physical reality of hardware:
+与依赖全局平均值的传统工具不同，Pipa 理解硬件的物理现实：
+
+- **Storage:** Distinguishes between **Throughput Saturation** (SSD queue buildup) and **Latency Bottlenecks** (HDD seek time). / 区分吞吐量饱和（SSD 队列积压）与延迟瓶颈（HDD 寻道时间）。
+- **CPU:** Detects single-core saturation even on 128-core systems using **P95 statistical features**, avoiding "average load" blindness. / 利用 P95 统计特征检测 128 核系统上的单核饱和，避免“平均负载”盲区。
+
+### 2. 🔥 Code-Level Profiling (代码级热点)
+
+- **Automated Extraction:** Automatically parses `perf` data to identify top CPU-consuming functions. / 自动解析 `perf` 数据以识别 CPU 消耗最高的函数。
+- **JIT Support:** Full visibility into Java/JVM JIT compiled symbols (e.g., Elasticsearch, Spark). / 完全透视 Java/JVM JIT 编译符号。
+- **Offline Analysis:** Supports `--symfs` for analyzing production snapshots on a developer machine with debug symbols. / 支持 `--symfs`，可在带有调试符号的开发机上分析生产环境快照。
+
+### 3. 🛡️ Configuration Audit (配置合规审计)
+
+- **Pre-flight Check:** Validates if your deployment strategy (e.g., CPU pinning/affinity) is actually effective using `--expected-cpus`. / 使用 `--expected-cpus` 验证部署策略（如 CPU 绑核）是否实际生效。
+- **Leakage Detection:** Identifies noisy neighbors or IRQ misrouting. / 识别嘈杂邻居或中断错误路由。
 
 ---
 
 ## 🚀 Quick Start / 快速入门
 
-### 1. Prerequisites / 先决条件
-
-- A Linux system (ARM or x86)
-- Python 3.9+
-- Core performance tools installed (`perf`, `sysstat` for `sar`)
-
-### 2. Installation / 安装
+### 1. Installation / 安装
 
 ```bash
-# Clone the repository and install dependencies
-git clone <repository_url>
-cd pipa
-pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
+./setup.sh
+source .venv/bin/activate
 ```
 
-### 3. Core Usage / 核心用法
+### 2. Golden Workflow / 黄金工作流
 
-_**Goal:** My application (PID 12345) is running slow. I want to take a performance snapshot to investigate._
-_**目标:** 我的应用（PID 12345）运行缓慢。我想进行一次性能快照以供调查。_
+**Scenario:** Diagnose a slow MySQL instance (PID 12345). / **场景:** 诊断缓慢的 MySQL 实例 (PID 12345)。
 
 ```bash
-# 0. Collect Static Infomation (Recommended once per machine)
+# Step 1: Collect static system info (Once per machine)
 pipa healthcheck
 
-# 1. Attach pipa to the PID and monitor
-#    By default, it runs a 60s macro-scan (stat) + 60s micro-profiling (record).
-pipa sample --attach-to-pid 12345 \
-    --duration-stat 60 \
-    --duration-record 60 \
-    --output my_snapshot.pipa
+# Step 2: Take a snapshot (60s macro-scan + 60s micro-profiling)
+pipa sample --attach-to-pid 12345 --output mysql.pipa
 
-# 2. (Optional) System-wide mode (monitor everything)
-#    pipa sample --system-wide --output system_snapshot.pipa
-
-# 3. Analyze the snapshot and generate the report
-pipa analyze --input my_snapshot.pipa --output report.html
+# Step 3: Analyze and generate report (with config audit)
+# "Verify if MySQL is correctly pinned to cores 0-7"
+pipa analyze --input mysql.pipa --output report.html --expected-cpus "0-7"
 ```
 
 ---
 
-## 📚 Deeper Dive / 深度探索
+## 📚 Documentation / 文档索引
 
-- **[Manual.md](./Manual.md):** Comprehensive user manual and command reference. / 权威使用手册与命令参考。
-- **[DESIGN.md](./DESIGN.md):** The soul and blueprint of pipa. / pipa 的灵魂与蓝图。
-- **[CONTRIBUTING.md](./CONTRIBUTING.md):** Development guide and engineering standards. / 开发指南与工程标准。
-- **[ROADMAP.md](./ROADMAP.md):** Future plans and milestones. / 未来计划与里程碑。
+- **[Manual.md](./Manual.md):** The definitive user guide and command reference. / 权威使用手册与命令参考。
+- **[DESIGN.md](./DESIGN.md):** Architecture and design philosophy. / 架构与设计哲学。
+
+---
+
+> _Built for high-concurrency, many-core environments (Kunpeng/ARM64 & x86_64)._
