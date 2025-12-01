@@ -1007,7 +1007,13 @@
                               map.set(key, newRow);
                           }
                       });
-                      return Array.from(map.values()).sort((a, b) => b.Overhead - a.Overhead);
+                      const result = Array.from(map.values()).map(item => {
+                            // 注意：toFixed 返回字符串，如果要用进度条排序，最好转回 float
+                            // 但 Tabulator 的 sorter 能够处理数字字符串，或者我们显式 parseFloat
+                            item.Overhead = parseFloat(item.Overhead.toFixed(2));
+                            return item;
+                        });
+                      return result.sort((a, b) => b.Overhead - a.Overhead);
                   };
 
                   // 2. 准备两份数据
