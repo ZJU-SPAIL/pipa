@@ -883,6 +883,16 @@
             } else if (sourceProperty === "legendgroup" && key === "METRIC") {
               traceValue = String(traceValueRaw).split(', ').slice(1).join(', ');
             }
+            // [FIX] 针对 DEV 筛选的特殊逻辑
+            // 如果筛选的是 DEV (磁盘/网卡)，且图例是复合的 (e.g., "await, sde1")
+            // 我们需要把设备名拆出来单独匹配
+            else if (key.toUpperCase() === 'DEV' && typeof traceValueRaw === 'string' && traceValueRaw.includes(',')) {
+              // 假设格式总是 "Metric, Device"
+              const parts = traceValueRaw.split(',').map(p => p.trim());
+              if (parts.length > 1) {
+                traceValue = parts[1]; // 只取第二部分 (设备名)
+              }
+            }
             if (traceValue === undefined) continue;
 
             const traceValueStr = String(traceValue).toLowerCase();
