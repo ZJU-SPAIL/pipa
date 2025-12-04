@@ -123,15 +123,9 @@ else
     log "Waiting for MySQL to fully initialize system tables..."
     sleep 5
 
-    # 设置密码
-    log "Setting root password..."
-    "$MYSQL_INSTALL_DIR/bin/mysql" -u root --socket="$MYSQL_SOCKET_PATH" <<-EOF
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-EOF
-
     # 强制重建数据库（使用密码）
     log "Dropping and recreating sbtest database..."
-    "$MYSQL_INSTALL_DIR/bin/mysql" -u root -p"${MYSQL_ROOT_PASSWORD}" --socket="$MYSQL_SOCKET_PATH" <<-EOF
+    "$MYSQL_INSTALL_DIR/bin/mysql" -u root --socket="$MYSQL_SOCKET_PATH" <<-EOF
 DROP DATABASE IF EXISTS sbtest;
 CREATE DATABASE sbtest;
 EOF
@@ -139,7 +133,7 @@ EOF
     log "Preparing sysbench data (fresh database)..."
     LD_LIBRARY_PATH="$MYSQL_INSTALL_DIR/lib" "$SYSBENCH_INSTALL_DIR/bin/sysbench" \
         "$SYSBENCH_LUA_SCRIPT_PATH" \
-        --mysql-host=127.0.0.1 --mysql-port=${MYSQL_PORT} --mysql-user=root --mysql-password="$MYSQL_ROOT_PASSWORD" \
+        --mysql-host=127.0.0.1 --mysql-port=${MYSQL_PORT} --mysql-user=root \
         --mysql-db=sbtest --tables="$SYSBENCH_TABLES" --table-size="$SYSBENCH_TABLE_SIZE" \
         prepare
 

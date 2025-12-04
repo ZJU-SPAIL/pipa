@@ -5,6 +5,14 @@
 """
 
 from pathlib import Path
+from typing import Union
+
+import pandas as pd
+
+
+def p95(x: Union[pd.Series, pd.DataFrame]) -> Union[float, pd.Series]:
+    """计算 Series 或 DataFrame 的 P95 (第95百分位点)。"""
+    return x.quantile(0.95)
 
 
 def get_project_root() -> Path:

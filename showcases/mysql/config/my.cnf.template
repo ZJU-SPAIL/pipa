@@ -11,7 +11,13 @@ socket    = ${MYSQL_SOCKET_PATH}
 pid-file = ${MYSQL_PID_PATH}
 log-error = ${MYSQL_LOGS_DIR}/error.log
 bind-address = 127.0.0.1
-innodb_buffer_pool_size=1G
-innodb_log_file_size=256M
-max_connections = 1024
-max_prepared_stmt_count = 1000000
+
+# --- 动态性能参数 ---
+innodb_buffer_pool_size=${MYSQL_BUFF_POOL}
+innodb_log_file_size=${MYSQL_LOG_SIZE}
+innodb_io_capacity=${MYSQL_IO_CAPACITY}
+innodb_flush_log_at_trx_commit=${INNODB_FLUSH_TRX}
+sync_binlog=${INNODB_SYNC_BINLOG}
+innodb_flush_method=${INNODB_FLUSH_METHOD}
+max_connections=${MYSQL_MAX_CONNECTIONS}
+max_prepared_stmt_count=1048576

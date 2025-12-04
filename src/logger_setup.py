@@ -43,10 +43,11 @@ def setup_logging(verbosity: int):
 
     root_logger.addHandler(handler)
 
-    # 屏蔽第三方库的各种啰嗦日志
+    # 屏蔽第三方库和已稳定的模块
     logging.getLogger("markdown_it").setLevel(logging.WARNING)
-    # 屏蔽可能的网络库噪声
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("src.pipa.report.cluster_analyzer").setLevel(logging.WARNING)  # 完全关闭 CPU 集群分析日志
+    logging.getLogger("src.pipa.commands.analyze").setLevel(logging.INFO)  # 关闭 analyze 命令的 DEBUG 日志
 
     if verbosity >= 2:
         logging.debug("Debug logging enabled.")

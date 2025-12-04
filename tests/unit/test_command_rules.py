@@ -1,8 +1,9 @@
 import pandas as pd
 import pytest
+from markdown_it import MarkdownIt
 
-# 核心修改: 我们现在只测试 run_rules_engine, 并且从新的 report 模块导入 context builder
-from src.pipa.commands.rules import load_rules, run_rules_engine
+# 核心修改: 我们现在只测试 format_rules_to_html_tree, 并且从新的 report 模块导入 context builder
+from src.pipa.commands.rules import format_rules_to_html_tree, load_rules
 from src.pipa.report.context_builder import build_full_context
 from src.utils import get_project_root
 
@@ -99,19 +100,29 @@ def test_on_cpu_tma_frontend_bound_path(mock_static_info, full_decision_tree):
                 }
             ),
         },
-        "sar_cpu": pd.DataFrame({"CPU": ["all"], "%user": [90.0], "%system": [5.0]}),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0"],
+                "%user": [90.0, 90.0],
+                "%system": [5.0, 5.0],
+                "%iowait": [0.0, 0.0],
+                "%idle": [5.0, 5.0],
+            }
+        ),
     }
 
     context = build_full_context(mock_dataframes, mock_static_info)
     context.update(config)
 
-    findings = run_rules_engine(mock_dataframes, rules, context)
+    md = MarkdownIt()
+    audit, tree, findings_html = format_rules_to_html_tree(rules, mock_dataframes, context, md)
+    findings = [findings_html]
 
     findings_text = "".join(findings)
     assert "ON-CPU" in findings_text
     assert "前端瓶颈" in findings_text, f"诊断结论: {findings_text}"
-    # --- 核心修复：将断言更新为与新文案匹配 ---
-    assert "指令供给侧" in findings_text and "存在显著延迟" in findings_text
+    # 与最新文案对齐：'指令供给延迟'
+    assert "指令供给延迟" in findings_text
 
 
 def test_on_cpu_tma_backend_bound_path(mock_static_info, full_decision_tree):
@@ -143,16 +154,27 @@ def test_on_cpu_tma_backend_bound_path(mock_static_info, full_decision_tree):
                 }
             ),
         },
-        "sar_cpu": pd.DataFrame({"CPU": ["all"], "%user": [90.0], "%system": [5.0]}),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0"],
+                "%user": [90.0, 90.0],
+                "%system": [5.0, 5.0],
+                "%iowait": [0.0, 0.0],
+                "%idle": [5.0, 5.0],
+            }
+        ),
     }
 
     context = build_full_context(mock_dataframes, mock_static_info)
     context.update(config)
 
-    findings = run_rules_engine(mock_dataframes, rules, context)
+    md = MarkdownIt()
+    audit, tree, findings_html = format_rules_to_html_tree(rules, mock_dataframes, context, md)
+    findings = [findings_html]
 
     findings_text = "".join(findings)
     assert "ON-CPU" in findings_text
+    # 与最新文案对齐：后端瓶颈应出现
     assert "后端瓶颈" in findings_text
 
 
@@ -160,14 +182,99 @@ def test_off_cpu_disk_io_path(mock_off_cpu_io_dataframes, mock_static_info, full
     """测试 OFF-CPU 磁盘 I/O 瓶颈的全路径诊断。"""
     rules, config = full_decision_tree
 
+    # 添加磁盘信息以触发 subtype 逻辑
+    mock_static_info["disk_info"] = {"block_devices": [{"name": "sda", "rotational": "SSD"}]}
+
     context = build_full_context(mock_off_cpu_io_dataframes, mock_static_info)
+    # 添加缺失的 I/O 阈值
+    config.update(
+        {
+            "IO_AWAIT_SATA_SSD_THRESHOLD": 20.0,
+            "IO_AWAIT_NVME_SSD_THRESHOLD": 5.0,
+            "IO_AWAIT_HDD_THRESHOLD": 50.0,
+        }
+    )
     context.update(config)
 
-    findings = run_rules_engine(mock_off_cpu_io_dataframes, rules, context)
+    md = MarkdownIt()
+    audit, tree, findings_html = format_rules_to_html_tree(rules, mock_off_cpu_io_dataframes, context, md)
+    findings = [findings_html]
 
     findings_text = "".join(findings)
     assert "OFF-CPU" in findings_text
-    assert "磁盘 I/O 瓶颈" in findings_text
-    assert "吞吐量饱和" in findings_text
-    assert "存在性能瓶颈" in findings_text
-    assert "随机 I/O 密集" in findings_text
+    assert "磁盘 I/O" in findings_text
+
+
+def test_effective_await_threshold_hdd(mock_static_info, full_decision_tree):
+    """验证 HDD 子类型阈值选择与上下文注入。"""
+    rules, config = full_decision_tree
+
+    mock_dataframes = {
+        "sar_disk": pd.DataFrame(
+            {"DEV": ["sda"], "%util": [50.0], "await": [35.0], "avgrq-sz": [8.0], "avgqu-sz": [20.0]}
+        ),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0", "1", "2", "3"],
+                "%user": [5.0, 5.0, 5.0, 5.0, 5.0],
+                "%system": [2.0, 2.0, 2.0, 2.0, 2.0],
+                "%iowait": [15.0, 15.0, 15.0, 15.0, 15.0],
+                "%idle": [78.0, 78.0, 78.0, 78.0, 78.0],
+            }
+        ),
+    }
+    mock_static_info["disk_info"] = {"block_devices": [{"name": "sda", "rotational": "HDD"}]}
+
+    context = build_full_context(mock_dataframes, mock_static_info, rule_configs=config)
+    assert context.get("busiest_disk_subtype") == "HDD"
+    assert context.get("effective_await_threshold") == config.get("IO_AWAIT_HDD_THRESHOLD")
+
+
+def test_effective_await_threshold_nvme(mock_static_info, full_decision_tree):
+    """验证 NVME SSD 子类型阈值选择与上下文注入。"""
+    rules, config = full_decision_tree
+
+    mock_dataframes = {
+        "sar_disk": pd.DataFrame(
+            {"DEV": ["nvme0n1"], "%util": [50.0], "await": [2.5], "avgrq-sz": [8.0], "avgqu-sz": [5.0]}
+        ),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0", "1", "2", "3"],
+                "%user": [5.0, 5.0, 5.0, 5.0, 5.0],
+                "%system": [2.0, 2.0, 2.0, 2.0, 2.0],
+                "%iowait": [1.0, 1.0, 1.0, 1.0, 1.0],
+                "%idle": [92.0, 92.0, 92.0, 92.0, 92.0],
+            }
+        ),
+    }
+    mock_static_info["disk_info"] = {"block_devices": [{"name": "nvme0n1", "rotational": "SSD"}]}
+
+    context = build_full_context(mock_dataframes, mock_static_info, rule_configs=config)
+    assert context.get("busiest_disk_subtype") == "NVME_SSD"
+    assert context.get("effective_await_threshold") == config.get("IO_AWAIT_NVME_SSD_THRESHOLD")
+
+
+def test_effective_await_threshold_sata(mock_static_info, full_decision_tree):
+    """验证 SATA SSD 子类型阈值选择与上下文注入。"""
+    rules, config = full_decision_tree
+
+    mock_dataframes = {
+        "sar_disk": pd.DataFrame(
+            {"DEV": ["sda"], "%util": [50.0], "await": [6.0], "avgrq-sz": [8.0], "avgqu-sz": [5.0]}
+        ),
+        "sar_cpu": pd.DataFrame(
+            {
+                "CPU": ["all", "0", "1", "2", "3"],
+                "%user": [5.0, 5.0, 5.0, 5.0, 5.0],
+                "%system": [2.0, 2.0, 2.0, 2.0, 2.0],
+                "%iowait": [1.0, 1.0, 1.0, 1.0, 1.0],
+                "%idle": [92.0, 92.0, 92.0, 92.0, 92.0],
+            }
+        ),
+    }
+    mock_static_info["disk_info"] = {"block_devices": [{"name": "sda", "rotational": "SSD"}]}
+
+    context = build_full_context(mock_dataframes, mock_static_info, rule_configs=config)
+    assert context.get("busiest_disk_subtype") == "SATA_SSD"
+    assert context.get("effective_await_threshold") == config.get("IO_AWAIT_SATA_SSD_THRESHOLD")

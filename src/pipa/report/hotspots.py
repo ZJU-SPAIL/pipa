@@ -54,11 +54,23 @@ def extract_hotspots(
         # === DEBUG 核心：把 perf report 的原始输出打印出来 ===
         result = subprocess.run(cmd, capture_output=True, text=True, check=False, env={"LC_ALL": "C"})
         if log.isEnabledFor(logging.DEBUG):
-            log.debug("--- [DEBUG] Raw Perf Report Output (Stdout) ---")
-            log.debug(result.stdout[:2000] + "..." if len(result.stdout) > 2000 else result.stdout)
+            # 只显示前几行有用的信息，避免显示分隔符等乱七八糟的内容
+            lines = result.stdout.split("\n")[:10]  # 只取前10行
+            useful_lines = [
+                line
+                for line in lines
+                if line.strip() and not line.startswith(".") and not line.startswith("#") and "Overhead" not in line
+            ]
+            if useful_lines:
+                log.debug("--- [DEBUG] Perf Report Summary ---")
+                for line in useful_lines[:5]:  # 只显示前5行有用信息
+                    log.debug(f"  {line.strip()}")
             if result.stderr:
-                log.debug("--- [DEBUG] Raw Perf Report Error (Stderr) ---")
-                log.debug(result.stderr)
+                log.debug("--- [DEBUG] Perf Report Warnings ---")
+                # 只显示警告信息，不显示完整的stderr
+                for line in result.stderr.split("\n"):
+                    if "Warning" in line or "lost" in line:
+                        log.debug(f"  {line.strip()}")
         # ========================================================
 
         if result.returncode != 0:

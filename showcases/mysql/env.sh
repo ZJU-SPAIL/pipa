@@ -2,13 +2,9 @@
 
 # =================================================================
 # Pipa Showcase: MySQL - 环境配置文件
-# 这是本案例的“单一事实来源”(Single Source of Truth)。
-# 在运行任何脚本之前，请先 source 此文件: `source showcases/mysql/env.sh`
 # =================================================================
 
 # --- 用户可配置区域 ---
-# 警告: 请务必修改此密码
-export MYSQL_ROOT_PASSWORD="your_secure_password"
 export MYSQL_PORT=3307
 
 # --- 核心路径定义 ---
@@ -29,6 +25,28 @@ export MYSQL_SOCKET_PATH="$MYSQL_DATA_DIR/mysql.sock"
 export MYSQL_PID_PATH="$MYSQL_LOGS_DIR/mysqldb.pid"
 
 # --- 压测参数 ---
-export SYSBENCH_LUA_SCRIPT_PATH="$SYSBENCH_INSTALL_DIR/share/sysbench/oltp_read_write.lua"
-export SYSBENCH_TABLES=8  # 注意: 12+ 会触发 Sysbench 1.0.20 的表重复创建 bug
-export SYSBENCH_TABLE_SIZE=1000000
+# 1. 定义 Lua 脚本所在的目录 (Directory)
+export SYSBENCH_LUA_DIR="$SYSBENCH_INSTALL_DIR/share/sysbench"
+# 2. 定义默认的脚本名称 (Name Only)
+export SYSBENCH_LUA=${SYSBENCH_LUA:-"oltp_read_write"}
+export SYSBENCH_TABLES=8
+# 锁定为 500万行 (约 1.2GB 数据)，生成一次，永久使用
+export SYSBENCH_TABLE_SIZE=5000000
+
+# --- Default Fallbacks (全局默认值) ---
+# 1. MySQL 配置默认值
+export MYSQL_BUFF_POOL=${MYSQL_BUFF_POOL:-"128M"}
+export MYSQL_IO_CAPACITY=${MYSQL_IO_CAPACITY:-"2000"}
+# === 锁死: 全局统一 4G 日志，方便数据复用 ===
+export MYSQL_LOG_SIZE=${MYSQL_LOG_SIZE:-"4G"}
+export MYSQL_MAX_CONNECTIONS=${MYSQL_MAX_CONNECTIONS:-"2000"} # 必须足够大
+export INNODB_FLUSH_TRX=${INNODB_FLUSH_TRX:-"1"}
+export INNODB_SYNC_BINLOG=${INNODB_SYNC_BINLOG:-"1"}
+export INNODB_FLUSH_METHOD=${INNODB_FLUSH_METHOD:-"O_DIRECT"}
+
+# 2. CPU 亲和性默认值 (显式优于隐式)
+# 默认: MySQL 用前一半核，Sysbench 用后一半核 (由 nproc 动态计算，作为兜底)
+TOTAL_CORES=$(nproc)
+HALF_CORES=$((TOTAL_CORES / 2))
+export MYSQL_CPU_AFFINITY=${MYSQL_CPU_AFFINITY:-"0-$((HALF_CORES - 1))"}
+export SYSBENCH_CPU_AFFINITY=${SYSBENCH_CPU_AFFINITY:-"$HALF_CORES-$((TOTAL_CORES - 1))"}
