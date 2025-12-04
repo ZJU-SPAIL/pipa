@@ -23,3 +23,5 @@ report_universal_*.html
 *_flamegraph.svg
 *_report.html
 build
+results
+evidence/

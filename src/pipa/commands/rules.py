@@ -1,4 +1,6 @@
+import keyword
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -19,62 +21,47 @@ def load_rules(rules_path: Path) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
     return data.get("rules", []), data.get("config", {})
 
 
-def _evaluate_node(
-    rule_node: Dict[str, Any], df_dict: Dict[str, pd.DataFrame], context: Dict[str, Any], findings: List[str]
-):
-    """递归地评估一个规则节点及其子节点 (用于提取纯文本 findings)。"""
-    try:
-        precondition_met = eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context})
-        if not precondition_met:
-            return
-
-        if "finding" in rule_node:
-            finding = rule_node["finding"].format(**context)
-            # 过滤掉为了结构存在但不需要显示的空 finding
-            if finding.strip():
-                findings.append(finding)
-
-        for sub_rule in rule_node.get("sub_rules", []):
-            _evaluate_node(sub_rule, df_dict, context, findings)
-
-    except Exception as e:
-        log.debug(f"评估规则 '{rule_node.get('name', 'Unnamed')}' 时出错: {e}")
-
-
-def run_rules_engine(
-    df_dict: Dict[str, pd.DataFrame], rules_config: List[Dict[str, Any]], context: Dict[str, Any]
-) -> List[str]:
-    """在一个 DataFrame 字典上执行一组层次化的规则。"""
-    findings: List[str] = []
-    if not df_dict or not rules_config:
-        return findings
-
-    for root_rule in rules_config:
-        _evaluate_node(root_rule, df_dict, context, findings)
-
-    return findings
-
-
 def _format_rule_to_html_list(
     rule_node: Dict[str, Any],
     df_dict: Dict[str, pd.DataFrame],
     context: Dict[str, Any],
     md: MarkdownIt,
     parent_is_active: bool = True,
+    depth: int = 0,  # [DEBUG] 增加深度用于日志缩进
 ) -> tuple[str, str]:
     """
     递归地将节点转换为HTML <li>，并单独返回其finding HTML。
-    实现了“剪枝”逻辑：未激活的分支将完全不渲染，只展示案发现场。
+    [DEBUG] 增加了详细的日志记录。
     """
-    # 1. 计算当前节点的激活状态
+    indent = "  " * depth
+    rule_name = rule_node.get("name", "Unnamed")
+    precondition = rule_node.get("precondition", "True")
+
+    # === [DEBUG] 打印当前节点信息 ===
+    log.debug(f"{indent}🔎 Evaluating Node: '{rule_name}'")
+    log.debug(f"{indent}   Condition: {precondition}")
+
     is_self_condition_met = False
     try:
-        if eval(rule_node["precondition"], {"pd": pd}, {"df": df_dict, **context}):
-            is_self_condition_met = True
-    except Exception:
-        pass
+        # 在 eval 之前，打印出所有相关变量的值
+        # 为了避免刷屏，只打印 precondition 中出现的变量
 
-    # 真正的激活状态 = 父节点激活 AND 自己条件满足
+        variables_in_precondition = re.findall(r"\b([a-zA-Z_]\w*)\b", precondition)
+        # 过滤掉 Python 关键字，只保留实际的上下文变量
+        actual_variables = [v for v in variables_in_precondition if v not in keyword.kwlist]
+        relevant_context = {k: context.get(k, "Not Found") for k in set(actual_variables)}
+        log.debug(f"{indent}   Context Vars: {relevant_context}")
+
+        result = eval(precondition, {"pd": pd}, {"df": df_dict, **context})
+        if result:
+            is_self_condition_met = True
+
+        # === [DEBUG] 打印评估结果 ===
+        log.debug(f"{indent}   ▶️ Result: {is_self_condition_met}")
+
+    except Exception as e:
+        log.debug(f"{indent}   ❌ Error evaluating condition: {e}")
+
     is_truly_active = parent_is_active and is_self_condition_met
 
     # === 核心修改：剪枝逻辑 (Pruning) ===
@@ -83,6 +70,7 @@ def _format_rule_to_html_list(
     is_root = rule_node.get("name") == "PIPA 根因分析"
 
     if not is_truly_active and not is_root:
+        log.debug(f"{indent}   ✂️ Pruning branch (inactive).")
         return "", ""
 
     # 2. 生成 Finding HTML (结论文本框)
@@ -91,6 +79,7 @@ def _format_rule_to_html_list(
         try:
             formatted_finding = finding_template.format(**context)
             if formatted_finding.strip():
+                log.info(f"{indent}✅ FINDING TRIGGERED: '{rule_name}'")  # 用 INFO 级别高亮显示命中的结论
                 finding_html = f"<div class='finding-box'>{md.render(formatted_finding)}</div>"
         except KeyError as e:
             finding_html = f"<div class='finding-box error'>数据缺失: {e}</div>"
@@ -106,9 +95,10 @@ def _format_rule_to_html_list(
     child_lis = []
 
     if sub_rules := rule_node.get("sub_rules"):
+        log.debug(f"{indent}   Descending into sub-rules...")
         for sub_rule in sub_rules:
             sub_li_html, sub_finding_html = _format_rule_to_html_list(
-                sub_rule, df_dict, context, md, parent_is_active=is_truly_active
+                sub_rule, df_dict, context, md, parent_is_active=is_truly_active, depth=depth + 1
             )
             # 只有当子节点有内容（未被剪枝）时才添加
             if sub_li_html:
