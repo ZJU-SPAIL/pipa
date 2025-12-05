@@ -9,6 +9,12 @@ set -o pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
 
+# --- 日志函数（必须先定义）---
+log() {
+    echo ""
+    echo "--- [UltimateTest-Redis] $1 ---"
+}
+
 # ==================== 安全检查 ====================
 SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
 if [ -f "$SAFETY_GUARD_SCRIPT" ]; then
@@ -20,20 +26,19 @@ fi
 
 source "$SCRIPT_DIR/env.sh"
 
-# --- 动态文件名生成 ---
-FOLDER_NAME=$(basename "$SCRIPT_DIR")
-SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
-REPORT_FILE="${FOLDER_NAME}_report.html"
-FLAMEGRAPH_FILE="${FOLDER_NAME}_flamegraph.svg"
-
 # --- Pipa 环境校验 ---
 VENV_PATH="$PROJECT_ROOT/.venv"
 PIPA_CMD="$VENV_PATH/bin/pipa"
 
-log() {
-    echo ""
-    echo "--- [UltimateTest-Redis] $1 ---"
-}
+# --- Evidence 目录与场景定义 ---
+SCENARIO="redis_benchmark"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+EVIDENCE_DIR="$PROJECT_ROOT/evidence/${TIMESTAMP}_${SCENARIO}"
+mkdir -p "$EVIDENCE_DIR"
+log "📂 Evidence Directory: $EVIDENCE_DIR"
+
+# --- 动态文件名生成 ---
+FOLDER_NAME=$(basename "$SCRIPT_DIR")
 
 if [ ! -x "$PIPA_CMD" ]; then
     log "❌ 致命错误: Pipa 命令未在 '$PIPA_CMD' 找到或不可执行。"
@@ -68,9 +73,9 @@ log "   -> Redis 已运行, PID: ${REDIS_PID}"
 
 # --- 步骤 3: 启动负载 ---
 log "步骤 3: 在后台启动 redis-benchmark 负载..."
-"$SCRIPT_DIR/run_load.sh" > /dev/null 2>&1 &
+"$SCRIPT_DIR/run_load.sh" > "$EVIDENCE_DIR/benchmark.log" 2>&1 &
 LOAD_PID=$!
-log "   -> redis-benchmark 已在后台启动 (PID: ${LOAD_PID}). 等待 5 秒以稳定负载..."
+log "   -> redis-benchmark 已在后台启动 (PID: ${LOAD_PID}). 日志: benchmark.log"
 sleep 5
 
 # --- 步骤 4: 执行 Pipa 标准快照 ---
@@ -79,31 +84,40 @@ $PIPA_CMD sample \
     --attach-to-pid "${REDIS_PID}" \
     --duration-stat "${DURATION_STAT}" \
     --duration-record "${DURATION_RECORD}" \
-    --output "${SNAPSHOT_FILE}"
+    --output "$EVIDENCE_DIR/snapshot.pipa"
 
-log "   -> 快照捕获完成: ${SNAPSHOT_FILE}"
+log "   -> 快照捕获完成。"
 
 # --- 动态构建预期 CPU 列表 ---
 # 直接引用 env.sh 中的变量，实现完全动态
-EXPECTED_CPUS="${REDIS_CPU_AFFINITY},${BENCHMARK_CPU_AFFINITY}"
+# 只关注 Redis Server (严格服务端审计，剔除 Benchmark)
+EXPECTED_CPUS="${REDIS_CPU_AFFINITY}"
 log "   -> 预期活跃 CPU 列表 (用于审计): ${EXPECTED_CPUS}"
 
 # --- 步骤 5: 分析快照并生成报告 ---
 log "步骤 5a: 分析快照并生成报告 (含合规性检查)..."
 # 新增 --expected-cpus 参数
 $PIPA_CMD analyze \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}" \
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/report.html" \
     --expected-cpus "${EXPECTED_CPUS}"
 
 log "步骤 5b: 生成火焰图..."
 $PIPA_CMD flamegraph \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${FLAMEGRAPH_FILE}"
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/flamegraph.svg"
+
+# --- 步骤 6: 配置留痕 ---
+log "步骤 6: 配置留痕..."
+cp "$SCRIPT_DIR/env.sh" "$EVIDENCE_DIR/env_snapshot.sh"
+if [ -f "$REDIS_CONF_PATH" ]; then
+    cp "$REDIS_CONF_PATH" "$EVIDENCE_DIR/actual_redis.conf"
+fi
 
 echo ""
 echo "====================================================="
 echo "✅ REDIS 终极测试完成!"
-echo "➡️  分析报告已生成: ${REPORT_FILE}"
-echo "➡️  火焰图已生成: ${FLAMEGRAPH_FILE}"
+echo "📂 证据已归档至: $EVIDENCE_DIR"
+echo "➡️  分析报告: report.html"
+echo "➡️  火焰图: flamegraph.svg"
 echo "====================================================="

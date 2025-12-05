@@ -7,13 +7,15 @@ set -o pipefail
 # 职责: 编排一次完整的、可重复的 Nginx 性能分析实验。
 # =================================================================
 
-# --- 核心配置区 (可从 env.sh 覆盖) ---
-DURATION_STAT=${DURATION_STAT:-60}
-DURATION_RECORD=${DURATION_RECORD:-60}
-
 # --- 脚本初始化 ---
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
+
+# --- 日志函数（必须先定义）---
+log() {
+    echo ""
+    echo "--- [UltimateTest-Nginx] $1 ---"
+}
 
 # ==================== 安全检查 ====================
 SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
@@ -24,22 +26,23 @@ else
 fi
 # =======================================================
 
+# --- 核心配置区 (可从 env.sh 覆盖) ---
+DURATION_STAT=${DURATION_STAT:-60}
+DURATION_RECORD=${DURATION_RECORD:-60}
+
 source "$SCRIPT_DIR/env.sh"
 
-# --- 动态文件名生成 ---
-FOLDER_NAME=$(basename "$SCRIPT_DIR")
-SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
-REPORT_FILE="${FOLDER_NAME}_report.html"
-FLAMEGRAPH_FILE="${FOLDER_NAME}_flamegraph.svg"
+# --- Evidence 目录与场景定义 ---
+SCENARIO="nginx_high_compression"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+EVIDENCE_DIR="$PROJECT_ROOT/evidence/${TIMESTAMP}_${SCENARIO}"
+mkdir -p "$EVIDENCE_DIR"
+log "📂 Evidence Directory: $EVIDENCE_DIR"
 
 # --- Pipa 环境校验 ---
 VENV_PATH="$PROJECT_ROOT/.venv"
 PIPA_CMD="$VENV_PATH/bin/pipa"
 
-log() {
-    echo ""
-    echo "--- [UltimateTest-Nginx] $1 ---"
-}
 
 if [ ! -x "$PIPA_CMD" ]; then
     log "❌ 致命错误: Pipa 命令未在 '$PIPA_CMD' 找到或不可执行。"
@@ -78,10 +81,10 @@ log "   -> Nginx worker 进程已运行, PIDs: ${NGINX_PIDS}"
 
 # --- 步骤 3: 启动负载 ---
 log "步骤 3: 启动 WRK 负载..."
-# 在后台启动一个持续时间足够长的负载
-"$SCRIPT_DIR/run_load.sh" &
+# 在后台启动一个持续时间足够长的负载，日志重定向到 Evidence
+"$SCRIPT_DIR/run_load.sh" > "$EVIDENCE_DIR/wrk_load.log" 2>&1 &
 WRK_PID=$!
-log "   -> WRK 已在后台启动 (PID: ${WRK_PID}). 等待 5 秒以稳定负载..."
+log "   -> WRK 已在后台启动 (PID: ${WRK_PID}). 日志: wrk_load.log"
 sleep 5
 
 # --- 步骤 4: 执行 Pipa 标准快照 ---
@@ -90,30 +93,37 @@ $PIPA_CMD sample \
     --attach-to-pid "${NGINX_PIDS}" \
     --duration-stat "${DURATION_STAT}" \
     --duration-record "${DURATION_RECORD}" \
-    --output "${SNAPSHOT_FILE}"
+    --output "$EVIDENCE_DIR/snapshot.pipa"
 
-log "   -> 快照捕获完成: ${SNAPSHOT_FILE}"
+log "   -> 快照捕获完成。"
 
-# --- 动态构建预期 CPU 列表 ---
-EXPECTED_CPUS="${NGINX_CPU_AFFINITY},${WRK_CPU_AFFINITY}"
+# 只关注 Nginx Worker 的核心（严格服务端审计，剔除 WRK）
+EXPECTED_CPUS="${NGINX_CPU_AFFINITY}"
 log "   -> 预期活跃 CPU 列表 (用于审计): ${EXPECTED_CPUS}"
 
-# --- 步骤 4: 自动分析并生成报告 ---
-
+# --- 步骤 4a: 分析快照并生成报告 ---
 log "步骤 4a: 分析快照并生成报告..."
 $PIPA_CMD analyze \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}" \
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/report.html" \
     --expected-cpus "${EXPECTED_CPUS}"
 
 log "步骤 4b: 生成火焰图..."
 $PIPA_CMD flamegraph \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${FLAMEGRAPH_FILE}"
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/flamegraph.svg"
+
+# --- 步骤 5: 配置留痕 ---
+log "步骤 5: 配置留痕..."
+cp "$SCRIPT_DIR/env.sh" "$EVIDENCE_DIR/env_snapshot.sh"
+if [ -f "$NGINX_CONF_PATH" ]; then
+    cp "$NGINX_CONF_PATH" "$EVIDENCE_DIR/actual_nginx.conf"
+fi
 
 echo ""
 echo "====================================================="
 echo "✅ PIPA 性能收集与分析完成!"
-echo "➡️  分析报告已生成: ${REPORT_FILE}"
-echo "➡️  火焰图已生成: ${FLAMEGRAPH_FILE}"
+echo "📂 证据已归档至: $EVIDENCE_DIR"
+echo "➡️  分析报告: report.html"
+echo "➡️  火焰图: flamegraph.svg"
 echo "====================================================="
