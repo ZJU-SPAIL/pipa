@@ -2,16 +2,16 @@
 set -e
 set -o pipefail
 
-# --- 核心配置区 ---
-# 魔改: 只跑 60s + 60s
-DURATION_STAT=60
-DURATION_RECORD=60
-ESRALLY_PROBE_TIMEOUT=1200 # 最长等待 5 分钟
-
 # --- 脚本初始化 ---
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 SHOWCASE_DIR="$SCRIPT_DIR"
 PROJECT_ROOT=$(cd "$SHOWCASE_DIR/../../" && pwd)
+
+# --- 日志函数（必须先定义）---
+log() {
+    echo ""
+    echo "--- [UltimateTest-ES] $1 ---"
+}
 
 # ==================== 安全检查 ====================
 SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
@@ -22,20 +22,24 @@ else
 fi
 # =======================================================
 
+# --- 核心配置区 ---
+# 魔改: 只跑 60s + 60s
+DURATION_STAT=60
+DURATION_RECORD=60
+ESRALLY_PROBE_TIMEOUT=1200 # 最长等待 5 分钟
+
+# --- Evidence 目录与场景定义 ---
+SCENARIO="es_geonames_race"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+EVIDENCE_DIR="$PROJECT_ROOT/evidence/${TIMESTAMP}_${SCENARIO}"
+mkdir -p "$EVIDENCE_DIR"
+
 # --- 动态文件名生成 ---
 FOLDER_NAME=$(basename "$SHOWCASE_DIR")
-SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
-REPORT_FILE="${FOLDER_NAME}_report.html"
-FLAMEGRAPH_FILE="${FOLDER_NAME}_flamegraph.svg"
 
 # --- Pipa 环境校验 ---
 VENV_PATH="$PROJECT_ROOT/.venv"
 PIPA_CMD="$VENV_PATH/bin/pipa"
-
-log() {
-    echo ""
-    echo "--- [UltimateTest-ES] $1 ---"
-}
 
 if [ ! -x "$PIPA_CMD" ]; then
     log "❌ 致命错误: Pipa 命令未在 '$PIPA_CMD' 找到或不可执行。"
@@ -84,10 +88,10 @@ log "   -> 目标日志文件: ${ESRALLY_REAL_LOG_FILE}"
 > "$ESRALLY_REAL_LOG_FILE"
 log "   -> 已清空目标日志文件以进行干净的探测。"
 
-# 启动 run_load.sh，将其 stdout/stderr 全部重定向到 /dev/null
-"$SHOWCASE_DIR/run_load.sh" > /dev/null 2>&1 &
+# 启动 run_load.sh，将其 stdout/stderr 重定向到 Evidence 目录
+"$SHOWCASE_DIR/run_load.sh" > "$EVIDENCE_DIR/esrally.log" 2>&1 &
 ESRALLY_PID=$!
-log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID})."
+log "   -> esrally 已在后台启动 (PID: ${ESRALLY_PID}). 日志: esrally.log"
 
 # 探测循环：监视真正的日志文件
 log "   -> 正在等待 esrally 发出核心负载信号 (最长等待 ${ESRALLY_PROBE_TIMEOUT} 秒)..."
@@ -121,31 +125,45 @@ $PIPA_CMD sample \
     --attach-to-pid "${ES_PIDS}" \
     --duration-stat "${DURATION_STAT}" \
     --duration-record "${DURATION_RECORD}" \
-    --output "${SNAPSHOT_FILE}"
+    --output "$EVIDENCE_DIR/snapshot.pipa"
 
 log "   -> 快照捕获完成。"
 
 # --- 动态构建预期 CPU 列表 ---
-# 拼接所有组件的绑核范围
-EXPECTED_CPUS="${ES_NODE_1_CPU_AFFINITY},${ES_NODE_2_CPU_AFFINITY},${ES_NODE_3_CPU_AFFINITY},${ES_BENCHMARK_CPU_AFFINITY}"
+# 拼接所有组件的绑核范围（严格服务端审计，剔除 Rally）
+EXPECTED_CPUS="${ES_NODE_1_CPU_AFFINITY},${ES_NODE_2_CPU_AFFINITY},${ES_NODE_3_CPU_AFFINITY}"
 log "   -> 预期活跃 CPU 列表 (用于审计): ${EXPECTED_CPUS}"
 
 # --- 步骤 5: 分析快照并生成报告 ---
 log "步骤 5: 分析快照..."
 $PIPA_CMD analyze \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${REPORT_FILE}" \
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/report.html" \
     --expected-cpus "${EXPECTED_CPUS}"
 
 # --- 步骤 6: 生成火焰图 ---
 log "步骤 6: 生成火焰图..."
 $PIPA_CMD flamegraph \
-    --input "${SNAPSHOT_FILE}" \
-    --output "${FLAMEGRAPH_FILE}"
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/flamegraph.svg"
+
+# --- 步骤 7: 配置留痕 ---
+log "步骤 7: 配置留痕..."
+cp "$SHOWCASE_DIR/env.sh" "$EVIDENCE_DIR/env_snapshot.sh"
+# 拷贝节点1的配置作为代表
+if [ -d "$ES_INSTALL_DIR" ]; then
+    if [ -f "$ES_INSTALL_DIR/$ES_NODE_1_NAME/config/elasticsearch.yml" ]; then
+        cp "$ES_INSTALL_DIR/$ES_NODE_1_NAME/config/elasticsearch.yml" "$EVIDENCE_DIR/node1_elasticsearch.yml"
+    fi
+    if [ -f "$ES_INSTALL_DIR/$ES_NODE_1_NAME/config/jvm.options" ]; then
+        cp "$ES_INSTALL_DIR/$ES_NODE_1_NAME/config/jvm.options" "$EVIDENCE_DIR/jvm.options"
+    fi
+fi
 
 echo ""
 echo "====================================================="
 echo "✅ ELASTICSEARCH 终极测试完成!"
-echo "➡️  分析报告已生成: ${REPORT_FILE}"
-echo "➡️  火焰图已生成: ${FLAMEGRAPH_FILE}"
+echo "📂 证据已归档至: $EVIDENCE_DIR"
+echo "➡️  分析报告: report.html"
+echo "➡️  火焰图: flamegraph.svg"
 echo "====================================================="

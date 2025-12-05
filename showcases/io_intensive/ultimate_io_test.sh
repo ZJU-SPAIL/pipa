@@ -9,6 +9,12 @@ set -o pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
 
+# --- 日志函数（必须先定义）---
+log() {
+    echo ""
+    echo "--- [Ultimate-IO] $1 ---"
+}
+
 # ==================== 安全检查 ====================
 SAFETY_GUARD_SCRIPT="$PROJECT_ROOT/showcases/safety-guard.sh"
 if [ -f "$SAFETY_GUARD_SCRIPT" ]; then
@@ -20,18 +26,18 @@ fi
 
 source "$SCRIPT_DIR/env.sh"
 
-# --- 输出定义 ---
-FOLDER_NAME="io_intensive"
-SNAPSHOT_FILE="${FOLDER_NAME}_snapshot.pipa"
-REPORT_FILE="${FOLDER_NAME}_report.html"
-
 VENV_PATH="$PROJECT_ROOT/.venv"
 PIPA_CMD="$VENV_PATH/bin/pipa"
 
-log() {
-    echo ""
-    echo "--- [Ultimate-IO] $1 ---"
-}
+# --- Evidence 目录与场景定义 ---
+SCENARIO="io_intensive_fio"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+EVIDENCE_DIR="$PROJECT_ROOT/evidence/${TIMESTAMP}_${SCENARIO}"
+mkdir -p "$EVIDENCE_DIR"
+log "📂 Evidence Directory: $EVIDENCE_DIR"
+
+# --- 输出定义 ---
+FOLDER_NAME="io_intensive"
 
 if [ ! -x "$PIPA_CMD" ]; then
     log "❌ Pipa 未安装。请检查是否激活了虚拟环境。"
@@ -55,11 +61,11 @@ $PIPA_CMD healthcheck
 
 # 3. 启动负载
 log "Step 3: Starting FIO in background..."
-# 重定向输出，避免刷屏
-"$SCRIPT_DIR/run_load.sh" > "$SCRIPT_DIR/fio_run.log" 2>&1 &
+# 重定向输出到 Evidence 目录
+"$SCRIPT_DIR/run_load.sh" > "$EVIDENCE_DIR/fio_run.log" 2>&1 &
 LOAD_PID=$!
 
-log "   -> FIO running (PID: $LOAD_PID). Logs: $SCRIPT_DIR/fio_run.log"
+log "   -> FIO running (PID: $LOAD_PID). Logs: fio_run.log"
 log "   -> Waiting 10 seconds for IO saturation..."
 sleep 10
 
@@ -69,16 +75,21 @@ $PIPA_CMD sample \
     --system-wide \
     --duration-stat 60 \
     --no-record \
-    --output "$SNAPSHOT_FILE"
+    --output "$EVIDENCE_DIR/snapshot.pipa"
 
 # 5. 分析
 log "Step 5: Analyzing..."
 $PIPA_CMD analyze \
-    --input "$SNAPSHOT_FILE" \
-    --output "$REPORT_FILE"
+    --input "$EVIDENCE_DIR/snapshot.pipa" \
+    --output "$EVIDENCE_DIR/report.html"
+
+# 6. 配置留痕
+log "Step 6: Archiving evidence..."
+cp "$SCRIPT_DIR/env.sh" "$EVIDENCE_DIR/env_snapshot.sh"
 
 echo ""
 echo "====================================================="
 echo "✅ IO TEST COMPLETE"
-echo "➡️  Report: $REPORT_FILE"
+echo "📂 证据已归档至: $EVIDENCE_DIR"
+echo "➡️  分析报告: report.html"
 echo "====================================================="

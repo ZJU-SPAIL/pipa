@@ -25,3 +25,4 @@ report_universal_*.html
 build
 results
 evidence/
+!evidence/.gitkeep
