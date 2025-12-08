@@ -301,22 +301,14 @@ def _generate_report(
                 continue
 
             # 特殊处理CPU数据：生成专用图表和过滤器
+            # 特殊处理CPU数据：生成专用图表和过滤器
             if name == "sar_cpu":
-                fig = plot_sar_cpu(df)
+                # [Fix] 传入 context，并解包返回的 (fig, filters)
+                fig, filters = plot_sar_cpu(df, context)
                 plots[name] = fig.to_html(full_html=False, include_plotlyjs="cdn")
 
-                # 构建前端过滤器选项
-                metrics_to_plot = [m for m in ["%user", "%system", "%iowait", "%idle", "%total"] if m in df.columns]
-                filter_options = {"CPU": sorted(df["CPU"].unique().tolist()), "METRIC": metrics_to_plot}
-                filters_with_hints = {}
-                for key, values in filter_options.items():
-                    filters_with_hints[key] = {
-                        "values": values,
-                        "sample": values[:3],
-                        "count": len(values),
-                        "source": "legendgroup" if key == "CPU" else "name",
-                    }
-                context[f"{name}_filters"] = filters_with_hints
+                # [Fix] 直接使用 plotter 返回的过滤器配置
+                context[f"{name}_filters"] = filters
             else:
                 # 为其他时间序列数据生成通用图表
                 generated_plots, generated_filters = plot_timeseries_generic(df, name)

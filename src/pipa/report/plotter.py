@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 import plotly.express as px
@@ -7,9 +7,63 @@ from plotly.graph_objects import Figure
 from plotly.subplots import make_subplots
 
 
-def plot_sar_cpu(df: pd.DataFrame) -> Figure:
+# 1. 自然排序辅助函数
+def _natural_sort(items: List[str]) -> List[str]:
     """
-    Generates an interactive Plotly figure for sar_cpu data.
+    Performs natural sorting on a list of strings.
+    Sorts numeric strings numerically (0, 1, 2, 10) instead of lexicographically (0, 1, 10, 2).
+    """
+
+    def sort_key(item):
+        try:
+            return (0, int(item))
+        except ValueError:
+            return (1, item)
+
+    return sorted(items, key=sort_key)
+
+
+def _compress_cpu_ranges(items: list[str]) -> list[str]:
+    """
+    将 ['0', '1', '2', 'all', 'numa_0'] 智能折叠为 ['0-2', 'all', 'numa_0']。
+    用于前端展示，使其看起来更整洁。
+    """
+    ints = []
+    others = []
+    for x in items:
+        if x.isdigit():
+            ints.append(int(x))
+        else:
+            others.append(x)
+
+    # 对非数字项（all, numa...）进行自然排序
+    others = _natural_sort(others)
+
+    if not ints:
+        return others
+
+    ints.sort()
+    ranges = []
+    if ints:
+        start = ints[0]
+        prev = ints[0]
+        for x in ints[1:]:
+            if x == prev + 1:
+                prev = x
+            else:
+                ranges.append(f"{start}-{prev}" if start != prev else str(start))
+                start = x
+                prev = x
+        ranges.append(f"{start}-{prev}" if start != prev else str(start))
+
+    # 将特殊选项放在最前面，范围放在最后
+    # 比如: ['all', 'workload_avg', 'numa_node_0', '0-127']
+    return others + ranges
+
+
+def plot_sar_cpu(df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[Figure, Dict]:
+    """
+    Generates an interactive Plotly figure for sar_cpu data AND its filter configuration.
     """
     if "%user" in df.columns and "%system" in df.columns:
         df["%total"] = df["%user"] + df["%system"]
@@ -31,6 +85,7 @@ def plot_sar_cpu(df: pd.DataFrame) -> Figure:
         line_dash="metric",
         title="Sar CPU Metrics (Per-Core & Overall)",
         labels={"utilization": "CPU Utilization (%)"},
+        render_mode="webgl",
     )
 
     fig.update_layout(
@@ -49,7 +104,39 @@ def plot_sar_cpu(df: pd.DataFrame) -> Figure:
         ),
         margin=dict(r=200),
     )
-    return fig
+
+    # --- [核心逻辑移入] 构建前端过滤器 ---
+    # 1. 获取基础 CPU 列表
+    cpu_options = df["CPU"].unique().tolist()
+
+    # 2. [Feature] 注入 NUMA 节点作为虚拟选项
+    if context and "numa_cpu_map" in context:
+        cpu_options.extend(context["numa_cpu_map"].keys())
+
+    # 3. 使用自然排序
+    sorted_cpus = _natural_sort(list(set(cpu_options)))
+
+    # --- [核心修改] 对 CPU 列表进行智能折叠展示 ---
+    # values_for_display: 给人类看的 (e.g. "0-127, all")
+    # sorted_cpus: 给代码逻辑用的完整列表 (保留，虽然后端逻辑其实不强依赖它了)
+
+    display_cpus = _compress_cpu_ranges(cpu_options)
+
+    filter_options = {"CPU": sorted_cpus, "METRIC": metrics_to_plot}
+    filters_with_hints = {}
+
+    for key, values in filter_options.items():
+        # 如果是 CPU，使用折叠后的列表用于展示
+        display_values = display_cpus if key == "CPU" else values
+
+        filters_with_hints[key] = {
+            "values": display_values,
+            "sample": values[:3],
+            "count": len(values),
+            "source": "legendgroup" if key == "CPU" else "name",
+        }
+
+    return fig, filters_with_hints
 
 
 def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figure], Dict[str, Dict]]:

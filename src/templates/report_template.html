@@ -44,10 +44,26 @@
         border-bottom: 2px solid #e25050;
       }
 
+      /* [核心修改] 使用 visibility 替代 display，确保 Plotly 在后台也能正确渲染 */
       .tab-pane {
-        display: none;
+        visibility: hidden;
+        height: 0;
+        overflow: hidden;
+        opacity: 0;
+        /* 保持在文档流中，以便 Plotly 能获取宽度 */
+        display: block;
+        padding: 0;
+      }
+
+      /* 激活状态：恢复显示 */
+      .tab-pane.active-pane {
+        visibility: visible;
+        height: auto;
+        overflow: visible;
+        opacity: 1;
         padding: 6px 12px;
-        border-top: none;
+        /* 简单的淡入动画 */
+        transition: opacity 0.3s ease-in;
       }
 
       #explorer {
@@ -59,17 +75,6 @@
       .plot-container {
         width: 100%;
         margin-bottom: 2em;
-      }
-
-      /* 统一图例样式，确保所有图表对齐 */
-      .js-plotly-plot .legend {
-        overflow-y: auto !important;
-        max-height: 500px !important;
-        background: rgba(255, 255, 255, 0.9) !important;
-        border: 1px solid rgba(0, 0, 0, 0.1) !important;
-        border-radius: 4px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-        font-size: 12px !important;
       }
 
       h1,
@@ -490,7 +495,7 @@
 
     <!-- Tab Buttons -->
     <div class="tab-buttons">
-      <button class="tab-button" onclick="openTab(event, 'analysis')">
+      <button class="tab-button active" onclick="openTab(event, 'analysis')">
         Analysis & Insights
       </button>
       {% if plots.cpu_cluster_analysis %}
@@ -515,7 +520,8 @@
     </div>
 
     <!-- Tab Content -->
-    <div id="analysis" class="tab-pane">
+    <!-- [核心修改] 加上 active-pane 类，不使用内联 style -->
+    <div id="analysis" class="tab-pane active-pane">
       <!-- 新增：配置审计区块 (如果有内容) -->
       {% if audit_html %}
       <h2>Configuration Audit</h2>
@@ -797,44 +803,36 @@
           return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
       }
 
-      // Tab 切换逻辑 (HTML onclick 需要调用它，必须全局)
+      // [核心修改] 新的 Tab 切换逻辑：只切换 Class，不触发 Resize
       function openTab(evt, tabName) {
         var i, tabcontent, tablinks;
+
+        // 1. 隐藏所有 pane (移除 active-pane 类)
         tabcontent = document.getElementsByClassName("tab-pane");
         for (i = 0; i < tabcontent.length; i++) {
-          tabcontent[i].style.display = "none";
+          tabcontent[i].classList.remove("active-pane");
         }
+
+        // 2. 取消所有按钮的 active 状态
         tablinks = document.getElementsByClassName("tab-button");
         for (i = 0; i < tablinks.length; i++) {
           tablinks[i].className = tablinks[i].className.replace(" active", "");
         }
+
+        // 3. 激活目标 pane
         var activeTab = document.getElementById(tabName);
         if (activeTab) {
-            activeTab.style.display = "block";
+            activeTab.classList.add("active-pane");
         }
+
+        // 4. 激活点击的按钮
         if (evt) {
           evt.currentTarget.className += " active";
         }
 
-        // 触发 Plotly 重绘 (解决 Tab 隐藏时图表尺寸计算错误问题)
-        if (tabName === 'explorer' || tabName === 'ml_insights') {
-          setTimeout(function() {
-            const plotContainers = document.querySelectorAll('.plot-container');
-            plotContainers.forEach(container => {
-              const plotDiv = container.querySelector('.plotly-graph-div');
-              if (plotDiv && typeof Plotly !== 'undefined' && plotDiv.offsetParent !== null) {
-                Plotly.Plots.resize(plotDiv);
-              }
-            });
-          }, 0);
-        }
-
-        // [Fix] 触发 Tabulator 重绘 (解决 Hotspots 表格在隐藏 Tab 中初始化可能高度为0的问题)
-        if (tabName === 'hotspots') {
-           setTimeout(function() {
-               if(window.hotspotsTable) window.hotspotsTable.redraw();
-           }, 100);
-        }
+        // [关键] 这里删除了原来的 Plotly.Plots.resize() 代码
+        // 因为我们用了 visibility:hidden，图表在后台已经渲染好了，不需要重绘！
+        // 这就保住了滚动条的命。
       }
 
       function applyChartFilter(plotName) {
@@ -845,73 +843,107 @@
         const filterContext = reportContext[`${plotName}_filters`];
         if (!filterContext) return;
 
+        // [新增] 核心翻译机：把 "0-3" 或 "numa_node_0" 翻译成具体的 CPU ID 集合
+        const expandCpuFilter = (inputStr) => {
+            const finalCpuSet = new Set();
+            if (!inputStr) return finalCpuSet;
+
+            // 辅助：解析 "0-3" 这种范围
+            const parseRange = (rangeStr) => {
+                const rangeSet = new Set();
+                rangeStr.split(',').forEach(part => {
+                    part = part.trim();
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(Number);
+                        for (let i = start; i <= end; i++) {
+                            rangeSet.add(String(i));
+                        }
+                    } else if (part) {
+                        rangeSet.add(part);
+                    }
+                });
+                return rangeSet;
+            };
+
+            const parts = inputStr.split(',').map(p => p.trim());
+            parts.forEach(part => {
+                // 1. 检查是不是 NUMA 别名 (e.g. "numa_node_0")
+                if (reportContext.numa_cpu_map && reportContext.numa_cpu_map[part]) {
+                    const numaCpuRange = reportContext.numa_cpu_map[part];
+                    parseRange(numaCpuRange).forEach(cpu => finalCpuSet.add(cpu));
+                }
+                // 2. 检查是不是特殊别名 "workload_avg"
+                else if (part === 'workload_avg') {
+                    finalCpuSet.add('workload_avg');
+                }
+                // 3. 否则当作普通 CPU 范围解析
+                else {
+                    parseRange(part).forEach(cpu => finalCpuSet.add(cpu));
+                }
+            });
+            return finalCpuSet;
+        };
+
         const inputs = filterContainer.querySelectorAll('input[type="text"]');
         const activeFilters = {};
 
         inputs.forEach((input) => {
-          const filterKey = input.id.split('-filter-input')[0];
+          // 获取 Filter Key (CPU, METRIC 等)
+          const filterKey = input.id.split('-filter-input')[0].toUpperCase();
           const filterValue = input.value.trim();
+
           if (filterValue) {
-            const isNumericPattern = /^[\d,\-\s]+$/.test(filterValue);
-            if (isNumericPattern && (filterKey.toUpperCase() === 'CPU' || !isNaN(parseInt(filterValue.replace(/[,-]/g, ''))))) {
-              const parseRange = (str) => new Set(str.split(',').flatMap((part) => {
-                part = part.trim();
-                if (part.includes('-')) {
-                  const [start, end] = part.split('-').map(Number);
-                  return Array.from({ length: end - start + 1 }, (_, i) => String(start + i));
-                }
-                return part;
-              }));
-              activeFilters[filterKey] = { type: 'exact', values: parseRange(filterValue) };
+            // [逻辑分流] 如果是 CPU 筛选器，走翻译机逻辑
+            if (filterKey === 'CPU') {
+                const expandedSet = expandCpuFilter(filterValue);
+                activeFilters[filterKey] = { type: 'exact_set', values: expandedSet };
             } else {
-              activeFilters[filterKey] = {
-                type: 'fuzzy',
-                keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
-              };
+                // 其他筛选器 (Metric, Dev) 走模糊匹配
+                 activeFilters[filterKey] = {
+                    type: 'fuzzy',
+                    keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
+                 };
             }
           }
         });
 
+        // 应用筛选
         const visibilityArray = plotDiv.data.map((trace) => {
           for (const [key, filterInfo] of Object.entries(activeFilters)) {
             const sourceProperty = filterContext[key]?.source || 'name';
             let traceValueRaw = trace[sourceProperty];
             let traceValue = traceValueRaw;
 
-            if (sourceProperty === "legendgroup" && key === "CPU") {
-              traceValue = String(traceValueRaw).split(', ')[0];
-            } else if (sourceProperty === "legendgroup" && key === "METRIC") {
-              traceValue = String(traceValueRaw).split(', ').slice(1).join(', ');
+            // 解析 Plotly 复合图例 (e.g. "0, %user")
+            if (sourceProperty === "legendgroup") {
+                const parts = String(traceValueRaw).split(/,\s*/);
+                if (key === "CPU" && parts.length > 0) traceValue = parts[0];
+                else if (key === "METRIC" && parts.length > 1) traceValue = parts.slice(1).join(', ');
             }
-            // [FIX] 针对 DEV 筛选的特殊逻辑
-            // 如果筛选的是 DEV (磁盘/网卡)，且图例是复合的 (e.g., "await, sde1")
-            // 我们需要把设备名拆出来单独匹配
-            else if (key.toUpperCase() === 'DEV' && typeof traceValueRaw === 'string' && traceValueRaw.includes(',')) {
-              // 假设格式总是 "Metric, Device"
-              const parts = traceValueRaw.split(',').map(p => p.trim());
-              if (parts.length > 1) {
-                traceValue = parts[1]; // 只取第二部分 (设备名)
-              }
+            // 解析特殊 DEV 图例
+            else if (key === 'DEV' && typeof traceValueRaw === 'string' && traceValueRaw.includes(',')) {
+                const parts = traceValueRaw.split(',').map(p => p.trim());
+                if (parts.length > 1) traceValue = parts[1];
             }
+
             if (traceValue === undefined) continue;
 
-            const traceValueStr = String(traceValue).toLowerCase();
-
-            if (filterInfo.type === 'exact') {
+            // 匹配逻辑
+            if (filterInfo.type === 'exact_set') {
+              // 必须在集合里 (精确匹配)
               if (!filterInfo.values.has(String(traceValue))) return false;
             } else if (filterInfo.type === 'fuzzy') {
+              // 包含关键字即可 (模糊匹配)
               const anyKeywordMatched = filterInfo.keywords.some(keyword => {
-                if (keyword.startsWith('^')) {
-                  return traceValueStr === keyword.slice(1);
-                } else {
-                  return traceValueStr.includes(keyword);
-                }
+                  if (keyword.startsWith('^')) return String(traceValue).toLowerCase() === keyword.slice(1);
+                  return String(traceValue).toLowerCase().includes(keyword);
               });
               if (!anyKeywordMatched) return false;
             }
           }
           return true;
         });
+
         Plotly.restyle(plotDiv, 'visible', visibilityArray);
       }
 
@@ -1144,27 +1176,37 @@
           createJsonTree(sysInfoContainer, staticInfoData);
         }
 
-        // 3.3 Default Tab Activation
-        const defaultTabButton = document.querySelectorAll(".tab-button")[0];
-        if (defaultTabButton) {
-          defaultTabButton.click();
-        }
-
         // 3.4 Default Filters for sar_cpu
         const filterContext = reportContext ? reportContext['sar_cpu_filters'] : null;
         if (filterContext) {
           const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
-          if (cpuInput && filterContext['CPU']?.values.includes('all')) {
-            cpuInput.value = 'all';
-          }
           const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
-          if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
-            metricInput.value = '%user,%system';
+
+          // --- 核心修改：智能默认值 ---
+          // 如果用户定义了业务核心 (expected_cpus)，则默认显示业务平均值 vs 物理机平均值
+          if (reportContext && reportContext.expected_cpus_str) {
+              if (cpuInput) {
+                  cpuInput.value = 'workload_avg,all';
+              }
+          } else {
+              // 否则，回退到只显示物理机总平均值
+              if (cpuInput && filterContext['CPU']?.values.includes('all')) {
+                  cpuInput.value = 'all';
+              }
           }
+          // --- 修改结束 ---
+
+          // 默认指标依然显示 user 和 system，保持不变
+          if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
+            metricInput.value = '%user,%system,%total';
+          }
+
+          // 最后应用筛选器
           if (document.getElementById('plot-sar_cpu')) {
             applyChartFilter('sar_cpu');
           }
         }
+
       });
     </script>
   </body>

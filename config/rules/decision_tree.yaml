@@ -5,7 +5,7 @@
 # --- 1. 可配置阈值区 (Config) ---
 config:
   # === 宏观界定 ===
-  ON_CPU_THRESHOLD_PERCENT: 75
+  ON_CPU_THRESHOLD_PERCENT: 50
 
   # === 架构感知阈值 ===
   CPU_CLUSTER_IDLE_THRESHOLD: 10.0
@@ -59,12 +59,11 @@ rules:
       # ------------------------------------------------------------
       - name: "宏观状态: OFF-CPU"
         precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
-        finding: "系统体征：<strong>OFF-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong>)。<br>CPU 并非全局瓶颈，主要耗时在于等待外部资源 (I/O, 锁, 网络) 或系统确实空闲。"
+        finding: "系统体征：<strong>OFF-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>CPU 并非全局瓶颈，主要耗时在于等待外部资源 (I/O, 锁, 网络) 或系统确实空闲。"
 
       - name: "宏观状态: ON-CPU"
         precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
-        finding: "系统体征：<strong>ON-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong>)。<br>系统处于高负载计算状态，算力资源可能接近饱和。"
-
+        finding: "系统体征：<strong>ON-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>系统处于高负载计算状态，算力资源可能接近饱和。"
       # ------------------------------------------------------------
       # [面板 2] CPU 架构健康度 (Architecture)
       # ------------------------------------------------------------

@@ -5,12 +5,15 @@
 从原始数据计算各种性能指标和统计信息。
 """
 
+import logging
 from typing import Any, Dict, Optional, Set, cast
 
 import pandas as pd
 
 from src.pipa.report.cluster_analyzer import analyze_cpu_clusters
 from src.utils import p95
+
+log = logging.getLogger(__name__)
 
 
 def _parse_cpu_list_str(cpu_list_str: str) -> Set[str]:
@@ -275,6 +278,11 @@ def build_full_context(
             numa_topology = numa_info.get("numa_topology", {})
 
             if numa_topology and len(numa_topology) > 1:
+                # [新增] 创建一个给前端JS使用的NUMA映射表
+                context["numa_cpu_map"] = {
+                    node_name.replace("node", "numa_node_"): cpu_list_str
+                    for node_name, cpu_list_str in numa_topology.items()
+                }
                 context["numa_nodes_count"] = len(numa_topology)
                 cpu_to_node = {}
                 for node_name, cpu_list_str in numa_topology.items():
@@ -297,6 +305,27 @@ def build_full_context(
                         status_parts.append(f"{node}: <strong>{util:.1f}%</strong>")
                     context["numa_status_msg"] = ", ".join(status_parts)
 
+        # [新增逻辑] 如果用户指定了绑核，则额外计算一个 workload_avg 并注入回 sar_cpu
+        if target_cpus and not df_per_core.empty:
+            # 按时间戳聚合，计算业务核心的平均值
+            workload_avg_df = df_per_core.groupby("timestamp").mean(numeric_only=True).reset_index()
+            workload_avg_df["CPU"] = "workload_avg"
+
+            # --- 核心修复：补上缺失的元数据列 ---
+            # 从原始 df_cpu 的第一行获取 hostname 和 interval
+            # 因为 df_cpu 在这个代码块之前已经确认存在且非空，所以 iloc[0] 是安全的
+            first_row = df_cpu.iloc[0]
+            workload_avg_df["hostname"] = first_row["hostname"]
+            workload_avg_df["interval"] = first_row["interval"]
+
+            # 确保列的顺序和原始 df_cpu 完全一致
+            cols_order = df_cpu.columns.tolist()
+            workload_avg_df = workload_avg_df[cols_order]
+            # --- 修复结束 ---
+
+            # 将新的聚合数据合并回原始的 sar_cpu DataFrame
+            df_dict["sar_cpu"] = pd.concat([df_cpu, workload_avg_df], ignore_index=True)
+            log.info("Injected 'workload_avg' series into sar_cpu data for business-centric view.")
     # --- 后续通用指标 (I/O, Memory, Network) ---
     df_io = df_dict.get("sar_io")
     if df_io is not None and not df_io.empty:
