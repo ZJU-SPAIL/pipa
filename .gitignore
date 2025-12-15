@@ -26,3 +26,5 @@ build
 results
 evidence/
 !evidence/.gitkeep
+run_all_experiments.sh
+run_all_nginx.sh

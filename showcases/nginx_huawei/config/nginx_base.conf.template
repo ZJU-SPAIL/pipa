@@ -1,0 +1,63 @@
+# -----------------------------------------------------------------------------
+# Nginx 配置文件 - 鲲鹏 BoostKit 官方基线
+# 引用依据: 《鲲鹏 BoostKit Web 使能套件 Nginx 移植&调优指南》 V12
+# -----------------------------------------------------------------------------
+
+user  $(whoami);
+
+# [指南 P60 表3-4] worker_processes: 设置运行 Nginx 应用的 CPU 核数
+worker_processes  ${NGINX_WORKER_COUNT};
+
+# [指南 P60 表3-4] worker_cpu_affinity: 二进制掩码绑定，减少上下文切换
+worker_cpu_affinity ${NGINX_CPU_AFFINITY_MASK};
+
+# [指南 P52 3.3.1] 配置最大文件描述符
+worker_rlimit_nofile 102400;
+
+error_log  ${NGINX_LOGS_DIR}/error.log warn;
+pid        ${NGINX_LOGS_DIR}/nginx.pid;
+
+events {
+    # [指南 P64 表3-6] use epoll: Linux 下最高效的网络模型
+    use epoll;
+    # [指南 P64 表3-6] worker_connections: 增大并发连接数上限
+    worker_connections 102400;
+    # [指南 P64 表3-6] multi_accept: 允许同时接受多个连接
+    multi_accept on;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    # [指南 P62 3.4.5] 关闭 access_log: 写日志影响 IO 性能，建议关闭
+    access_log off;
+
+    # [指南 P64] sendfile: 开启高效文件传输模式
+    sendfile        on;
+    # [指南 P64] tcp_nopush: 防止网络阻塞
+    tcp_nopush     on;
+    # [指南 P64] tcp_nodelay: 防止网络阻塞
+    tcp_nodelay     on;
+
+    # [指南 P61 3.4.4] keepalive_requests 优化
+    # 长连接场景建议: 20000 (Page 61) / 2000 (Page 62 Example) -> 采用更激进的 20000
+    keepalive_timeout  ${KEEPALIVE_TIMEOUT};
+    keepalive_requests ${KEEPALIVE_REQUESTS};
+
+    # Gzip 压缩 (模拟计算密集型负载)
+    gzip on;
+    gzip_min_length 1024;
+    gzip_comp_level 5;
+
+    server {
+        # [指南 P65] listen reuseport: HTTP 短连接场景建议打开
+        listen       8000 reuseport;
+        server_name  localhost;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+    }
+}
