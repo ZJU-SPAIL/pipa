@@ -174,15 +174,31 @@ def _generate_report(
     tables = {}  # 存储数据表的JSON表示
 
     if "cpu_features_df" in context:
+        df_features = context["cpu_features_df"]
 
-        # 我们从 context 中获取 optimal_eps 只是为了在标题中显示，它不再参与决策
-        optimal_eps_for_title = context.get("optimal_eps", 0.0)
-        fig_clusters = plot_cpu_clusters(context["cpu_features_df"], optimal_eps_for_title)
-        plots["cpu_cluster_analysis"] = fig_clusters.to_html(full_html=False, include_plotlyjs="cdn")
+        # --- 1. 生成全景图 (Global View) ---
+        fig_global = plot_cpu_clusters(df_features, title="全景视图：所有 CPU 核心负载分布")
+        plots["cpu_cluster_global"] = fig_global.to_html(full_html=False, include_plotlyjs="cdn")
 
-        if "cpu_clusters_summary" in context:
-            summary_df = pd.DataFrame(context["cpu_clusters_summary"])
-            tables["cluster_summary"] = summary_df.to_json(orient="records")
+        # --- 2. 生成聚焦图 (Target View) ---
+        # 只有当用户指定了 expected_cpus 时才生成
+        if expected_cpus:
+            # 解析 CPU 列表 (复用 context_builder 里的逻辑或简单过滤)
+            # 这里假设 context["cpu_features_df"] 的 index 是 CPU ID (字符串)
+            from src.pipa.report.context_builder import _parse_cpu_list_str
+
+            target_ids = _parse_cpu_list_str(expected_cpus)
+
+            # 过滤 DataFrame
+            df_target = df_features[df_features.index.isin(target_ids)]
+
+            if not df_target.empty:
+                fig_target = plot_cpu_clusters(df_target, title=f"聚焦视图：业务绑定核心 ({expected_cpus})")
+                plots["cpu_cluster_target"] = fig_target.to_html(full_html=False, include_plotlyjs="cdn")
+
+            if "cpu_clusters_summary" in context:
+                summary_df = pd.DataFrame(context["cpu_clusters_summary"])
+                tables["cluster_summary"] = summary_df.to_json(orient="records")
 
     log.debug("--- [DEBUG] Final Context for Decision Engine ---")
     log.debug(f"\n{pprint.pformat(context)}")

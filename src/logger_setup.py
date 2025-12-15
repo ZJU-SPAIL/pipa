@@ -48,6 +48,7 @@ def setup_logging(verbosity: int):
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("src.pipa.report.cluster_analyzer").setLevel(logging.WARNING)  # 完全关闭 CPU 集群分析日志
     logging.getLogger("src.pipa.commands.analyze").setLevel(logging.INFO)  # 关闭 analyze 命令的 DEBUG 日志
+    logging.getLogger("src.pipa.report.context_builder").setLevel(logging.INFO)  # 打开 context_builder 日志
 
     if verbosity >= 2:
         logging.debug("Debug logging enabled.")
