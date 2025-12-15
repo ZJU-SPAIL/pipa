@@ -59,11 +59,13 @@ rules:
       # ------------------------------------------------------------
       - name: "宏观状态: OFF-CPU"
         precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
-        finding: "系统体征：<strong>OFF-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>CPU 并非全局瓶颈，主要耗时在于等待外部资源 (I/O, 锁, 网络) 或系统确实空闲。"
+        # [修改] 表述更严谨，强调是“业务核心”
+        finding: "系统体征：<strong>OFF-CPU</strong> (业务核心平均利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>CPU 并非瓶颈，主要耗时在于等待外部资源 (I/O, 锁, 网络) 或系统确实空闲。"
 
       - name: "宏观状态: ON-CPU"
         precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
-        finding: "系统体征：<strong>ON-CPU</strong> (总利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>系统处于高负载计算状态，算力资源可能接近饱和。"
+        # [修改] 表述更严谨
+        finding: "系统体征：<strong>ON-CPU</strong> (业务核心平均利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>业务绑定的计算资源处于高负载状态，算力可能接近饱和。"
       # ------------------------------------------------------------
       # [面板 2] CPU 架构健康度 (Architecture)
       # ------------------------------------------------------------

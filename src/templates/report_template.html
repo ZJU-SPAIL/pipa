@@ -498,7 +498,7 @@
       <button class="tab-button active" onclick="openTab(event, 'analysis')">
         Analysis & Insights
       </button>
-      {% if plots.cpu_cluster_analysis %}
+      {% if plots.cpu_cluster_global %}
       <button class="tab-button" onclick="openTab(event, 'ml_insights')">
         ✨ Core Insights
       </button>
@@ -545,7 +545,7 @@
     </div>
 
     <!-- === 新增 Tab 面板 (文案升级版) === -->
-    {% if plots.cpu_cluster_analysis %}
+    {% if plots.cpu_cluster_global %}
     <div id="ml_insights" class="tab-pane">
       <h2>🤖 CPU Load Stratification (Physics-Aware Engine)</h2>
       <p>
@@ -557,16 +557,48 @@
         核心精准划分为不同的负载层级，有效避免了在低负载下的噪声干扰。
       </p>
       <!-- 步骤 1: 散点图 -->
-      <div class="plot-container" id="plot-cpu_cluster_analysis">
-        <h3>Step 1: Physics-Aware Core Classification</h3>
-        <p>
-          此散点图展示了 CPU 核心的<strong>负载分布形态</strong>。
-          <br />
-          分类逻辑基于 <strong>User + System</strong> 的峰值利用率
-          <br />
-        </p>
-        {{ plots.cpu_cluster_analysis | safe }}
+      <h3>Step 1: Physics-Aware Core Classification</h3>
+      <p>
+        此散点图展示了 CPU 核心的<strong>负载分布形态</strong>。
+        <br />
+        分类逻辑基于 <strong>User + System</strong> 的峰值利用率
+        <br />
+      </p>
+
+      <!-- 新增：双图并排容器 -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+        <!-- 左图：全景 -->
+        <div
+          class="plot-container"
+          style="border: 1px solid #eee; padding: 10px; border-radius: 5px"
+        >
+          {{ plots.cpu_cluster_global | safe }}
+        </div>
+
+        <!-- 右图：聚焦 (如果有) -->
+        {% if plots.cpu_cluster_target %}
+        <div
+          class="plot-container"
+          style="
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #e25050;
+          "
+        >
+          {{ plots.cpu_cluster_target | safe }}
+        </div>
+        {% endif %}
       </div>
+
+      <!-- 如果没有聚焦图，为了美观，可以让全景图独占 -->
+      {% if not plots.cpu_cluster_target %}
+      <style>
+        #ml_insights .plot-container {
+          grid-column: span 2;
+        }
+      </style>
+      {% endif %}
 
       <!-- 步骤 2: 统计特征表 -->
       <h3>Step 2: Cluster Statistical Fingerprint</h3>
@@ -584,8 +616,8 @@
       <h2>Time-Series Visualizations</h2>
       {% for name, plot_div in plots.items() %}
       <!-- 排除某些特殊图表 -->
-      {% if name not in ['knee_distance', 'cpu_cluster_analysis',
-      'disk_sunburst', 'disk_breakdown'] %}
+      {% if name not in ['knee_distance', 'cpu_cluster_global',
+      'cpu_cluster_target', 'disk_sunburst', 'disk_breakdown'] %}
       <div class="plot-container" id="plot-{{ name }}">
         {% set filters = context[name ~ '_filters'] %} {% if filters %}
         <!-- 筛选选项汇总表格 -->

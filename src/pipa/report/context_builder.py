@@ -142,6 +142,8 @@ def build_full_context(
     expected_str = rule_configs.get("expected_cpus_str") if rule_configs else None
 
     df_cpu = df_dict.get("sar_cpu")
+    # Ensure df_per_core is always defined to avoid "possibly unbound" warnings/errors
+    df_per_core = pd.DataFrame()
     if df_cpu is not None and not df_cpu.empty:
 
         # === 核心逻辑变更：确定计算范围 ===
@@ -150,15 +152,6 @@ def build_full_context(
         df_per_core = cast(pd.DataFrame, df_cpu[df_cpu["CPU"] != "all"].copy())
 
         target_cpus = None
-
-        # 1. 如果有绑核策略，先过滤数据！
-        if expected_str:
-            try:
-                target_cpus = _parse_cpu_list_str(expected_str)
-                # 只保留用户关心的核心
-                df_per_core = cast(pd.DataFrame, df_per_core[df_per_core["CPU"].isin(target_cpus)])
-            except Exception:
-                pass
 
         # 2. 如果过滤后还有数据，进行聚合计算
         if not df_per_core.empty:
@@ -489,5 +482,17 @@ def build_full_context(
 
         except Exception as e:
             print(f"Warning: Failed to validate CPU affinity: {e}")
+
+    # === [新增] 决策树指标修正：只看业务核心 ===
+    if expected_str and not df_per_core.empty:
+        target_set = _parse_cpu_list_str(expected_str)
+        # 临时提取业务核心数据
+        df_target = df_per_core[df_per_core["CPU"].isin(target_set)]
+
+        if not df_target.empty:
+            # 强制覆盖 total_cpu，让决策树看到 100% 负载，而不是全系统平均的 25%
+            context["total_cpu"] = df_target["%total"].mean()
+            if "%iowait" in df_target.columns:
+                context["avg_iowait"] = df_target["%iowait"].mean()
 
     return context

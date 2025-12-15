@@ -271,7 +271,7 @@ def plot_timeseries_generic(df: pd.DataFrame, name: str) -> Tuple[Dict[str, Figu
     return generated_plots, generated_filters
 
 
-def plot_cpu_clusters(cpu_features_df: pd.DataFrame, optimal_eps: float) -> Figure:
+def plot_cpu_clusters(cpu_features_df: pd.DataFrame, title: str = "CPU 核心行为分类") -> Figure:
     df_plot = cpu_features_df.copy()
     # === FIX: 将数字 ID 映射为语义化标签 (Issue #3) ===
     cluster_map = {0: "Active (Mid)", 1: "Busy (High Load)", 99: "Idle (Background)"}
@@ -305,7 +305,7 @@ def plot_cpu_clusters(cpu_features_df: pd.DataFrame, optimal_eps: float) -> Figu
             "mean_%system": ":.2f",
             "p95_%system": ":.2f",
         },
-        title="CPU 核心行为分类 (物理感知分层)",
+        title=title,
         labels={
             "cluster_label": "Core Status",  # 图例标题
             "mean_%user": "平均用户态利用率 (%)",
