@@ -483,16 +483,67 @@ def build_full_context(
         except Exception as e:
             print(f"Warning: Failed to validate CPU affinity: {e}")
 
-    # === [新增] 决策树指标修正：只看业务核心 ===
-    if expected_str and not df_per_core.empty:
-        target_set = _parse_cpu_list_str(expected_str)
-        # 临时提取业务核心数据
-        df_target = df_per_core[df_per_core["CPU"].isin(target_set)]
+    # ==============================================================================
+    # 2. [修复] 注入 workload_avg (仅包含预期核心的平均值)
+    # 这对于前端绘图很有用，显示“我的业务平均负载” vs “整机负载”
+    # ==============================================================================
+    if expected_str and df_cpu is not None:
+        # 1. 解析目标核心
+        expected_set = _parse_cpu_list_str(expected_str)
 
-        if not df_target.empty:
-            # 强制覆盖 total_cpu，让决策树看到 100% 负载，而不是全系统平均的 25%
-            context["total_cpu"] = df_target["%total"].mean()
-            if "%iowait" in df_target.columns:
-                context["avg_iowait"] = df_target["%iowait"].mean()
+        # 2. 从全量数据中筛选出业务核心
+        df_per_core = cast(pd.DataFrame, df_cpu[df_cpu["CPU"] != "all"].copy())
+        df_workload = df_per_core[df_per_core["CPU"].isin(expected_set)]
+
+        if not df_workload.empty:
+            # 3. 按时间戳计算平均值
+            workload_avg_df = df_workload.groupby("timestamp").mean(numeric_only=True).reset_index()
+            workload_avg_df["CPU"] = "workload_avg"
+
+            # 4. 补全元数据
+            first_row = df_cpu.iloc[0]
+            workload_avg_df["hostname"] = first_row.get("hostname", "unknown")
+            workload_avg_df["interval"] = first_row.get("interval", 1)
+
+            # 5. 确保列顺序一致
+            cols_to_use = [c for c in df_cpu.columns if c in workload_avg_df.columns]
+            workload_avg_df = workload_avg_df[cols_to_use]
+
+            # 6. 注入回 sar_cpu
+            df_final = pd.concat([df_cpu, workload_avg_df], ignore_index=True)
+            df_dict["sar_cpu"] = df_final
+            log.info(f"Injected 'workload_avg' series for CPUs: {expected_str}")
+
+    # ==============================================================================
+    # 强制覆盖决策树指标：只看业务核心
+    # 无论前面算了什么，这里最后再算一遍业务核心的利用率，并覆盖 total_cpu
+    # ==============================================================================
+    if expected_str and df_cpu is not None:
+        # 1. 重新解析目标核心
+        target_set = _parse_cpu_list_str(expected_str)
+
+        # 2. 从 df_cpu (最原始的数据) 中筛选，只保留业务核心
+        # isin 自动会排除 'all' 和 'workload_avg'
+        df_final_target = df_cpu[df_cpu["CPU"].isin(target_set)].copy()
+
+        if not df_final_target.empty:
+            # 3. 确保有 %total 列 (以防万一)
+            if "%total" not in df_final_target.columns:
+                df_final_target["%total"] = df_final_target["%user"] + df_final_target["%system"]
+
+            # 4. 计算均值
+            business_load = df_final_target["%total"].mean()
+
+            # 5. 【核心动作】 强制覆盖 context
+            context["total_cpu"] = business_load
+
+            # 6. 顺便修正 iowait
+            if "%iowait" in df_final_target.columns:
+                context["avg_iowait"] = df_final_target["%iowait"].mean()
+
+            # 打个日志证明我改了
+            log.info(
+                f"Decision Tree Logic Patched: total_cpu overridden to {business_load:.2f}% (Scope: {expected_str})"
+            )
 
     return context
