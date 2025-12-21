@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# written by Bernard Jiang <bernardjiang5@outlook.com>
 """
 stackcollapse_perf.py — 将 `perf script` 的调用栈折叠为单行（folded stacks）。
 
