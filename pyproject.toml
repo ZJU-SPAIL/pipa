@@ -62,6 +62,7 @@ Source = "https://github.com/ZJU-SPAIL/pipa"
 [project.scripts]
 pipa = "pipa.main:main"
 pipad = "pipa.service.pipad.pipad_server:main"
+pipa-perf-sqlite = "pipa.scripts.perf_sqlite:main"
 
 [build-system]
 requires = ["hatchling"]
