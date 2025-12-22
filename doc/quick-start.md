@@ -315,6 +315,20 @@ Detected number of threads: 16
 
 This `metrics` dictionary provides a rich summary of your system's performance during the benchmark, covering everything from high-level throughput and CPI to detailed CPU, memory, and disk utilization from `sar`. You are now ready to use this data for in-depth performance analysis.
 
+## Export perf.data to SQLite via perf script
+
+After installing `pypipa`, the helper CLI `pipa-perf-sqlite` is available on your PATH. You can ask `perf` to run it directly to export `perf.data` into SQLite (and optional CSV) without copying scripts around:
+
+```bash
+perf script -i /path/to/perf.data \
+  --script=pipa-perf-sqlite \
+  /path/to/output/perf.db calls csv=/path/to/output/csv_dir
+```
+
+- `calls` implies `callchains` in the original script and generates call-related tables.
+- `csv=/path/to/output/csv_dir` is optional; omit it if you only need the SQLite DB.
+- Make sure `perf` is installed (e.g., `sudo apt-get install linux-tools-$(uname -r)` on Debian/Ubuntu).
+
 ## Upload
 
 PIPA provides two ways to upload your performance data with detailed information. One is to upload in command line interation, and the other is to upload with YAML.
