@@ -877,10 +877,14 @@ INNER JOIN comms AS comm_in  ON comm_in.id  = context_switches.comm_in_id"""
     }
 
     call_path_insert_sql = (
-        insert_sql["call_path"] if (perf_db_export_calls or perf_db_export_callchains) else None
+        insert_sql["call_path"]
+        if (perf_db_export_calls or perf_db_export_callchains)
+        else None
     )
     call_insert_sql = insert_sql["call"] if perf_db_export_calls else None
-    sample_insert_sql = insert_sql["sample_branches"] if branches else insert_sql["sample_all"]
+    sample_insert_sql = (
+        insert_sql["sample_branches"] if branches else insert_sql["sample_all"]
+    )
 
     return 0
 
