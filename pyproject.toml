@@ -48,7 +48,9 @@ dependencies = [
     "capstone",
     "plotly",
     "nbformat",
-    "paramiko"
+    "paramiko",
+    "fastmcp>=2.10.3",
+    "mcp[cli]>=0.1.0"
 ]
 
 [project.optional-dependencies]
