@@ -8,7 +8,7 @@ from typing import Dict
 from pipa.analysis.flamegraph.io import parse_folded_file
 from pipa.analysis.flamegraph.analyzer import FoldedAnalyzer, SymbolFilter
 from pipa.analysis.flamegraph.trie import build_trie_from_collapsed
-from pipa.analysis.export.csv import write_symbol_stats_csv, write_stack_stats_csv
+from pipa.analysis.flamegraph.csv_export import write_symbol_stats_csv, write_stack_stats_csv
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DATA = os.path.join(ROOT, "data", "out.stacks-folded")

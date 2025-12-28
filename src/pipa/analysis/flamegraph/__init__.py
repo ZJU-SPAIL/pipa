@@ -26,6 +26,16 @@ from .trie import (
     build_trie_from_collapsed,
     build_trie_from_file,
 )
+from .csv_export import write_symbol_stats_csv, write_stack_stats_csv
+from .summary import (
+    summarize_analyzer,
+    summarize_file,
+    summarize_text,
+    summarize_mapping,
+    subset_summary_from_file,
+    path_stats_from_file,
+    path_stats_from_text,
+)
 
 __all__ = [
     "FoldedAnalyzer",
@@ -50,4 +60,15 @@ __all__ = [
     "TrieNode",
     "build_trie_from_collapsed",
     "build_trie_from_file",
+    "write_symbol_stats_csv",
+    "write_stack_stats_csv",
+    "summarize_analyzer",
+    "summarize_file",
+    "summarize_text",
+    "summarize_mapping",
+    "subset_summary_from_file",
+    "path_stats_from_file",
+    "path_stats_from_text",
+    "write_symbol_stats_csv",
+    "write_stack_stats_csv",
 ]

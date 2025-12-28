@@ -29,7 +29,6 @@ def write_symbol_stats_csv(
             break
         # Recreate iterator: if we consumed one, we need to write it back.
         if first is None:
-            # empty input
             (
                 writer.writerow(["symbol", "inclusive", "leaf"])
                 if not total
