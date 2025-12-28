@@ -9,6 +9,8 @@ source "${source_dir}/common.sh"
 PERF_EVENT_GROUPS=()
 # Shared last background PID variable
 LAST_BG_PID=""
+# Sudo prefix for perf commands (always use sudo)
+PERF_SUDO="sudo"
 
 select_perf_event_groups() {
   local override="$1"
@@ -64,12 +66,12 @@ start_perf_stat_job() {
 
   if command -v timeout >/dev/null 2>&1; then
     (
-      timeout --signal=INT --kill-after=5 "${duration}s" "${cmd[@]}" 1>/dev/null 2>"$output_file"
+      timeout --signal=INT --kill-after=5 "${duration}s" ${PERF_SUDO} "${cmd[@]}" 1>/dev/null 2>"$output_file"
     ) &
     LAST_BG_PID=$!
   else
     (
-      "${cmd[@]}" 1>/dev/null 2>"$output_file" &
+      ${PERF_SUDO} "${cmd[@]}" 1>/dev/null 2>"$output_file" &
       local inner_pid=$!
       sleep "$duration"
       kill -INT "$inner_pid" >/dev/null 2>&1 || true
@@ -87,9 +89,9 @@ run_profiling_phase() {
   local -a cmd=(perf record -o "$output_file" -F "$freq" -g -a --)
 
   if command -v timeout >/dev/null 2>&1; then
-    timeout --signal=INT --kill-after=5 "${duration}s" "${cmd[@]}" >/dev/null 2>&1 || true
+    timeout --signal=INT --kill-after=5 "${duration}s" ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 || true
   else
-    "${cmd[@]}" >/dev/null 2>&1 &
+    ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 &
     local record_pid=$!
     sleep "$duration"
     kill -INT "$record_pid" >/dev/null 2>&1 || true

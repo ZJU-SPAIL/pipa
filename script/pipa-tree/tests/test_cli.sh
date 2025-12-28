@@ -135,9 +135,9 @@ run_expect_failure() {
 run_expect_success "bash syntax check" bash -n "$CLI"
 run_expect_success "main help" "$CLI" help >/dev/null
 
-SYSTEM_ARCHIVE="$TMP_DIR/system_sample.pipa"
+SYSTEM_ARCHIVE="$TMP_DIR/system_collection.tar.gz"
 run_expect_success "system-wide sampling" \
-  "$CLI" sample \
+  "$CLI" collect \
     --output "$SYSTEM_ARCHIVE" \
     --duration-stat 1 \
     --duration-record 1
@@ -146,17 +146,17 @@ run_expect_success "system archive is valid tar" tar -tzf "$SYSTEM_ARCHIVE" >/de
 
 DEFAULT_OUTPUT_DIR="$TMP_DIR/default_output"
 mkdir -p "$DEFAULT_OUTPUT_DIR"
-run_expect_success "default output path" bash -c "cd \"$DEFAULT_OUTPUT_DIR\" && \"$CLI\" sample --duration-stat 1 --duration-record 1 --no-spec-info"
-LATEST_ARCHIVE=$(ls -t "$DEFAULT_OUTPUT_DIR"/pipa-sample-*.pipa 2>/dev/null | head -1)
+run_expect_success "default output path" bash -c "cd \"$DEFAULT_OUTPUT_DIR\" && \"$CLI\" collect --duration-stat 1 --duration-record 1 --no-spec-info"
+LATEST_ARCHIVE=$(ls -t "$DEFAULT_OUTPUT_DIR"/pipa-collection-*.tar.gz 2>/dev/null | head -1)
 if [[ -z "$LATEST_ARCHIVE" ]]; then
   echo "[FAIL] default output archive not found" >&2
   exit 1
 fi
 run_expect_success "default archive is valid tar" tar -tzf "$LATEST_ARCHIVE" >/dev/null
 
-NOINFO_ARCHIVE="$TMP_DIR/system_noinfo.pipa"
+NOINFO_ARCHIVE="$TMP_DIR/system_noinfo.tar.gz"
 run_expect_success "system-wide sampling without spec info" \
-  "$CLI" sample \
+  "$CLI" collect \
     --output "$NOINFO_ARCHIVE" \
     --duration-stat 1 \
     --duration-record 1 \
@@ -166,9 +166,9 @@ run_expect_success "system no-info archive is valid tar" tar -tzf "$NOINFO_ARCHI
 
 SPEC_INFO="$TMP_DIR/spec_info.yaml"
 printf "cpu:\n  vendor: test\n" > "$SPEC_INFO"
-ATTACH_ARCHIVE="$TMP_DIR/attach_sample.pipa"
+ATTACH_ARCHIVE="$TMP_DIR/attach_collection.tar.gz"
 run_expect_success "spec info file sampling" \
-  "$CLI" sample \
+  "$CLI" collect \
     --output "$ATTACH_ARCHIVE" \
     --duration-stat 1 \
     --duration-record 1 \
@@ -177,6 +177,6 @@ run_expect_success "spec info file sampling" \
 run_expect_success "attach archive is valid tar" tar -tzf "$ATTACH_ARCHIVE" >/dev/null
 
 run_expect_failure "require at least one phase" \
-  bash -c "cd \"$TMP_DIR\" && \"$CLI\" sample --no-spec-info --no-stat --no-record"
+  bash -c "cd \"$TMP_DIR\" && \"$CLI\" collect --no-spec-info --no-stat --no-record"
 
 echo "All CLI tests passed."

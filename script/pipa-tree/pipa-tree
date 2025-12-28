@@ -7,30 +7,42 @@ PROGRAM_VERSION="1.0.0"
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Library directory resolution
+# Priority: 1. Environment variable PIPA_TREE_LIB_DIR
+#           2. Installed lib path (/usr/local/lib/pipa-tree)
+#           3. Local lib subdirectory (for development)
+if [[ -n "${PIPA_TREE_LIB_DIR:-}" ]]; then
+  LIB_DIR="$PIPA_TREE_LIB_DIR"
+elif [[ -d "/usr/local/lib/pipa-tree" ]]; then
+  LIB_DIR="/usr/local/lib/pipa-tree"
+else
+  LIB_DIR="${SCRIPT_DIR}/lib"
+fi
+
 # Source library modules
-source "${SCRIPT_DIR}/lib/common.sh"
-source "${SCRIPT_DIR}/lib/spec_info.sh"
-source "${SCRIPT_DIR}/lib/perf.sh"
-source "${SCRIPT_DIR}/lib/sar.sh"
-source "${SCRIPT_DIR}/lib/archive.sh"
+source "${LIB_DIR}/common.sh"
+source "${LIB_DIR}/spec_info.sh"
+source "${LIB_DIR}/perf.sh"
+source "${LIB_DIR}/sar.sh"
+source "${LIB_DIR}/archive.sh"
 
 show_main_usage() {
   cat <<'EOF'
 Usage: pipa-tree <command> [options]
 
 Commands:
-  sample       Run the two-phase perf/sar collector
+  collect      Run the two-phase perf/sar collector
   help         Show this message
 EOF
 }
 
-show_sample_usage() {
+show_collect_usage() {
   cat <<'EOF'
 Usage:
-  pipa-tree sample [--output PATH] [options]
+  pipa-tree collect [--output PATH] [options]
 
 Options:
-  --output PATH               Destination .pipa archive path (defaults to ./pipa-sample-<timestamp>.pipa).
+  --output PATH               Destination .tar.gz archive path (defaults to ./pipa-collection-<timestamp>.tar.gz).
   --duration-stat SEC         Duration for counting phase (perf stat + sar, default: 60).
   --duration-record SEC       Duration for profiling phase (perf record, default: 60).
   --no-stat                   Disable counting phase collectors.
@@ -45,7 +57,7 @@ Options:
 EOF
 }
 
-run_sample_command() {
+run_collect_command() {
   local output_path=""
   local duration_stat=60
   local duration_record=60
@@ -91,10 +103,10 @@ run_sample_command() {
         [[ $# -ge 2 ]] || log_fatal "--spec-info-file requires a path"
         spec_info_file="$2"; shift 2 ;;
       -h|--help)
-        show_sample_usage
+        show_collect_usage
         exit 0 ;;
       *)
-        log_fatal "Unknown option for sample: $1" ;;
+        log_fatal "Unknown option for collect: $1" ;;
     esac
   done
 
@@ -161,9 +173,9 @@ main() {
   fi
 
   case "$command" in
-    sample)
+    sample|collect)
       shift
-      run_sample_command "$@"
+      run_collect_command "$@"
       ;;
     *)
       log_fatal "Unknown command: $command"

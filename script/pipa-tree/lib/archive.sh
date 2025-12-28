@@ -14,7 +14,7 @@ cleanup_work_dir() {
 generate_default_output_path() {
   local timestamp
   timestamp=$(date +%Y%m%d_%H%M%S)
-  printf "%s/pipa-sample-%s.pipa" "$PWD" "$timestamp"
+  printf "%s/pipa-collection-%s.tar.gz" "$PWD" "$timestamp"
 }
 
 archive_results() {
