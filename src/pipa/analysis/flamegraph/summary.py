@@ -9,7 +9,7 @@ These consolidate common workflows used by MCP tools and examples:
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, Optional, Pattern, Sequence
+from typing import Any, Dict, Optional, Pattern, Sequence
 
 from .analyzer import FoldedAnalyzer, SymbolFilter, SymbolShare, StackShare
 from .io import parse_folded_file, parse_folded_lines
