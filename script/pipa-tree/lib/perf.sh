@@ -52,7 +52,7 @@ start_perf_stat_job() {
   local interval="$2"
   local output_file="$3"
   local metrics="backend_bound,frontend_bound,retiring,bad_speculation"
-  local -a cmd=(perf stat -x ';')
+  local -a cmd=(perf stat -x ',')
 
   cmd+=(-a)
 
