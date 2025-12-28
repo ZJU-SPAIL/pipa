@@ -2,9 +2,22 @@
 # Common utility functions for pipa-tree
 
 # Logging functions
-log_info() { printf "[INFO] %s\n" "$*" >&2; }
-log_warn() { printf "[WARN] %s\n" "$*" >&2; }
-log_error() { printf "[ERROR] %s\n" "$*" >&2; }
+log_write() {
+  local level="$1"
+  shift || true
+  local message="$*"
+  local timestamp
+  timestamp=$(date +"%Y-%m-%dT%H:%M:%S%z")
+  local formatted="[$timestamp][$level] $message"
+  printf "%s\n" "$formatted" >&2
+  if [[ -n "${PIPA_TREE_LOG_FILE:-}" ]]; then
+    printf "%s\n" "$formatted" >>"$PIPA_TREE_LOG_FILE"
+  fi
+}
+
+log_info() { log_write INFO "$@"; }
+log_warn() { log_write WARN "$@"; }
+log_error() { log_write ERROR "$@"; }
 log_fatal() {
   log_error "$*"
   exit 1
