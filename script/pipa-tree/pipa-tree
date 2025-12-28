@@ -65,7 +65,7 @@ run_collect_command() {
   local run_record=1
   local perf_stat_interval=1000
   local sar_interval=1
-  local perf_record_freq=99
+  local perf_record_freq=97
   local perf_events_override=""
   local no_spec_info=0
   local spec_info_file=""

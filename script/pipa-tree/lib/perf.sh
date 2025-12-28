@@ -86,7 +86,7 @@ run_profiling_phase() {
   local freq="$2"
   local output_file="$3"
 
-  local -a cmd=(perf record -o "$output_file" -F "$freq" -g -a --)
+  local -a cmd=(perf record -e cpu-clock -g -a --call-graph dwarf -N -F "$freq" -o "$output_file" --)
 
   if command -v timeout >/dev/null 2>&1; then
     timeout --signal=INT --kill-after=5 "${duration}s" ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 || true
