@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROGRAM_NAME="pipa-tree"
+PROGRAM_VERSION="1.0.0"
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source library modules
+source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/lib/spec_info.sh"
+source "${SCRIPT_DIR}/lib/perf.sh"
+source "${SCRIPT_DIR}/lib/sar.sh"
+source "${SCRIPT_DIR}/lib/archive.sh"
+
+show_main_usage() {
+  cat <<'EOF'
+Usage: pipa-tree <command> [options]
+
+Commands:
+  sample       Run the two-phase perf/sar collector
+  help         Show this message
+EOF
+}
+
+show_sample_usage() {
+  cat <<'EOF'
+Usage:
+  pipa-tree sample [--output PATH] [options]
+
+Options:
+  --output PATH               Destination .pipa archive path (defaults to ./pipa-sample-<timestamp>.pipa).
+  --duration-stat SEC         Duration for counting phase (perf stat + sar, default: 60).
+  --duration-record SEC       Duration for profiling phase (perf record, default: 60).
+  --no-stat                   Disable counting phase collectors.
+  --no-record                 Disable profiling phase collector.
+  --perf-stat-interval MS     perf stat sampling interval (default: 1000ms).
+  --sar-interval SEC          sar sampling interval (default: 1s).
+  --perf-record-freq HZ       perf record frequency (default: 99Hz).
+  --perf-events LIST          Override default perf event groups.
+  --no-spec-info              Skip spec info validation/copy.
+  --spec-info-file PATH       Provide an explicit spec info YAML file.
+  --help, -h                  Show this help.
+EOF
+}
+
+run_sample_command() {
+  local output_path=""
+  local duration_stat=60
+  local duration_record=60
+  local run_stat=1
+  local run_record=1
+  local perf_stat_interval=1000
+  local sar_interval=1
+  local perf_record_freq=99
+  local perf_events_override=""
+  local no_spec_info=0
+  local spec_info_file=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --output)
+        [[ $# -ge 2 ]] || log_fatal "--output requires a path"
+        output_path="$2"; shift 2 ;;
+      --duration-stat)
+        [[ $# -ge 2 ]] || log_fatal "--duration-stat requires seconds"
+        duration_stat="$2"; shift 2 ;;
+      --duration-record)
+        [[ $# -ge 2 ]] || log_fatal "--duration-record requires seconds"
+        duration_record="$2"; shift 2 ;;
+      --no-stat)
+        run_stat=0; shift ;;
+      --no-record)
+        run_record=0; shift ;;
+      --perf-stat-interval)
+        [[ $# -ge 2 ]] || log_fatal "--perf-stat-interval requires milliseconds"
+        perf_stat_interval="$2"; shift 2 ;;
+      --sar-interval)
+        [[ $# -ge 2 ]] || log_fatal "--sar-interval requires seconds"
+        sar_interval="$2"; shift 2 ;;
+      --perf-record-freq)
+        [[ $# -ge 2 ]] || log_fatal "--perf-record-freq requires Hz"
+        perf_record_freq="$2"; shift 2 ;;
+      --perf-events)
+        [[ $# -ge 2 ]] || log_fatal "--perf-events requires a list"
+        perf_events_override="$2"; shift 2 ;;
+      --no-spec-info)
+        no_spec_info=1; shift ;;
+      --spec-info-file)
+        [[ $# -ge 2 ]] || log_fatal "--spec-info-file requires a path"
+        spec_info_file="$2"; shift 2 ;;
+      -h|--help)
+        show_sample_usage
+        exit 0 ;;
+      *)
+        log_fatal "Unknown option for sample: $1" ;;
+    esac
+  done
+
+  if [[ -z "$output_path" ]]; then
+    output_path=$(generate_default_output_path)
+    log_info "No --output specified. Using default path: $output_path"
+  fi
+
+  if (( run_stat == 0 && run_record == 0 )); then
+    log_fatal "At least one phase must run"
+  fi
+
+  ensure_command tar
+  ensure_command perf
+  ensure_command sar
+  ensure_command sadf
+
+  select_perf_event_groups "$perf_events_override"
+
+  WORK_DIR=$(mktemp -d -t pipa_sample_XXXX)
+  trap cleanup_work_dir EXIT
+  log_info "Working directory: $WORK_DIR"
+
+  local level_dir="$WORK_DIR/attach_session"
+  mkdir -p "$level_dir"
+
+  prepare_spec_info "$WORK_DIR/spec_info.yaml" "$no_spec_info" "$spec_info_file"
+
+  if (( run_stat == 1 )); then
+    log_info "Starting counting phase (perf stat + sar) for ${duration_stat}s"
+    local perf_stat_file="$level_dir/perf_stat.txt"
+    local sar_bin="$level_dir/sar_all.bin"
+    local sar_log="$level_dir/sar.log"
+
+    local pid_status=0
+    start_perf_stat_job "$duration_stat" "$perf_stat_interval" "$perf_stat_file"
+    local perf_job="$LAST_BG_PID"
+    start_sar_job "$duration_stat" "$sar_interval" "$sar_bin" "$sar_log"
+    local sar_job="$LAST_BG_PID"
+
+    wait "$perf_job" || pid_status=$?
+    if grep -q "perf_event_paranoid" "$perf_stat_file" 2>/dev/null; then
+      log_fatal "perf stat aborted due to perf_event_paranoid restrictions"
+    fi
+    wait "$sar_job" || true
+    convert_sar_outputs "$sar_bin" "$level_dir"
+  fi
+
+  if (( run_record == 1 )); then
+    log_info "Starting profiling phase (perf record) for ${duration_record}s"
+    local perf_data="$level_dir/perf.data"
+    run_profiling_phase "$duration_record" "$perf_record_freq" "$perf_data"
+  fi
+
+  archive_results "$WORK_DIR" "$output_path"
+  log_info "Sampling complete."
+}
+
+main() {
+  local command="${1:-}" || true
+  if [[ -z "$command" || "$command" == "help" || "$command" == "--help" || "$command" == "-h" ]]; then
+    show_main_usage
+    exit 0
+  fi
+
+  case "$command" in
+    sample)
+      shift
+      run_sample_command "$@"
+      ;;
+    *)
+      log_fatal "Unknown command: $command"
+      ;;
+  esac
+}
+
+main "$@"
