@@ -23,6 +23,7 @@ from pipa.parser.flamegraph.stackcollapse_perf import CollapseOptions, format_co
 # Core implementations (callable directly or via MCP tools)
 # -----------------
 
+
 def analyze_folded_file_impl(
     path: str,
     topk_symbols: int = 20,
@@ -135,6 +136,7 @@ def export_call_tree_impl(
     trie = build_trie_from_file(path)
     trees = trie.export_sorted_tree(start_symbol=start_symbol, fuzzy=fuzzy, k=depth)
     if max_children is not None and max_children > 0:
+
         def trim(node: Dict[str, Any]) -> Dict[str, Any]:
             children = node.get("children", [])
             if isinstance(children, list) and len(children) > max_children:
@@ -142,6 +144,7 @@ def export_call_tree_impl(
             for c in node.get("children", []) or []:
                 trim(c)
             return node
+
         trees = [trim(t) for t in trees]
     return {"total": trie.total, "trees": trees}
 
@@ -181,6 +184,7 @@ def path_stats_impl(path: str, limit: int = 200) -> Dict[str, Any]:
 # -----------------
 # Registration
 # -----------------
+
 
 def register_flamegraph_tools(mcp: FastMCP) -> None:
     mcp.tool(

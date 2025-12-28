@@ -9,7 +9,10 @@ from pipa.analysis.flamegraph.analyzer import (
     FoldedAnalyzer,
     SymbolFilter,
 )
-from pipa.analysis.flamegraph.csv_export import write_symbol_stats_csv, write_stack_stats_csv
+from pipa.analysis.flamegraph.csv_export import (
+    write_symbol_stats_csv,
+    write_stack_stats_csv,
+)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 SMALL_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")

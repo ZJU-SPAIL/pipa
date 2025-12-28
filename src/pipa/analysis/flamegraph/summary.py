@@ -23,7 +23,9 @@ def _compile_regex(expr: Optional[str]) -> Optional[Pattern[str]]:
     return re.compile(expr)
 
 
-def _proc_match(stack: str, proc_prefix: Optional[str], proc_regex: Optional[Pattern[str]]) -> bool:
+def _proc_match(
+    stack: str, proc_prefix: Optional[str], proc_regex: Optional[Pattern[str]]
+) -> bool:
     if proc_prefix is None and proc_regex is None:
         return True
     if not stack:
@@ -53,7 +55,11 @@ def summarize_analyzer(
     cregex = _compile_regex(proc_regex)
 
     sym_stats = analyzer.topk_symbols(
-        k=topk_symbols, by=order, proc_prefix=proc_prefix, proc_regex=cregex, filters=symbol_filter
+        k=topk_symbols,
+        by=order,
+        proc_prefix=proc_prefix,
+        proc_regex=cregex,
+        filters=symbol_filter,
     )
     sym_shares = analyzer.to_symbol_shares(sym_stats)
 
@@ -225,10 +231,7 @@ def path_stats_from_file(path: str, limit: int = 200) -> Dict[str, Any]:
     if limit:
         truncated = len(stats) > limit
         stats = stats[:limit]
-    rows = [
-        {"path": p, "count": c, "percent": pct}
-        for p, c, pct in stats
-    ]
+    rows = [{"path": p, "count": c, "percent": pct} for p, c, pct in stats]
     return {"total": trie.total, "paths": rows, "truncated": truncated}
 
 
@@ -242,10 +245,7 @@ def path_stats_from_text(text: str, limit: int = 200) -> Dict[str, Any]:
     if limit:
         truncated = len(stats) > limit
         stats = stats[:limit]
-    rows = [
-        {"path": p, "count": c, "percent": pct}
-        for p, c, pct in stats
-    ]
+    rows = [{"path": p, "count": c, "percent": pct} for p, c, pct in stats]
     return {"total": trie.total, "paths": rows, "truncated": truncated}
 
 

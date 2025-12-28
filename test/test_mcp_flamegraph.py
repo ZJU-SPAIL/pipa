@@ -51,7 +51,12 @@ def test_subset_analyze_and_tree_export():
 )
 def test_collapse_perf_script_smoke():
     res = mfg.collapse_perf_script_impl(
-        PERF_SCRIPT, include_pid=False, include_tid=False, limit=10, topk_symbols=3, topk_stacks=2
+        PERF_SCRIPT,
+        include_pid=False,
+        include_tid=False,
+        limit=10,
+        topk_symbols=3,
+        topk_stacks=2,
     )
     assert res["unique_stacks"] > 0
     assert len(res["lines"]) <= 10
