@@ -6,6 +6,10 @@ CLI="$ROOT_DIR/script/pipa-tree/pipa-tree"
 TMP_DIR=$(mktemp -d -t pipa_tree_tests_XXXX)
 FAKE_BIN_DIR=$(mktemp -d -t pipa_tree_fakebin_XXXX)
 
+export PIPA_TREE_DATA_DIR="$TMP_DIR/data"
+export PIPA_TREE_RUN_DIR="$TMP_DIR/run"
+mkdir -p "$PIPA_TREE_DATA_DIR" "$PIPA_TREE_RUN_DIR"
+
 cleanup() {
   rm -rf "$TMP_DIR" "$FAKE_BIN_DIR"
 }
@@ -166,5 +170,27 @@ run_expect_success "system no-info archive is valid tar" tar -tzf "$NOINFO_ARCHI
 
 run_expect_failure "require at least one phase" \
   bash -c "cd \"$TMP_DIR\" && \"$CLI\" collect --no-spec-info --no-stat --no-record"
+
+BACKGROUND_ARCHIVE="$TMP_DIR/background_output.tar.gz"
+run_expect_success "background start creates pid file" bash -c "\
+  \"$CLI\" collect --duration-stat 30 --duration-record 30 --no-spec-info --output \"$BACKGROUND_ARCHIVE\" --background \
+  && sleep 0.5 \
+  && [[ -f \"$PIPA_TREE_RUN_DIR/pipa-tree.pid\" ]] \
+  && pid=$(cat \"$PIPA_TREE_RUN_DIR/pipa-tree.pid\") \
+  && kill -0 \"$pid\" \
+"
+
+run_expect_success "stop command terminates background run" bash -c "\
+  pid=$(cat \"$PIPA_TREE_RUN_DIR/pipa-tree.pid\") \
+  && \"$CLI\" stop \
+  && sleep 1 \
+  && { ! kill -0 \"$pid\" 2>/dev/null; } \
+  && [[ ! -f \"$PIPA_TREE_RUN_DIR/pipa-tree.pid\" ]] \
+"
+
+run_expect_success "background archive produced" bash -c "\
+  [[ -f \"$BACKGROUND_ARCHIVE\" ]] \
+  && tar -tzf \"$BACKGROUND_ARCHIVE\" >/dev/null \
+"
 
 echo "All CLI tests passed."

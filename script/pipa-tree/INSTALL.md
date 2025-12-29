@@ -39,6 +39,12 @@ pipa-tree collect --output mydata.tar.gz
 
 # With custom durations
 pipa-tree collect --duration-stat 30 --duration-record 30
+
+# Run in background, then stop later (single instance enforced via lock/PID file)
+pipa-tree collect --background --output mydata.tar.gz
+pipa-tree stop
+
+# Interactive stop: press Ctrl+C to archive what has been collected and exit gracefully
 ```
 
 ## Permission Requirements
