@@ -2,24 +2,54 @@ stages:
   - lint
   - test
 
-lint:
-  image: python:3.11
-  stage: lint
-  script:
-    - pip install flake8
-    - flake8 .
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
 
-test:
+.base_python_job:
   image: python:3.11
-  stage: test
-  script:
-    - pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-    - pip install build
-    - python -m build
-    - pip install dist/*.whl
-    - pip install pytest
-    - pytest
-  artifacts:
+  before_script:
+    - echo "Using python:3.11 image"
+    - pip config set global.index-url "https://pypi.tuna.tsinghua.edu.cn/simple"
+    - export UV_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+    - export UV_BREAK_SYSTEM_PACKAGES=true
+  cache:
+    key: "$CI_JOB_IMAGE-v1"
     paths:
-      - dist/*.whl
-    
+      - $PIP_CACHE_DIR
+      - $PRE_COMMIT_HOME
+      - /usr/local/lib/python3.11/site-packages/
+
+lint:
+  stage: lint
+  extends: .base_python_job
+  script:
+    - pip install uv
+    - uv pip install --system -v .
+    - flake8 .
+    - black --check .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+unit-tests:
+  stage: test
+  extends: .base_python_job
+  script:
+    - pip install uv
+    - uv pip install --system -v .
+    - pytest --cov=src/pipa --cov-report=term-missing --cov-report=xml --junitxml=junit-report.xml
+  artifacts:
+    when: always
+    paths:
+      - coverage.xml
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
