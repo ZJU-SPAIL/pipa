@@ -31,6 +31,10 @@ from pipa.utils import get_project_root
 log = logging.getLogger(__name__)
 
 
+def _fig_to_html(figure) -> str:
+    return figure.to_html(full_html=False, include_plotlyjs=False)
+
+
 def _generate_disk_analysis_html(warnings: list[str]) -> str:
     legend_html = """
     <div class="disk-legend" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa;
@@ -164,9 +168,7 @@ def _generate_report(
         fig_global = plot_cpu_clusters(
             df_features, title="全景视图：所有 CPU 核心负载分布"
         )
-        plots["cpu_cluster_global"] = fig_global.to_html(
-            full_html=False, include_plotlyjs="cdn"
-        )
+        plots["cpu_cluster_global"] = _fig_to_html(fig_global)
         if expected_cpus:
             target_ids = _parse_cpu_list_str(expected_cpus)
             df_target = df_features[df_features.index.isin(target_ids)]
@@ -174,9 +176,7 @@ def _generate_report(
                 fig_target = plot_cpu_clusters(
                     df_target, title=f"聚焦视图：业务绑定核心 ({expected_cpus})"
                 )
-                plots["cpu_cluster_target"] = fig_target.to_html(
-                    full_html=False, include_plotlyjs="cdn"
-                )
+                plots["cpu_cluster_target"] = _fig_to_html(fig_target)
         if "cpu_clusters_summary" in context:
             summary_df = pd.DataFrame(context["cpu_clusters_summary"])
             tables["cluster_summary"] = summary_df.to_json(orient="records")
@@ -212,14 +212,10 @@ def _generate_report(
         try:
             fig_sunburst = plot_disk_sunburst(static_info_data["disk_info"])
             if fig_sunburst and fig_sunburst.data:
-                plots["disk_sunburst"] = fig_sunburst.to_html(
-                    full_html=False, include_plotlyjs="cdn"
-                )
+                plots["disk_sunburst"] = _fig_to_html(fig_sunburst)
             fig_pies = plot_per_disk_pies(static_info_data["disk_info"])
             if fig_pies and fig_pies.data:
-                plots["disk_breakdown"] = fig_pies.to_html(
-                    full_html=False, include_plotlyjs="cdn"
-                )
+                plots["disk_breakdown"] = _fig_to_html(fig_pies)
         except Exception as exc:  # pragma: no cover - visualization best-effort
             log.warning("Failed to generate disk charts: %s", exc)
         warnings_list: list[str] = []
@@ -260,18 +256,14 @@ def _generate_report(
             try:
                 if name == "sar_cpu":
                     figure, filters = plot_sar_cpu(df, context)
-                    plots[name] = figure.to_html(
-                        full_html=False, include_plotlyjs="cdn"
-                    )
+                    plots[name] = _fig_to_html(figure)
                     context[f"{name}_filters"] = filters
                 else:
                     generated_plots, generated_filters = plot_timeseries_generic(
                         df, name
                     )
                     for plot_name, figure in generated_plots.items():
-                        plots[plot_name] = figure.to_html(
-                            full_html=False, include_plotlyjs="cdn"
-                        )
+                        plots[plot_name] = _fig_to_html(figure)
                     context.update(generated_filters)
             except Exception as exc:  # pragma: no cover - visualization best-effort
                 log.warning(

@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 from jinja2 import Environment, PackageLoader
 from markdown_it import MarkdownIt
+from plotly.offline import get_plotlyjs
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ def generate_html_report(
         static_info_data=static_info_data,
         context=context,
         audit_html=audit_html,
+        plotly_bundle=get_plotlyjs(),
     )
 
     try:
