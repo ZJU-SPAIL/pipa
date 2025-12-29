@@ -47,9 +47,7 @@ def test_subset_analyze_and_tree_export():
     assert isinstance(tree["trees"], list)
 
 
-@pytest.mark.skipif(
-    not PERF_SCRIPT.exists(), reason="perf_script_file.txt not found"
-)
+@pytest.mark.skipif(not PERF_SCRIPT.exists(), reason="perf_script_file.txt not found")
 def test_collapse_perf_script_smoke():
     res = mfg.collapse_perf_script_impl(
         PERF_SCRIPT,

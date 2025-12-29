@@ -280,19 +280,36 @@ def test_analyze_archive_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPa
                 {
                     "name": "sda",
                     "rotational": "SSD",
-                    "fs_usage": {"percent": 92, "mount": "/", "total": 10, "used": 9, "free": 1},
+                    "fs_usage": {
+                        "percent": 92,
+                        "mount": "/",
+                        "total": 10,
+                        "used": 9,
+                        "free": 1,
+                    },
                     "partitions": [],
                 }
             ]
         },
     }
     static_info_path = bundle_dir / "static_info.yaml"
-    static_info_path.write_text(yaml.dump(static_info, allow_unicode=True), encoding="utf-8")
+    static_info_path.write_text(
+        yaml.dump(static_info, allow_unicode=True), encoding="utf-8"
+    )
 
     _write_perf_stat_sample(attach_dir / "perf_stat.txt")
     _write_sar_csv(
         attach_dir / "sar_cpu.csv",
-        ["hostname", "interval", "timestamp", "CPU", "%user", "%system", "%iowait", "%idle"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "CPU",
+            "%user",
+            "%system",
+            "%iowait",
+            "%idle",
+        ],
         [
             ["testhost", 1, "00:00:01", "-1", 35.0, 20.0, 5.0, 40.0],
             ["testhost", 1, "00:00:01", "0", 55.0, 25.0, 10.0, 10.0],
@@ -301,12 +318,35 @@ def test_analyze_archive_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     )
     _write_sar_csv(
         attach_dir / "sar_io.csv",
-        ["hostname", "interval", "timestamp", "tps", "rkB/s", "wkB/s", "await", "%util", "avgrq-sz", "avgqu-sz"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "tps",
+            "rkB/s",
+            "wkB/s",
+            "await",
+            "%util",
+            "avgrq-sz",
+            "avgqu-sz",
+        ],
         [["testhost", 1, "00:00:01", 120.0, 400.0, 600.0, 8.0, 81.0, 18.0, 1.2]],
     )
     _write_sar_csv(
         attach_dir / "sar_disk.csv",
-        ["hostname", "interval", "timestamp", "DEV", "tps", "rkB/s", "wkB/s", "avgrq-sz", "avgqu-sz", "await", "%util"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "DEV",
+            "tps",
+            "rkB/s",
+            "wkB/s",
+            "avgrq-sz",
+            "avgqu-sz",
+            "await",
+            "%util",
+        ],
         [["testhost", 1, "00:00:01", "sda", 100.0, 500.0, 700.0, 16.0, 0.8, 9.0, 88.0]],
     )
     _write_sar_csv(
@@ -316,17 +356,43 @@ def test_analyze_archive_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     )
     _write_sar_csv(
         attach_dir / "sar_memory.csv",
-        ["hostname", "interval", "timestamp", "kbmemfree", "kbmemused", "%memused", "%commit"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "kbmemfree",
+            "kbmemused",
+            "%memused",
+            "%commit",
+        ],
         [["testhost", 1, "00:00:01", 1024_000, 512_000, 33.0, 12.0]],
     )
     _write_sar_csv(
         attach_dir / "sar_paging.csv",
-        ["hostname", "interval", "timestamp", "pgpgin/s", "pgpgout/s", "majflt/s", "pswpin/s", "pswpout/s"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "pgpgin/s",
+            "pgpgout/s",
+            "majflt/s",
+            "pswpin/s",
+            "pswpout/s",
+        ],
         [["testhost", 1, "00:00:01", 10.0, 5.0, 0.5, 0.0, 0.0]],
     )
     _write_sar_csv(
         attach_dir / "sar_load.csv",
-        ["hostname", "interval", "timestamp", "runq-sz", "plist-sz", "ldavg-1", "ldavg-5", "ldavg-15"],
+        [
+            "hostname",
+            "interval",
+            "timestamp",
+            "runq-sz",
+            "plist-sz",
+            "ldavg-1",
+            "ldavg-5",
+            "ldavg-15",
+        ],
         [["testhost", 1, "00:00:01", 1, 100, 2.5, 2.0, 1.5]],
     )
 

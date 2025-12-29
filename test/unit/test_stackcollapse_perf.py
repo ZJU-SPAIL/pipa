@@ -16,12 +16,8 @@ INPUT_PATH = DATA_DIR / "perf_script_file.txt"
 EXPECTED_PATH = DATA_DIR / "out.stacks-folded"
 
 
-@pytest.mark.skipif(
-    not INPUT_PATH.exists(), reason="perf_script_file.txt not found"
-)
-@pytest.mark.skipif(
-    not EXPECTED_PATH.exists(), reason="expected output not found"
-)
+@pytest.mark.skipif(not INPUT_PATH.exists(), reason="perf_script_file.txt not found")
+@pytest.mark.skipif(not EXPECTED_PATH.exists(), reason="expected output not found")
 def test_stackcollapse_output_matches_expected():
     options = CollapseOptions(
         include_pid=False,
