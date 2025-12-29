@@ -12,6 +12,19 @@ LAST_BG_PID=""
 # Sudo prefix for perf commands (always use sudo)
 PERF_SUDO="sudo"
 
+prepare_perf_output_file() {
+  local output_file="$1"
+  if [[ -z "$output_file" ]]; then
+    return
+  fi
+
+  local output_dir
+  output_dir=$(dirname "$output_file")
+  mkdir -p "$output_dir"
+  : >"$output_file"
+  chmod 0644 "$output_file"
+}
+
 select_perf_event_groups() {
   local override="$1"
   local arch=$(uname -m)
@@ -86,15 +99,26 @@ run_profiling_phase() {
   local freq="$2"
   local output_file="$3"
 
-  local -a cmd=(perf record -e cpu-clock -g -a --call-graph dwarf -N -F "$freq" -o "$output_file" --)
+  prepare_perf_output_file "$output_file"
 
-  if command -v timeout >/dev/null 2>&1; then
-    timeout --signal=INT --kill-after=5 "${duration}s" ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 || true
-  else
-    ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 &
-    local record_pid=$!
-    sleep "$duration"
-    kill -INT "$record_pid" >/dev/null 2>&1 || true
-    wait "$record_pid" || true
-  fi
+  local -a cmd=(
+    perf
+    record
+    -e
+    cpu-clock
+    -g
+    -a
+    --call-graph
+    dwarf
+    -N
+    -F
+    "$freq"
+    -o
+    "$output_file"
+    --
+    sleep
+    "$duration"
+  )
+
+  ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1 || true
 }
