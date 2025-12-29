@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from pipa.analysis.flamegraph.io import parse_folded_file
 from pipa.analysis.flamegraph.trie import (
@@ -9,9 +9,10 @@ from pipa.analysis.flamegraph.trie import (
     Trie,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-SMALL_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
-LARGE_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+SMALL_FOLDED = DATA_DIR / "out.stacks-folded"
+LARGE_FOLDED = DATA_DIR / "out.stacks-folded"
 
 
 def _small_trie() -> Trie:

@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os
+from pathlib import Path
 import pytest
 
 from pipa.service.mcp.tools import flamegraph as mfg
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
-PERF_SCRIPT = os.path.join(DATA_DIR, "perf_script_file.txt")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+FOLDED = DATA_DIR / "out.stacks-folded"
+PERF_SCRIPT = DATA_DIR / "perf_script_file.txt"
 
 
-@pytest.mark.skipif(not os.path.exists(FOLDED), reason="folded input not found")
+@pytest.mark.skipif(not FOLDED.exists(), reason="folded input not found")
 def test_analyze_folded_file_topk_and_filters():
     res = mfg.analyze_folded_file_impl(
         FOLDED,
@@ -26,7 +27,7 @@ def test_analyze_folded_file_topk_and_filters():
     assert len(res["top_stacks"]) <= 2
 
 
-@pytest.mark.skipif(not os.path.exists(FOLDED), reason="folded input not found")
+@pytest.mark.skipif(not FOLDED.exists(), reason="folded input not found")
 def test_symbol_overhead_and_call_tree_depth_limits():
     rows = mfg.symbol_overhead_impl(FOLDED, symbol="main", depth=1, fuzzy=True)
     assert "total" in rows and rows["total"] >= 0
@@ -37,7 +38,7 @@ def test_symbol_overhead_and_call_tree_depth_limits():
     assert "trees" in tree and isinstance(tree["trees"], list)
 
 
-@pytest.mark.skipif(not os.path.exists(FOLDED), reason="folded input not found")
+@pytest.mark.skipif(not FOLDED.exists(), reason="folded input not found")
 def test_subset_analyze_and_tree_export():
     res = mfg.subset_analyze_impl(FOLDED, symbol="main", topk_symbols=4, topk_stacks=3)
     assert res["total_weight"] >= 0
@@ -47,7 +48,7 @@ def test_subset_analyze_and_tree_export():
 
 
 @pytest.mark.skipif(
-    not os.path.exists(PERF_SCRIPT), reason="perf_script_file.txt not found"
+    not PERF_SCRIPT.exists(), reason="perf_script_file.txt not found"
 )
 def test_collapse_perf_script_smoke():
     res = mfg.collapse_perf_script_impl(
@@ -60,5 +61,5 @@ def test_collapse_perf_script_smoke():
     )
     assert res["unique_stacks"] > 0
     assert len(res["lines"]) <= 10
-    assert "folded_path" in res and os.path.exists(res["folded_path"])
+    assert "folded_path" in res and Path(res["folded_path"]).exists()
     assert "summary" in res and res["summary"]["total_weight"] == res["total_weight"]

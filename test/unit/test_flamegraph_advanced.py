@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os
+from pathlib import Path
 import re
 
 from pipa.analysis.flamegraph.io import parse_folded_file
@@ -14,8 +14,9 @@ from pipa.analysis.flamegraph.csv_export import (
     write_stack_stats_csv,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-SMALL_FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+SMALL_FOLDED = DATA_DIR / "out.stacks-folded"
 
 
 def _mk_analyzer():

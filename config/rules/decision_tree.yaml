@@ -1,0 +1,178 @@
+# ==========================================================
+# PIPA 决策树 v5.1
+# ==========================================================
+
+# --- 1. 可配置阈值区 (Config) ---
+config:
+  # === 宏观界定 ===
+  ON_CPU_THRESHOLD_PERCENT: 50
+
+  # === 架构感知阈值 ===
+  CPU_CLUSTER_IDLE_THRESHOLD: 10.0
+  CPU_CLUSTER_BUSY_THRESHOLD: 40.0
+  CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0
+  NUMA_IMBALANCE_THRESHOLD: 20.0
+  TMA_DOMINANT_THRESHOLD_PERCENT: 20.0
+
+  # === I/O 阈值 (P95 驱动) ===
+  IO_QUEUE_LOW_THRESHOLD: 10.0
+  IO_QUEUE_HIGH_THRESHOLD: 80.0
+  IO_UTIL_HIGH_THRESHOLD: 75.0
+  IO_WAIT_HIGH_THRESHOLD: 10.0
+
+  # 分层延迟阈值 (ms)
+  IO_AWAIT_HDD_THRESHOLD: 30.0
+  IO_AWAIT_SATA_SSD_THRESHOLD: 5.0
+  IO_AWAIT_NVME_SSD_THRESHOLD: 1.0
+
+  # I/O 模式特征
+  IO_LARGE_REQ_SIZE_THRESHOLD: 64.0 # KB
+  IO_SMALL_REQ_SIZE_THRESHOLD: 16.0 # KB
+
+# --- 2. 规则定义区 (Rules) ---
+rules:
+  # ============================================================
+  # 模块 0: 配置合规性审计 (Pre-check - 独立显示)
+  # ============================================================
+  - name: "配置合规性检查"
+    precondition: "affinity_check_enabled"
+    finding: "配置审计：已启用 CPU 亲和性验证 (预期核心: {expected_cpus_str})。"
+    sub_rules:
+      - name: "验证通过"
+        precondition: "affinity_leakage_count == 0 and affinity_absent_count == 0"
+        finding: "验证结论：✅ <strong>亲和性设置符合预期</strong>。高负载核心与预期配置完全一致，无干扰或闲置。"
+      - name: "发现干扰 (Leakage)"
+        precondition: "affinity_leakage_count > 0"
+        finding: "严重警告：检测到 <strong>{affinity_leakage_count}</strong> 个非预期核心处于高负载状态！<br>异常核心: <strong>{leakage_cores_str}</strong>。<br>可能原因：未隔离中断 (IRQ)、其他进程干扰或绑核策略失效。"
+      - name: "负载未达预期 (Absent)"
+        precondition: "affinity_absent_count > 0"
+        finding: "资源提示：检测到 <strong>{affinity_absent_count}</strong> 个预留核心未处于高负载状态。<br>空闲预留核心: {absent_cores_str}。<br>说明：应用并发度可能不足以吃满预留资源。"
+
+  # ============================================================
+  # 根节点: PIPA 智能诊断概览 (仪表盘入口)
+  # ============================================================
+  - name: "PIPA 智能诊断"
+    precondition: "True"
+    sub_rules:
+      # ------------------------------------------------------------
+      # [面板 1] 宏观状态定性 (Context)
+      # ------------------------------------------------------------
+      - name: "宏观状态: OFF-CPU"
+        precondition: "total_cpu <= ON_CPU_THRESHOLD_PERCENT"
+        finding: "系统体征：<strong>OFF-CPU</strong> (业务核心平均利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>CPU 并非瓶颈，主要耗时在于等待外部资源 (I/O, 锁, 网络) 或系统确实空闲。"
+
+      - name: "宏观状态: ON-CPU"
+        precondition: "total_cpu > ON_CPU_THRESHOLD_PERCENT"
+        finding: "系统体征：<strong>ON-CPU</strong> (业务核心平均利用率 <strong>{total_cpu:.2f}%</strong> vs. 阈值:{ON_CPU_THRESHOLD_PERCENT}%)。<br>业务绑定的计算资源处于高负载状态，算力可能接近饱和。"
+      # ------------------------------------------------------------
+      # [面板 2] CPU 架构健康度 (Architecture)
+      # ------------------------------------------------------------
+      - name: "CPU 架构风险"
+        precondition: "is_cpu_imbalanced or (numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD) or tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT or tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+        sub_rules:
+          - name: "CPU 负载严重不均"
+            precondition: "is_cpu_imbalanced"
+            finding: >-
+              架构风险：<strong>CPU 负载严重不均</strong>。
+              系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
+              其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
+              这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
+
+          - name: "NUMA 节点负载失衡"
+            precondition: "numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD"
+            finding: >-
+              架构风险：检测到 <strong>NUMA 节点间负载失衡</strong>。
+              不同 NUMA 节点之间的 CPU 利用率差异高达 <strong>{numa_max_diff:.1f}%</strong> (vs. {NUMA_IMBALANCE_THRESHOLD}%)。
+              <br>节点状态: {numa_status_msg}
+              <br>这可能导致严重的<strong>远程内存访问 (Remote Memory Access)</strong> 延迟。
+
+          - name: "微架构瓶颈 (TMA)"
+            precondition: "True"
+            sub_rules:
+              - name: "前端瓶颈 (Frontend)"
+                precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1：<strong>前端瓶颈 ({tma_frontend_bound:.2f}%)</strong>。指令供给延迟 (i-Cache Miss / 分支预测失败)。"
+              - name: "后端瓶颈 (Backend)"
+                precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+                finding: "TMA L1：<strong>后端瓶颈 ({tma_backend_bound:.2f}%)</strong>。执行单元或内存子系统停顿。"
+
+      # ------------------------------------------------------------
+      # [面板 3] 磁盘 I/O 诊断 (Storage - P95 Aware)
+      # ------------------------------------------------------------
+      - name: "磁盘 I/O 诊断"
+        precondition: >-
+          (
+            (p95_disk_util > IO_UTIL_HIGH_THRESHOLD or p95_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD)
+          )
+          or
+          (
+            (
+              (busiest_disk_subtype == 'HDD' and p95_disk_await > IO_AWAIT_HDD_THRESHOLD) or
+              (busiest_disk_subtype == 'SATA_SSD' and p95_disk_await > IO_AWAIT_SATA_SSD_THRESHOLD) or
+              (busiest_disk_subtype == 'NVME_SSD' and p95_disk_await > IO_AWAIT_NVME_SSD_THRESHOLD)
+            )
+            and p95_single_core_iowait > IO_WAIT_HIGH_THRESHOLD
+          )
+        finding: >-
+          根因推断：<strong>磁盘 I/O 瓶颈</strong>。
+          检测到磁盘 <strong>{busiest_disk_name}</strong> ({busiest_disk_subtype}) 出现性能瓶颈，因为其满足以下至少一项诊断规则：
+          <ul style="margin-top: 5px; padding-left: 20px; font-size: 0.9em; color: #333; list-style-type: none;">
+            <li>- P95 利用率 (<strong>{p95_disk_util:.2f}%</strong>) vs. 阈值 (<strong>{IO_UTIL_HIGH_THRESHOLD}%</strong>)</li>
+            <li>- P95 队列深度 (<strong>{p95_avgqu_sz:.2f}</strong>) vs. 阈值 (<strong>{IO_QUEUE_HIGH_THRESHOLD}</strong>)</li>
+            <li>- P95 响应时间 (<strong>{p95_disk_await:.2f}ms</strong>) vs. 介质阈值 (<strong>{effective_await_threshold}ms</strong>)</li>
+          </ul>
+          <strong>平均指标 (参考):</strong>
+          利用率 <strong>{avg_disk_util:.2f}%</strong>,
+          队列深度 <strong>{avg_avgqu_sz:.2f}</strong>,
+          响应时间 <strong>{avg_disk_await:.2f}ms</strong>。
+
+        sub_rules:
+          - name: "磁盘能力饱和"
+            precondition: >-
+              (p95_disk_util > IO_UTIL_HIGH_THRESHOLD)
+              and
+              (
+                (p95_disk_await > IO_AWAIT_SATA_SSD_THRESHOLD and busiest_disk_subtype == 'SATA_SSD') or
+                (p95_disk_await > IO_AWAIT_NVME_SSD_THRESHOLD and busiest_disk_subtype == 'NVME_SSD') or
+                (p95_disk_await > IO_AWAIT_HDD_THRESHOLD and busiest_disk_subtype == 'HDD') or
+                (p95_single_core_iowait > IO_WAIT_HIGH_THRESHOLD)
+              )
+            finding: >-
+              初步定性：<strong>磁盘能力饱和</strong>。
+              设备利用率持续处于高位 (P95 <strong>{p95_disk_util:.2f}%</strong>)，且伴随以下性能压力特征：
+              <ul style="margin-top: 5px; padding-left: 20px; font-size: 0.9em; color: #333; list-style-type: none;">
+                <li>- P95 响应时间: <strong>{p95_disk_await:.2f}ms</strong> (vs. {effective_await_threshold}ms)</li>
+                <li>- P95 单核 iowait: <strong>{p95_single_core_iowait:.2f}%</strong> (vs. {IO_WAIT_HIGH_THRESHOLD}%)</li>
+                <li>- <strong>受影响 CPU 核心数: {iowait_core_count} 个</strong> ({iowait_core_details})</li>
+              </ul>
+              <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+              注：若仅 iowait 超标而响应时间正常，通常意味着<strong>高吞吐量</strong>导致 CPU 等待，而非磁盘介质损坏；若两者均超标，则为<strong>物理介质性能透支</strong>。
+              </div>
+
+            sub_rules:
+              - name: "同步 I/O 阻塞"
+                precondition: "avg_avgqu_sz < IO_QUEUE_LOW_THRESHOLD and p95_avgqu_sz < IO_QUEUE_LOW_THRESHOLD and p95_single_core_iowait > IO_WAIT_HIGH_THRESHOLD"
+                finding: >-
+                  具体模式：<strong>同步 I/O 阻塞</strong>。
+                  诊断引擎捕捉到一个关键矛盾：在 I/O 队列持续处于低位 (平均 <strong>{avg_avgqu_sz:.2f}</strong>, P95 <strong>{p95_avgqu_sz:.2f}</strong>) 的情况下，CPU 却出现了持续性的 I/O 等待。
+                  <br>关键证据：单核 P95 iowait 为 <strong>{p95_single_core_iowait:.2f}%</strong> (vs. {IO_WAIT_HIGH_THRESHOLD}%)，<strong>共有 {iowait_core_count} 个核心受到显著影响</strong>。
+                  <blockquote style="font-size:0.9em; color:#666; border-left: 3px solid #ccc; padding-left: 1em; margin: 0.5em 0;">
+                    <strong>方法论解读 (P95):</strong> 该指标排除了瞬时毛刺干扰。在 95% 的采样时间内，CPU 等待率都低于此值。这意味着 I/O 等待已成为一种<strong>常态化的性能损耗</strong>。
+                  </blockquote>
+                  结合饱和的磁盘利用率，这构成了完整证据链：<strong>应用层在以串行方式读写，导致硬件并发能力未被利用，而 CPU 则被迫空转等待。</strong>
+
+              - name: "IOPS 饱和"
+                precondition: "avg_avgrq_sz_kb < IO_SMALL_REQ_SIZE_THRESHOLD"
+                finding: "具体模式：<strong>IOPS 饱和</strong>。大量小尺寸请求 (<strong>{avg_avgrq_sz_kb:.1f} KB</strong>) 耗尽了设备的 IOPS 能力。"
+
+              - name: "吞吐量饱和"
+                precondition: "avg_avgrq_sz_kb > IO_LARGE_REQ_SIZE_THRESHOLD"
+                finding: "具体模式：<strong>吞吐量饱和</strong>。大尺寸请求 (<strong>{avg_avgrq_sz_kb:.1f} KB</strong>) 耗尽了设备的物理带宽。"
+
+          - name: "请求拥塞堆积"
+            precondition: "p95_avgqu_sz > IO_QUEUE_HIGH_THRESHOLD"
+            finding: "初步定性：<strong>请求拥塞堆积</strong>。P95 队列深度高达 <strong>{p95_avgqu_sz:.2f}</strong> (vs. {IO_QUEUE_HIGH_THRESHOLD})，请求在内核层严重排队。"
+
+  - name: "系统空闲"
+    precondition: "total_cpu < 5.0 and p95_disk_util < 10.0 and avg_ifutil < 10.0"
+    finding: "诊断结论：<strong>系统处于空闲状态</strong>。CPU、磁盘 I/O 及网络指标均处于低水位，未检测到负载。"

@@ -1,0 +1,10 @@
+# Test file for complex perf stat -I -x ";" output
+# Features:
+# - Standard simple event (cycles)
+# - Event with a unit (Joules) and complex name
+# - Event with a dash in the name
+
+1.001189252;CPU0;36416323183;;cycles
+2.002825188;CPU0;12345;Joules;power/energy-cores/
+2.002825188;CPU0;59861356776;;L1-dcache-loads
+4.004000000;CPU0;2.00;;branch-misses

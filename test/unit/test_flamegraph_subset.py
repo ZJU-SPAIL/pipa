@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from pipa.analysis.flamegraph.io import parse_folded_file
 from pipa.analysis.flamegraph.analyzer import FoldedAnalyzer
@@ -11,8 +11,9 @@ from pipa.analysis.flamegraph.api import (
     filter_stacks_by_prefixes,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-FOLDED = os.path.join(DATA_DIR, "out.stacks-folded")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+FOLDED = DATA_DIR / "out.stacks-folded"
 
 
 def test_subset_by_symbol_log_flusher():

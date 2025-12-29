@@ -94,11 +94,33 @@ sudo pipa-tree --duration-stat 90 --duration-record 30 \
 
 ## 3. 下一步（可选）
 
+### 3.1 使用 `pipa analyze` 生成报告
+
 采集完成后，可在同一仓库中调用：
 
 ```bash
-pip install pypipa  # 若尚未安装
-pipa analyze ./pipa-collection-demo.tar.gz
+make # 编译安装 pipa cli
+pipa analyze ./pipa-collection-demo.tar.gz \
+  --expected-cpus 0-7 \
+  --symfs /path/to/symbols \
+  --kallsyms /proc/kallsyms
 ```
 
-`pipa analyze` 会解包 `pipa-tree` 结果、解析 perf 与 sar 数据、运行决策树规则，并生成 HTML 报告（模板位于 `src/templates`）。
+该命令会在当前目录输出 `report.html`，包含 CPU 聚类、NUMA 负载、磁盘容量告警、热点符号等可视化信息：
+
+- `--expected-cpus`：可选，告诉决策树“业务核心”范围，便于亲和性与利用率对齐。
+- `--symfs`/`--kallsyms`：可选，若提供符号目录与 `kallsyms`，可让 `perf.data` 热点解析出精准函数名。
+- 所有图表/规则模板均位于 `src/templates/`，可按需自定义主题。
+
+### 3.2 通过自动化测试验证分析能力
+
+仓库内提供了覆盖 CLI、规则引擎与解析能力的测试集，可在采集主机上直接运行：
+
+```bash
+pytest test/test_command_analyze.py::test_analyze_archive_end_to_end
+pytest test/test_command_rules.py
+pytest test/test_pipa_parsers.py
+```
+
+- 端到端用例会构造一个最小化的 `pipa-tree` 压缩包，真实调用 `pipa analyze` 并生成 HTML，以确保报告链路可用。
+- 决策树与 `perf stat` 解析用例保证规则逻辑、TMA 指标与 CSV 解析在升级后依旧工作，便于回归验证。

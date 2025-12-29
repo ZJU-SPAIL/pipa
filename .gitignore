@@ -8,6 +8,8 @@
 .coverage
 
 data
+!src/pipa/data/
+!src/pipa/data/**
 log
 dist
 htmlcov

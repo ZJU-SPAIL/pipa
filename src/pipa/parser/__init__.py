@@ -1,5 +1,13 @@
-from typing import List, Optional
+"""Parser utilities and registry."""
+
+from __future__ import annotations
+
+from typing import Callable, Dict, List, Optional
+
 import plotly.graph_objects as go
+
+from .perf_stat_timeseries_parser import parse as parse_perf_stat
+from .sar_parsers import generic_sar_parse, parse_sar_cpu
 
 
 def make_single_plot(
@@ -10,30 +18,33 @@ def make_single_plot(
     show: bool = True,
     write_to_html: Optional[str] = None,
 ) -> go.Figure:
-    """Make single plotly graph based on the list of scatters.
+    """Render a Plotly figure from a list of scatter traces."""
 
-    Args:
-        scatters (List[go.Scatter]): Scsatters to plot.
-        title (str): Title of the plot.
-        xaxis_title (str): Title of the x-axis.
-        yaxis_title (str): Title of the y-axis.
-        show (bool, optional): Whether to show the fig directly. Defaults to True.
-        write_to_html (Optional[str], optional): If specified, will write fig to the path with html format. Defaults to None.
-
-    Returns:
-        go.Figure: The plotly figure.
-    """
-    fig = go.Figure()
-    for s in scatters:
-        fig.add_trace(s)
-    fig.update_layout(
+    figure = go.Figure()
+    for scatter in scatters:
+        figure.add_trace(scatter)
+    figure.update_layout(
         title=title,
         xaxis_title=xaxis_title,
         yaxis_title=yaxis_title,
         hovermode="closest",
     )
     if show:
-        fig.show()
+        figure.show()
     if write_to_html:
-        fig.write_html(write_to_html)
-    return fig
+        figure.write_html(write_to_html)
+    return figure
+
+
+PARSER_REGISTRY: Dict[str, Callable] = {
+    "perf_stat": parse_perf_stat,
+    "sar_cpu": parse_sar_cpu,
+    "sar_io": generic_sar_parse,
+    "sar_disk": generic_sar_parse,
+    "sar_load": generic_sar_parse,
+    "sar_memory": generic_sar_parse,
+    "sar_network": generic_sar_parse,
+    "sar_paging": generic_sar_parse,
+}
+
+__all__ = ["make_single_plot", "PARSER_REGISTRY"]

@@ -32,23 +32,16 @@ dependencies = [
     "pandas>=2.2.2",
     "PyYAML>=6.0.1",
     "fire>=0.6.0",
-    "questionary>=2.0.1",
     "rich>=13.7.1",
     "pandarallel",
-    "pydot",
     "seaborn",
     "psutil",
     "protobuf",
     "grpcio",
-    "requests",
-    "scipy",
-    "networkx",
     "matplotlib",
     "pyelftools",
     "capstone",
     "plotly",
-    "nbformat",
-    "paramiko",
     "fastmcp>=2.10.3",
     "mcp[cli]>=0.1.0"
 ]
@@ -62,7 +55,7 @@ Issues = "https://github.com/ZJU-SPAIL/pipa/issues"
 Source = "https://github.com/ZJU-SPAIL/pipa"
 
 [project.scripts]
-pipa = "pipa.main:main"
+pipa = "pipa.commands.main:main"
 pipad = "pipa.service.pipad.pipad_server:main"
 pipa-perf-sqlite = "pipa.scripts.perf_sqlite:main"
 

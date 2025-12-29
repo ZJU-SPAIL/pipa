@@ -1,0 +1,333 @@
+os_info:
+  NAME: "openEuler"
+  VERSION: "22.03 (LTS-SP3)"
+  ID: "openEuler"
+  VERSION_ID: "22.03"
+  PRETTY_NAME: "openEuler 22.03 (LTS-SP3)"
+  ANSI_COLOR: "0;31"
+
+kernel_version:
+  version: "5.10.0-230.0.0.132.oe2203sp3.x86_64"
+
+cpu_info:
+  Architecture: "x86_64"
+  CPU(s): 48
+  Model name: "INTEL(R) XEON(R) SILVER 4510"
+  Vendor ID: "GenuineIntel"
+  CPU MHz: "4100.0000"
+  BogoMIPS: "4800.00"
+  Flags: "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cat_l2 cdp_l3 invpcid_single intel_ppin cdp_l2 ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves xfd cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect avx_vnni avx512_bf16 wbnoinvd dtherm ida arat pln pts hwp hwp_act_window hwp_epp hwp_pkg_req avx512vbmi umip pku ospke waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b enqcmd fsrm md_clear serialize tsxldtrk pconfig arch_lbr amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities"
+
+numa_info:
+  numa_topology:
+    node0: "0-11,24-35"
+    node1: "12-23,36-47"
+
+cpu_governor:
+  unique_governors:
+    - "performance"
+
+memory_info:
+  MemTotal: "791728324 kB"
+  MemFree: "620771332 kB"
+  MemAvailable: "777986800 kB"
+  Buffers: "3968068 kB"
+  Cached: "154808388 kB"
+  SwapCached: "0 kB"
+  Active: "43710848 kB"
+  Inactive: "117878932 kB"
+  Active(anon): "2909760 kB"
+  Inactive(anon): "4092048 kB"
+  Active(file): "40801088 kB"
+  Inactive(file): "113786884 kB"
+  Unevictable: "0 kB"
+  Mlocked: "0 kB"
+  SwapTotal: "4194300 kB"
+  SwapFree: "4194300 kB"
+  Dirty: "1040 kB"
+  Writeback: "0 kB"
+  AnonPages: "2709208 kB"
+  Mapped: "402248 kB"
+  Shmem: "4188464 kB"
+  KReclaimable: "7257784 kB"
+  Slab: "7818876 kB"
+  SReclaimable: "7257784 kB"
+  SUnreclaim: "561092 kB"
+  KernelStack: "52880 kB"
+  PageTables: "50544 kB"
+  NFS_Unstable: "0 kB"
+  Bounce: "0 kB"
+  WritebackTmp: "0 kB"
+  CommitLimit: "400058460 kB"
+  Committed_AS: "10631288 kB"
+  VmallocTotal: "13743895347199 kB"
+  VmallocUsed: "497552 kB"
+  VmallocChunk: "0 kB"
+  Percpu: "782976 kB"
+  HardwareCorrupted: "0 kB"
+  AnonHugePages: "745472 kB"
+  ShmemHugePages: "0 kB"
+  ShmemPmdMapped: "0 kB"
+  FileHugePages: "0 kB"
+  FilePmdMapped: "0 kB"
+  HugePages_Total: "0"
+  HugePages_Free: "0"
+  HugePages_Rsvd: "0"
+  HugePages_Surp: "0"
+  Hugepagesize: "2048 kB"
+  Hugetlb: "0 kB"
+  DirectMap4k: "2295084 kB"
+  DirectMap2M: "245866496 kB"
+  DirectMap1G: "558891008 kB"
+
+disk_info:
+  block_devices:
+    - name: "dm-0"
+      type: "lvm/dm"
+      size_bytes: 75161927680
+      model: "openeuler-root"
+      vendor: "N/A"
+      rotational: "HDD"
+      fs_usage:
+        total: 73391005696
+        used: 27896471552
+        free: 41719660544
+        percent: 41
+        mount: "/"
+      partitions: []
+    - name: "dm-1"
+      type: "lvm/dm"
+      size_bytes: 4294967296
+      model: "openeuler-swap"
+      vendor: "N/A"
+      rotational: "HDD"
+      partitions: []
+    - name: "dm-2"
+      type: "lvm/dm"
+      size_bytes: 2000397795328
+      model: "ceph--f1b91a2b--3a59--403a--9348--a68f46293f6e-osd--block--34db2c15--2285--4995--89d2--721076b13ebc"
+      vendor: "N/A"
+      rotational: "HDD"
+      partitions: []
+    - name: "dm-3"
+      type: "lvm/dm"
+      size_bytes: 4294967296
+      model: "rhel-swap"
+      vendor: "N/A"
+      rotational: "SSD"
+      partitions: []
+    - name: "dm-4"
+      type: "lvm/dm"
+      size_bytes: 1839219081216
+      model: "rhel-home"
+      vendor: "N/A"
+      rotational: "SSD"
+      partitions: []
+    - name: "dm-5"
+      type: "lvm/dm"
+      size_bytes: 75161927680
+      model: "rhel-root"
+      vendor: "N/A"
+      rotational: "SSD"
+      partitions: []
+    - name: "dm-6"
+      type: "lvm/dm"
+      size_bytes: 1919233818624
+      model: "openeuler-home"
+      vendor: "N/A"
+      rotational: "HDD"
+      fs_usage:
+        total: 1887956455424
+        used: 67098214400
+        free: 1724879773696
+        percent: 4
+        mount: "/home"
+      partitions: []
+    - name: "dm-7"
+      type: "lvm/dm"
+      size_bytes: 16106127360
+      model: "fedora-root"
+      vendor: "N/A"
+      rotational: "HDD"
+      partitions: []
+    - name: "nvme0n1"
+      type: "disk"
+      size_bytes: 1920383410176
+      model: "INTEL SSDPF2KX019XZ"
+      vendor: "N/A"
+      rotational: "SSD"
+      partitions:
+        - name: "nvme0n1p1"
+          type: "partition"
+          size_bytes: 629145600
+        - name: "nvme0n1p2"
+          type: "partition"
+          size_bytes: 1073741824
+        - name: "nvme0n1p3"
+          type: "partition"
+          size_bytes: 1918679121920
+    - name: "sda"
+      type: "disk"
+      size_bytes: 2000398934016
+      model: "ST2000DM008-2UB1"
+      vendor: "ATA"
+      rotational: "HDD"
+      partitions:
+        - name: "sda1"
+          type: "partition"
+          size_bytes: 629145600
+          fs_usage:
+            total: 627875840
+            used: 6475776
+            free: 621400064
+            percent: 2
+            mount: "/boot/efi"
+        - name: "sda2"
+          type: "partition"
+          size_bytes: 1073741824
+          fs_usage:
+            total: 1020702720
+            used: 298962944
+            free: 651276288
+            percent: 32
+            mount: "/boot"
+        - name: "sda3"
+          type: "partition"
+          size_bytes: 1998694907904
+    - name: "sdb"
+      type: "disk"
+      size_bytes: 20000588955648
+      model: "ST20000NM007D-3D"
+      vendor: "ATA"
+      rotational: "HDD"
+      fs_usage:
+        total: 19919928582144
+        used: 4861753102336
+        free: 14058129256448
+        percent: 26
+        mount: "/mnt/hdd"
+      partitions: []
+    - name: "sdc"
+      type: "disk"
+      size_bytes: 2000398934016
+      model: "WDC WD20EARZ-00C"
+      vendor: "ATA"
+      rotational: "HDD"
+      partitions:
+        - name: "sdc1"
+          type: "partition"
+          size_bytes: 629145600
+        - name: "sdc2"
+          type: "partition"
+          size_bytes: 1073741824
+        - name: "sdc3"
+          type: "partition"
+          size_bytes: 1998694907904
+    - name: "sdd"
+      type: "disk"
+      size_bytes: 2000398934016
+      model: "WDC WD20EARZ-00C"
+      vendor: "ATA"
+      rotational: "HDD"
+      partitions: []
+    - name: "sde"
+      type: "disk"
+      size_bytes: 2048408248320
+      model: "Seagate ZA2048CV"
+      vendor: "ATA"
+      rotational: "SSD"
+      partitions:
+        - name: "sde1"
+          type: "partition"
+          size_bytes: 629145600
+        - name: "sde2"
+          type: "partition"
+          size_bytes: 2147483648
+        - name: "sde3"
+          type: "partition"
+          size_bytes: 17179869184
+        - name: "sde4"
+          type: "partition"
+          size_bytes: 75161927680
+        - name: "sde5"
+          type: "partition"
+          size_bytes: 1953288756736
+
+io_scheduler:
+  dm-0: "none"
+  dm-1: "none"
+  dm-2: "none"
+  dm-3: "none"
+  dm-4: "none"
+  dm-5: "none"
+  dm-6: "none"
+  dm-7: "none"
+  loop0: "none"
+  nvme0n1: "none"
+  sda: "mq-deadline"
+  sdb: "mq-deadline"
+  sdc: "mq-deadline"
+  sdd: "mq-deadline"
+  sde: "mq-deadline"
+
+net_info:
+  network_interfaces:
+    ens38f0:
+      state:
+        - "BROADCAST"
+        - "MULTICAST"
+        - "UP"
+        - "LOWER_UP"
+      mac: "50:d3:3b:00:13:02"
+      ipv4:
+        - "10.87.235.27/24"
+      ipv6:
+        - "fe80::52d3:3bff:fe00:1302/64"
+    ens38f1:
+      state:
+        - "NO-CARRIER"
+        - "BROADCAST"
+        - "MULTICAST"
+        - "UP"
+      mac: "50:d3:3b:00:13:03"
+      ipv4: []
+      ipv6: []
+    ens38f2:
+      state:
+        - "NO-CARRIER"
+        - "BROADCAST"
+        - "MULTICAST"
+        - "UP"
+      mac: "50:d3:3b:00:13:04"
+      ipv4: []
+      ipv6: []
+    ens38f3:
+      state:
+        - "NO-CARRIER"
+        - "BROADCAST"
+        - "MULTICAST"
+        - "UP"
+      mac: "50:d3:3b:00:13:05"
+      ipv4: []
+      ipv6: []
+    lo:
+      state:
+        - "LOOPBACK"
+        - "UP"
+        - "LOWER_UP"
+      mac: "N/A"
+      ipv4:
+        - "127.0.0.1/8"
+      ipv6:
+        - "::1/128"
+
+kernel_parameters:
+  vm.swappiness: "10"
+  kernel.pid_max: "4194304"
+  net.core.somaxconn: "4096"
+  vm.dirty_ratio: "60"
+  vm.dirty_background_ratio: "10"
+  vm.dirty_bytes: "0"
+  vm.dirty_background_bytes: "0"
+  vm.overcommit_memory: "0"
+  fs.file-max: "9223372036854775807"

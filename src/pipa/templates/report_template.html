@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PIPA Analysis Report</title>
+    <link
+      href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css"
+      rel="stylesheet"
+    />
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"
+    ></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2em auto;
+        max-width: 1600px;
+      }
+
+      .tab-buttons {
+        overflow: hidden;
+        border-bottom: 1px solid #ccc;
+        margin-bottom: 20px;
+      }
+
+      .tab-buttons button {
+        background-color: inherit;
+        float: left;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+        font-size: 17px;
+      }
+
+      .tab-buttons button:hover {
+        background-color: #f1f1f1;
+      }
+
+      .tab-buttons button.active {
+        background-color: #ccc;
+        border-bottom: 2px solid #e25050;
+      }
+
+      /* [核心修改] 使用 visibility 替代 display，确保 Plotly 在后台也能正确渲染 */
+      .tab-pane {
+        visibility: hidden;
+        height: 0;
+        overflow: hidden;
+        opacity: 0;
+        /* 保持在文档流中，以便 Plotly 能获取宽度 */
+        display: block;
+        padding: 0;
+      }
+
+      /* 激活状态：恢复显示 */
+      .tab-pane.active-pane {
+        visibility: visible;
+        height: auto;
+        overflow: visible;
+        opacity: 1;
+        padding: 6px 12px;
+        /* 简单的淡入动画 */
+        transition: opacity 0.3s ease-in;
+      }
+
+      #explorer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .plot-container {
+        width: 100%;
+        margin-bottom: 2em;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: #333;
+      }
+
+      .tabulator {
+        border: 1px solid #ddd;
+        margin-top: 1em;
+      }
+
+      .finding-box {
+        background-color: #fbeaea;
+        border: 1px solid #e25050;
+        padding: 15px;
+        border-radius: 5px;
+        font-size: 13px;
+        margin-top: 20px;
+      }
+
+      .finding-box p {
+        margin: 0;
+      }
+
+      .finding-box strong {
+        color: #c04040;
+      }
+
+      /* Global Legend Filter Styling */
+      .global-filter-container {
+        background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
+        border: 1px solid #e0e0e0;
+        border-bottom: 2px solid #e25050;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .global-filter-container label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        margin: 0;
+      }
+
+      .global-filter-container input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        font-size: 13px;
+        background-color: white;
+        transition: border-color 0.2s;
+      }
+
+      .global-filter-container input:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 4px rgba(226, 80, 80, 0.2);
+      }
+
+      .tree ul {
+        padding-top: 20px;
+        position: relative;
+        white-space: nowrap;
+        text-align: center;
+      }
+
+      .tree-wrapper {
+        display: flex;
+        justify-content: flex-start; /* 将子元素（树）向左对齐 */
+        overflow-x: auto; /* 如果树太宽，则出现水平滚动条 */
+        padding-bottom: 1em; /* 为滚动条留出空间 */
+      }
+
+      .tree li {
+        display: inline-block;
+        vertical-align: top;
+        text-align: center;
+        list-style-type: none;
+        position: relative;
+        padding: 20px 5px 0 5px;
+      }
+
+      .tree li::before,
+      .tree li::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 1px solid #ccc;
+        width: 50%;
+        height: 20px;
+      }
+
+      .tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 1px solid #ccc;
+      }
+
+      .tree li:only-child::after,
+      .tree li:only-child::before {
+        display: none;
+      }
+
+      .tree li:only-child {
+        padding-top: 0;
+      }
+
+      .tree li:first-child::before,
+      .tree li:last-child::after {
+        border: 0 none;
+      }
+
+      .tree li:last-child::before {
+        border-right: 1px solid #ccc;
+        border-radius: 0 5px 0 0;
+      }
+
+      .tree li:first-child::after {
+        border-radius: 5px 0 0 0;
+      }
+
+      .tree ul ul::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 1px solid #ccc;
+        width: 0;
+        height: 20px;
+      }
+
+      .tree li span {
+        border: 1px solid #ccc;
+        padding: 5px 10px;
+        text-decoration: none;
+        color: #666;
+        font-family: arial, verdana, tahoma;
+        font-size: 11px;
+        display: inline-block;
+        border-radius: 5px;
+        transition: all 0.5s;
+        cursor: pointer;
+      }
+
+      .tree li span:hover,
+      .tree li span:hover + ul li span {
+        background: #c8e4f8;
+        color: #000;
+        border: 1px solid #94a0b4;
+      }
+
+      .tree li span:hover + ul li::after,
+      .tree li span:hover + ul li::before,
+      .tree li span:hover + ul ul::before {
+        border-color: #94a0b4;
+      }
+
+      .tree li.active-node > span {
+        background: #e25050;
+        color: #fff;
+        border-color: #e25050;
+      }
+
+      .tree li span {
+        min-width: 180px;
+      }
+
+      /* Sar CPU Filter Styling */
+      .per-core-filter-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #eeeff3 100%);
+        border: 1px solid #d8dce4;
+        border-bottom: 3px solid #e25050;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .per-core-filter-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .filter-group label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .filter-group input {
+        padding: 10px 14px;
+        border: 1px solid #c8cdd5;
+        border-radius: 6px;
+        font-size: 13px;
+        background-color: #ffffff;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        transition: all 0.2s ease;
+      }
+
+      .filter-group input:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 6px rgba(226, 80, 80, 0.25);
+        background-color: #fafbfc;
+      }
+
+      .filter-group input::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 768px) {
+        .per-core-filter-controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Chart Filter Styling (Universal) */
+      .chart-filter-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #eeeff3 100%);
+        border: 1px solid #d8dce4;
+        border-bottom: 3px solid #e25050;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .chart-filter-controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      .chart-filter-container .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .chart-filter-container .filter-group label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .chart-filter-container .filter-group input {
+        padding: 10px 14px;
+        border: 1px solid #c8cdd5;
+        border-radius: 6px;
+        font-size: 13px;
+        background-color: #ffffff;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        transition: all 0.2s ease;
+      }
+
+      .chart-filter-container .filter-group input:focus {
+        outline: none;
+        border-color: #e25050;
+        box-shadow: 0 0 6px rgba(226, 80, 80, 0.25);
+        background-color: #fafbfc;
+      }
+
+      .chart-filter-container .filter-group input::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 768px) {
+        .chart-filter-controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .filter-summary {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        font-size: 14px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .filter-summary th,
+      .filter-summary td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .filter-summary th {
+        background-color: #f0f0f0;
+        font-weight: 600;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .filter-summary td {
+        color: #555;
+        word-break: break-word;
+      }
+
+      .filter-summary tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .disk-viz-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 40px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+      }
+
+      @media (max-width: 1200px) {
+        .disk-viz-wrapper {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    {% if warnings %}
+    <div class="warnings-container">
+      <h2>Warnings</h2>
+      <ul>
+        {% for warning in warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <h1>PIPA Analysis Report</h1>
+
+    <div class="tab-buttons">
+      <button class="tab-button active" onclick="openTab(event, 'analysis')">
+        Analysis & Insights
+      </button>
+      {% if plots.cpu_cluster_global %}
+      <button class="tab-button" onclick="openTab(event, 'ml_insights')">
+        ✨ Core Insights
+      </button>
+      {% endif %}
+      <button class="tab-button" onclick="openTab(event, 'explorer')">
+        Metrics Explorer
+      </button>
+      <button class="tab-button" onclick="openTab(event, 'rawdata')">
+        Raw Data Tables
+      </button>
+      <button class="tab-button" onclick="openTab(event, 'hotspots')">
+        Top CPU Hotspots
+      </button>
+      {% if static_info_str %}
+      <button class="tab-button" onclick="openTab(event, 'system')">
+        System Information
+      </button>
+      {% endif %}
+    </div>
+
+    <div id="analysis" class="tab-pane active-pane">
+      {% if audit_html %}
+      <h2>Configuration Audit</h2>
+      <div
+        class="tree-wrapper"
+        style="
+          margin-bottom: 30px;
+          border-bottom: 1px dashed #ccc;
+          padding-bottom: 20px;
+        "
+      >
+        {{ audit_html | safe }}
+      </div>
+      {% endif %}
+
+      <h2>Decision Tree Visualization</h2>
+      <div class="tree-wrapper">{{ decision_tree_html | safe }}</div>
+      <h2 style="margin-top: 2em">Diagnostic Findings</h2>
+      <div class="findings-wrapper">{{ findings_for_tree_html | safe }}</div>
+    </div>
+
+    {% if plots.cpu_cluster_global %}
+    <div id="ml_insights" class="tab-pane">
+      <h2>🤖 CPU Load Stratification (Physics-Aware Engine)</h2>
+      <p>
+        本节展示了 PIPA <strong>物理感知诊断引擎 (Physics-Aware Engine)</strong> 的分析结果。
+        针对多核服务器中常见的“平均值掩盖局部热点”问题，算法采用<strong>统计特征提取 (P95 Features)</strong>
+        与<strong>确定性物理分层</strong>策略，将 CPU 核心精准划分为不同的负载层级，有效避免了在低负载下的噪声干扰。
+      </p>
+
+      <h3>Step 1: Physics-Aware Core Classification</h3>
+      <p>
+        此散点图展示了 CPU 核心的<strong>负载分布形态</strong>。<br />
+        分类逻辑基于 <strong>User + System</strong> 的峰值利用率。
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+        <div class="plot-container" style="border: 1px solid #eee; padding: 10px; border-radius: 5px">
+          {{ plots.cpu_cluster_global | safe }}
+        </div>
+        {% if plots.cpu_cluster_target %}
+        <div
+          class="plot-container"
+          style="
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #e25050;
+          "
+        >
+          {{ plots.cpu_cluster_target | safe }}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if not plots.cpu_cluster_target %}
+      <style>
+        #ml_insights .plot-container {
+          grid-column: span 2;
+        }
+      </style>
+      {% endif %}
+
+      <h3>Step 2: Cluster Statistical Fingerprint</h3>
+      <p>
+        下表提供了每个负载层级的<strong>定量指纹 (Quantitative Fingerprint)</strong>。请重点关注
+        <strong>Count (核心数量)</strong> 与 <strong>Mean_%system/user</strong>，以确定瓶颈的规模与类型。
+      </p>
+      <div id="table-cluster_summary"></div>
+    </div>
+    {% endif %}
+
+    <div id="explorer" class="tab-pane">
+      <h2>Time-Series Visualizations</h2>
+      {% for name, plot_div in plots.items() %} {% if name not in ['knee_distance', 'cpu_cluster_global',
+      'cpu_cluster_target', 'disk_sunburst', 'disk_breakdown'] %}
+      <div class="plot-container" id="plot-{{ name }}">
+        {% set filters = context[name ~ '_filters'] %} {% if filters %}
+        <table class="filter-summary">
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>Available Options</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for filter_key, filter_info in filters.items() %}
+            <tr>
+              <td>{{ filter_key }}</td>
+              <td>{{ filter_info['values']|join(', ') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="chart-filter-container" data-plot-id="{{ name }}">
+          <div class="chart-filter-controls">
+            {% for filter_key, filter_info in filters.items() %}
+            <div class="filter-group">
+              <label for="{{ filter_key }}-filter-input-{{ name }}"
+                >{{ filter_key }} ({{ filter_info.count }}):</label
+              >
+              {% set options_to_show = 10 %} {% if filter_info['count'] <= options_to_show %}
+              {% set placeholder_text = filter_info['values']|join(', ') %} {% else %}
+              {% set placeholder_text = (filter_info['values'][:options_to_show]|join(', ')) ~ ', ... (' ~
+              filter_info['count'] ~ ' total)' %} {% endif %}
+              <input
+                type="text"
+                id="{{ filter_key }}-filter-input-{{ name }}"
+                placeholder="{{ placeholder_text }}"
+                onkeyup="applyChartFilter('{{ name }}')"
+                title="Enter comma-separated values, or ranges like 0-3, 8-15. Use ^prefix for exact match (e.g., ^tps)"
+              />
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %} {{ plot_div | safe }}
+      </div>
+      {% endif %} {% endfor %} {% if not plots %}
+      <p>No time-series data available to generate plots.</p>
+      {% endif %}
+    </div>
+
+    <div id="rawdata" class="tab-pane">
+      <h2>Raw Data (Interactive Tables)</h2>
+      {% for name, table_json in tables_json.items() %} {% if name != 'hotspots' %}
+      <h3>{{ name.replace('_', ' ')|title }} Data</h3>
+      <div id="table-{{ name }}"></div>
+      {% endif %} {% else %}
+      <p>No raw data available to display.</p>
+      {% endfor %}
+    </div>
+
+    <div id="hotspots" class="tab-pane">
+      <h2>Top CPU Hotspots</h2>
+      {% if tables_json.hotspots %}
+      <div
+        class="warnings-container"
+        style="background-color: #e6f7ff; border-color: #91d5ff"
+      >
+        <h3 style="margin-top: 0; color: #0050b3; font-size: 1.1em">
+          ℹ️ 符号解析说明 (Symbol Resolution)
+        </h3>
+        <ul
+          style="
+            margin: 5px 0 0 0;
+            padding-left: 20px;
+            color: #555;
+            line-height: 1.6;
+          "
+        >
+          <li>
+            <strong>缺失现象：</strong> 若表格中出现十六进制地址 (<code>0x...</code>) 或 <code>[unknown]</code>，说明<strong>当前执行
+              analyze 的机器</strong>缺少对应的调试符号。
+          </li>
+          <li>
+            <strong>通用解决：</strong> 推荐使用包管理器安装 debuginfo (如 <code>yum install gzip-debuginfo</code>)；或者手动指定符号路径：<br />
+            <code>pipa analyze ... --symfs /path/to/debug/root --kallsyms /local/kallsyms</code>
+          </li>
+          <li>
+            <strong>Java/JIT：</strong> 对于 Java 等 JIT 应用，需用户自行配置 (如使用 <code>perf-map-agent</code>) 生成符号映射文件，PIPA 遵循
+            perf 标准读取，不干涉运行时环境。
+          </li>
+        </ul>
+      </div>
+
+      <div
+        style="
+          margin: 15px 0;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        "
+      >
+        <label
+          style="
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+          "
+        >
+          <input
+            type="checkbox"
+            id="hotspots-mode-toggle"
+            style="margin-right: 8px; transform: scale(1.2)"
+          />
+          Show Raw JIT Symbols (Split by TID)
+        </label>
+      </div>
+
+      <div id="table-hotspots"></div>
+      {% else %}
+      <div
+        style="
+          padding: 40px;
+          text-align: center;
+          background-color: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 8px;
+        "
+      >
+        <div style="font-size: 48px; margin-bottom: 20px">🕵️‍♂️</div>
+        <h3 style="color: #495057">No Profiling Data Available</h3>
+        <p style="color: #6c757d; max-width: 600px; margin: 0 auto">
+          Could not generate hotspot table. Possible reasons:<br />
+          1. Sample was taken with <code>--no-record</code>.<br />
+          2. The <code>perf</code> tool is not installed on this analysis machine.<br />
+          3. The workload was too short/light to capture samples.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if static_info_data %}
+    <div id="system" class="tab-pane">
+      <h2>System Information</h2>
+      {% if context.disk_analysis_html %} {{ context.disk_analysis_html | safe }} {% endif %}
+      {% if plots.disk_sunburst or plots.disk_breakdown %}
+      <div class="disk-viz-wrapper">
+        <div class="plot-container" style="margin-bottom: 0">
+          <h3>Storage Overview</h3>
+          {% if plots.disk_sunburst %} {{ plots.disk_sunburst | safe }} {% else %}
+          <p>No global view available.</p>
+          {% endif %}
+        </div>
+        <div
+          class="plot-container"
+          style="margin-bottom: 0; max-height: 800px; overflow-y: auto"
+        >
+          <h3>Per-Device Details</h3>
+          {% if plots.disk_breakdown %} {{ plots.disk_breakdown | safe }} {% else %}
+          <p>No detailed view available.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div id="json-tree-container"></div>
+    </div>
+    {% endif %}
+
+    <script>
+      const reportContext = {{ context | tojson | safe }};
+      const tablesJsonData = {{ tables_json | tojson | safe }};
+      const staticInfoData = {{ static_info_data | tojson | safe }};
+
+      function formatBytes(bytes, decimals = 2) {
+          if (!+bytes) return '0 Bytes';
+          const k = 1024;
+          const dm = decimals < 0 ? 0 : decimals;
+          const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+      }
+
+      function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-pane");
+        for (i = 0; i < tabcontent.length; i++) {
+          tabcontent[i].classList.remove("active-pane");
+        }
+
+        tablinks = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tablinks.length; i++) {
+          tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        var activeTab = document.getElementById(tabName);
+        if (activeTab) {
+            activeTab.classList.add("active-pane");
+        }
+
+        if (evt) {
+          evt.currentTarget.className += " active";
+        }
+      }
+
+      function applyChartFilter(plotName) {
+        const filterContainer = document.querySelector(`.chart-filter-container[data-plot-id="${plotName}"]`);
+        if (!filterContainer) return;
+        const plotDiv = document.querySelector(`#plot-${plotName} .plotly-graph-div`);
+        if (!plotDiv || !plotDiv.data) return;
+        const filterContext = reportContext[`${plotName}_filters`];
+        if (!filterContext) return;
+
+        const expandCpuFilter = (inputStr) => {
+            const finalCpuSet = new Set();
+            if (!inputStr) return finalCpuSet;
+
+            const parseRange = (rangeStr) => {
+                const rangeSet = new Set();
+                rangeStr.split(',').forEach(part => {
+                    part = part.trim();
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(Number);
+                        for (let i = start; i <= end; i++) {
+                            rangeSet.add(String(i));
+                        }
+                    } else if (part) {
+                        rangeSet.add(part);
+                    }
+                });
+                return rangeSet;
+            };
+
+            const parts = inputStr.split(',').map(p => p.trim());
+            parts.forEach(part => {
+                if (reportContext.numa_cpu_map && reportContext.numa_cpu_map[part]) {
+                    const numaCpuRange = reportContext.numa_cpu_map[part];
+                    parseRange(numaCpuRange).forEach(cpu => finalCpuSet.add(cpu));
+                }
+                else if (part === 'workload_avg') {
+                    finalCpuSet.add('workload_avg');
+                }
+                else {
+                    parseRange(part).forEach(cpu => finalCpuSet.add(cpu));
+                }
+            });
+            return finalCpuSet;
+        };
+
+        const inputs = filterContainer.querySelectorAll('input[type="text"]');
+        const activeFilters = {};
+
+        inputs.forEach((input) => {
+          const filterKey = input.id.split('-filter-input')[0].toUpperCase();
+          const filterValue = input.value.trim();
+
+          if (filterValue) {
+            if (filterKey === 'CPU') {
+                const expandedSet = expandCpuFilter(filterValue);
+                activeFilters[filterKey] = { type: 'exact_set', values: expandedSet };
+            } else {
+                 activeFilters[filterKey] = {
+                    type: 'fuzzy',
+                    keywords: filterValue.split(',').map(k => k.trim().toLowerCase()),
+                 };
+            }
+          }
+        });
+
+        const visibilityArray = plotDiv.data.map((trace) => {
+          for (const [key, filterInfo] of Object.entries(activeFilters)) {
+            const sourceProperty = filterContext[key]?.source || 'name';
+            let traceValueRaw = trace[sourceProperty];
+            let traceValue = traceValueRaw;
+
+            if (sourceProperty === "legendgroup") {
+                const parts = String(traceValueRaw).split(/,\s*/);
+                if (key === "CPU" && parts.length > 0) traceValue = parts[0];
+                else if (key === "METRIC" && parts.length > 1) traceValue = parts.slice(1).join(', ');
+            }
+            else if (key === 'DEV' && typeof traceValueRaw === 'string' && traceValueRaw.includes(',')) {
+                const parts = traceValueRaw.split(',').map(p => p.trim());
+                if (parts.length > 1) traceValue = parts[1];
+            }
+
+            if (traceValue === undefined) continue;
+
+            if (filterInfo.type === 'exact_set') {
+              if (!filterInfo.values.has(String(traceValue))) return false;
+            } else if (filterInfo.type === 'fuzzy') {
+              const anyKeywordMatched = filterInfo.keywords.some(keyword => {
+                  if (keyword.startsWith('^')) return String(traceValue).toLowerCase() === keyword.slice(1);
+                  return String(traceValue).toLowerCase().includes(keyword);
+              });
+              if (!anyKeywordMatched) return false;
+            }
+          }
+          return true;
+        });
+
+        Plotly.restyle(plotDiv, 'visible', visibilityArray);
+      }
+
+      function createJsonTree(container, data) {
+        const tree = document.createElement('ul');
+        tree.className = 'json-tree';
+
+        for (const key in data) {
+          if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+
+          const li = document.createElement('li');
+          const keySpan = document.createElement('span');
+          keySpan.className = 'key';
+          if (!Array.isArray(data)) {
+            keySpan.textContent = `"${key}": `;
+          }
+          li.appendChild(keySpan);
+
+          const value = data[key];
+
+          if (typeof value === 'object' && value !== null) {
+            const isArray = Array.isArray(value);
+            const bracketStart = document.createTextNode(isArray ? '[' : '{');
+            const bracketEnd = document.createTextNode(isArray ? ']' : '}');
+            li.appendChild(bracketStart);
+
+            const toggler = document.createElement('span');
+            toggler.className = 'toggler open';
+            li.insertBefore(toggler, keySpan);
+
+            const nestedUl = createJsonTree(li, value);
+
+            toggler.onclick = (e) => {
+              e.stopPropagation();
+              toggler.classList.toggle('open');
+              nestedUl.style.display = nestedUl.style.display === 'none' ? '' : 'none';
+            };
+            li.appendChild(bracketEnd);
+          } else {
+            const valueSpan = document.createElement('span');
+            let displayValue = JSON.stringify(value);
+            let valueType = typeof value === 'string' ? 'string' : 'other';
+
+            if (key.endsWith('_bytes') && typeof value === 'number') {
+                const formatted = formatBytes(value);
+                displayValue = `${value} <span style="color: #888; font-size: 0.9em; margin-left: 4px;">(${formatted})</span>`;
+                valueSpan.className = `value ${valueType}`;
+                valueSpan.innerHTML = displayValue;
+            } else {
+                valueSpan.className = `value ${valueType}`;
+                valueSpan.textContent = displayValue;
+            }
+
+            li.appendChild(valueSpan);
+          }
+          tree.appendChild(li);
+        }
+        container.appendChild(tree);
+        return tree;
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        if (tablesJsonData) {
+            for (const [name, jsonData] of Object.entries(tablesJsonData)) {
+              if (!jsonData) continue;
+
+              let tableData;
+              try {
+                  tableData = JSON.parse(jsonData);
+              } catch (e) {
+                  console.error("Failed to parse JSON for table: " + name, e);
+                  continue;
+              }
+
+              if (name === 'hotspots') {
+                  const aggregateHotspots = (rawData) => {
+                      const map = new Map();
+                      rawData.forEach(row => {
+                          const rawSymbol = row.Symbol || "";
+                          const cleanSymbol = rawSymbol.replace(/^tid\s+\d+\s+/, '');
+                          const key = `${cleanSymbol}|${row.Library}|${row.Scope}`;
+                          if (map.has(key)) {
+                              const entry = map.get(key);
+                              entry.Overhead += row.Overhead;
+                              entry.Samples += row.Samples;
+                          } else {
+                              const newRow = Object.assign({}, row);
+                              newRow.Symbol = cleanSymbol;
+                              map.set(key, newRow);
+                          }
+                      });
+                      const result = Array.from(map.values()).map(item => {
+                            item.Overhead = parseFloat(item.Overhead.toFixed(2));
+                            return item;
+                        });
+                      return result.sort((a, b) => b.Overhead - a.Overhead);
+                  };
+
+                  const cleanData = aggregateHotspots(tableData);
+                  let hotspotColumns = [];
+                  if (tableData.length > 0) {
+                      hotspotColumns = Object.keys(tableData[0]).map(key => {
+                          let colDef = { title: key, field: key, headerFilter: "input" };
+                          if (key === "Overhead") {
+                              colDef.formatter = "progress";
+                              colDef.formatterParams = {
+                                  color: ["#52c41a", "#faad14", "#f5222d"],
+                                  min: 0, max: 100, legend: true
+                              };
+                              colDef.width = 150;
+                          }
+                          else if (key === "Symbol") {
+                              colDef.minWidth = 400;
+                          }
+                          else if (key === "Samples") {
+                              colDef.width = 80;
+                          }
+                          else if (key === "Scope") {
+                              colDef.width = 80;
+                          }
+                          else if (key === "Process") {
+                              colDef.width = 100;
+                          }
+                          else if (key === "Library") {
+                              colDef.width = 150;
+                          }
+                          else {
+                              colDef.width = 120;
+                          }
+
+                          return colDef;
+                      });
+                  }
+
+                  const tableDivId = '#table-hotspots';
+                  if (document.querySelector(tableDivId)) {
+                      const tableInstance = new Tabulator(tableDivId, {
+                          data: cleanData,
+                          columns: hotspotColumns,
+                          layout: "fitColumns",
+                          pagination: "local",
+                          paginationSize: 15,
+                          paginationSizeSelector: [10, 15, 25, 50, 100],
+                          placeholder: "No Data Available",
+                      });
+                      window.hotspotsTable = tableInstance;
+
+                      const toggle = document.getElementById('hotspots-mode-toggle');
+                      if (toggle) {
+                          toggle.addEventListener('change', (e) => {
+                              if (e.target.checked) {
+                                  tableInstance.replaceData(tableData);
+                              } else {
+                                  tableInstance.replaceData(cleanData);
+                              }
+                          });
+                      }
+                  }
+                  continue;
+              }
+
+              let columns = [];
+              if (tableData.length > 0) {
+                columns = Object.keys(tableData[0]).map(key => {
+                  let colDef = {
+                      title: key.charAt(0).toUpperCase() + key.slice(1),
+                      field: key,
+                      headerFilter: "input",
+                  };
+
+                  if (key.toUpperCase() === 'CPU') {
+                      colDef.headerFilterFunc = "=";
+                      colDef.headerFilterPlaceholder = "Exact";
+                  } else {
+                      colDef.headerFilterFunc = "like";
+                      colDef.headerFilterPlaceholder = "Filter...";
+                  }
+                  return colDef;
+                });
+              }
+
+              const tableDiv = document.querySelector(`#table-${name}`);
+              if (tableDiv) {
+                  new Tabulator(`#table-${name}`, {
+                    data: tableData,
+                    columns: columns,
+                    layout: "fitColumns",
+                    pagination: "local",
+                    paginationSize: 15,
+                    paginationSizeSelector: [10, 15, 25, 50, 100],
+                    placeholder: "No Data Available",
+                  });
+              }
+            }
+        }
+
+        const sysInfoContainer = document.getElementById('json-tree-container');
+        if (sysInfoContainer && staticInfoData) {
+          createJsonTree(sysInfoContainer, staticInfoData);
+        }
+
+        const filterContext = reportContext ? reportContext['sar_cpu_filters'] : null;
+        if (filterContext) {
+          const cpuInput = document.getElementById('CPU-filter-input-sar_cpu');
+          const metricInput = document.getElementById('METRIC-filter-input-sar_cpu');
+
+          if (reportContext && reportContext.expected_cpus_str) {
+              if (cpuInput) {
+                  cpuInput.value = 'workload_avg,all';
+              }
+          } else {
+              if (cpuInput && filterContext['CPU']?.values.includes('all')) {
+                  cpuInput.value = 'all';
+              }
+          }
+
+          if (metricInput && filterContext['METRIC']?.values.includes('%user')) {
+            metricInput.value = '%user,%system,%total';
+          }
+
+          if (document.getElementById('plot-sar_cpu')) {
+            applyChartFilter('sar_cpu');
+          }
+        }
+
+      });
+    </script>
+  </body>
+</html>

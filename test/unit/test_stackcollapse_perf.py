@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+from pathlib import Path
 import subprocess
 import tempfile
 import pytest
@@ -10,16 +10,17 @@ from pipa.parser.flamegraph.stackcollapse_perf import (
     save_collapsed,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-INPUT_PATH = os.path.join(DATA_DIR, "perf_script_file.txt")
-EXPECTED_PATH = os.path.join(DATA_DIR, "out.stacks-folded")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+INPUT_PATH = DATA_DIR / "perf_script_file.txt"
+EXPECTED_PATH = DATA_DIR / "out.stacks-folded"
 
 
 @pytest.mark.skipif(
-    not os.path.exists(INPUT_PATH), reason="perf_script_file.txt not found"
+    not INPUT_PATH.exists(), reason="perf_script_file.txt not found"
 )
 @pytest.mark.skipif(
-    not os.path.exists(EXPECTED_PATH), reason="expected output not found"
+    not EXPECTED_PATH.exists(), reason="expected output not found"
 )
 def test_stackcollapse_output_matches_expected():
     options = CollapseOptions(
@@ -36,12 +37,12 @@ def test_stackcollapse_output_matches_expected():
     )
     collapsed = collapse_file(INPUT_PATH, options)
     with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as tmp:
-        tmp_path = tmp.name
+        tmp_path = Path(tmp.name)
     try:
-        save_collapsed(collapsed, tmp_path)
+        save_collapsed(collapsed, str(tmp_path))
         # 使用系统 diff 验证（-u 统一格式），输出差异以便调试
         proc = subprocess.run(
-            ["diff", "-u", EXPECTED_PATH, tmp_path],
+            ["diff", "-u", str(EXPECTED_PATH), str(tmp_path)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -50,4 +51,4 @@ def test_stackcollapse_output_matches_expected():
             proc.returncode == 0
         ), f"Output differs from expected. Diff:\n{proc.stdout}"
     finally:
-        os.unlink(tmp_path)
+        tmp_path.unlink(missing_ok=True)
