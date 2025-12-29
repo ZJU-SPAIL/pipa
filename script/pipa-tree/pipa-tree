@@ -35,7 +35,7 @@ show_main_usage() {
 Usage: pipa-tree <command> [options]
 
 Commands:
-  collect      Run the two-phase perf/sar collector
+  collect      Run the collection process
   help         Show this message
 
 Invoking pipa-tree without a subcommand is equivalent to running "pipa-tree collect".
