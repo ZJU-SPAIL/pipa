@@ -152,7 +152,9 @@ write_numa_info_section() {
   fi
   printf "  numa_topology:\n" >>"$dest"
   local entry
+  local old_ifs="$IFS"
   IFS=$'\n' nodes=($(printf "%s\n" "${nodes[@]}" | sort))
+  IFS="$old_ifs"
   for entry in "${nodes[@]}"; do
     local node_name=${entry%%|*}
     local cpu_list=${entry#*|}
@@ -333,7 +335,9 @@ write_disk_info_section() {
       printf "      partitions: []\n" >>"$dest"
     else
       printf "      partitions:\n" >>"$dest"
+      local old_ifs="$IFS"
       IFS=$'\n' partitions=($(printf "%s\n" "${partitions[@]}" | sort))
+      IFS="$old_ifs"
       local part_entry
       for part_entry in "${partitions[@]}"; do
         local part_name=${part_entry%%|*}
@@ -432,7 +436,9 @@ write_network_info_section() {
   for iface in "${!iface_mac[@]}"; do
     iface_names+=("$iface")
   done
+  local old_ifs="$IFS"
   IFS=$'\n' iface_names=($(printf "%s\n" "${iface_names[@]}" | sort))
+  IFS="$old_ifs"
   for iface in "${iface_names[@]}"; do
     printf "    %s:\n" "$iface" >>"$dest"
     local states_raw="${iface_states[$iface]}"
