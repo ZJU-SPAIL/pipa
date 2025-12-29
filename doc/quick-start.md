@@ -50,8 +50,8 @@ sudo ./install.sh --all-users  # 可选：为所有用户配置 perf sudo 权限
 | `--sar-interval SEC`        | `sar` 采样间隔                  | 1 秒                                   |
 | `--perf-record-freq HZ`     | `perf record -F` 频率           | 97 Hz                                  |
 | `--perf-events LIST`        | 覆盖默认事件组（逗号分隔）      | 随架构自动选择                         |
-| `--no-spec-info`            | 跳过硬件规格导出                | 否                                     |
-| `--spec-info-file PATH`     | 使用自定义规格文件              | 无                                     |
+| `--no-spec-info`            | 跳过硬件规格导出/缓存           | 否                                     |
+| `--force-spec-refresh`      | 强制重新采集规格数据            | 否                                     |
 
 ### 2.3 快速操作流程
 
@@ -68,7 +68,7 @@ sudo ./install.sh --all-users  # 可选：为所有用户配置 perf sudo 权限
    # [INFO] Starting counting phase (perf stat + sar) for 60s
    ```
 3. **等待完成**：命令结束会提示 `Archive created at ...`。
-4. **查看结果**：压缩包包含 `spec_info.yaml` 与 `attach_session/`，后者持有：
+4. **查看结果**：压缩包包含 `spec_info.yaml`（缓存/采集生成）与 `attach_session/`，后者持有：
    - `pipa-tree.log` / `pipa-collection-info.txt` / `collection_id.txt`
    - `perf_stat.txt`、`perf.data`
    - `sar_all.bin`、`sar.log`、`sar_cpu.csv`、`sar_io.csv` 等 CSV

@@ -494,6 +494,212 @@ write_kernel_parameters_section() {
   done <<<"$output"
 }
 
+write_interrupt_info_section() {
+  local dest="$1"
+  printf "interrupt_info:\n" >>"$dest"
+  if [[ ! -f /proc/interrupts ]]; then
+    yaml_write_scalar "$dest" "  " "status" "/proc/interrupts not found"
+    return
+  fi
+  local cpu_count=0
+  local header_line
+  header_line=$(grep -E 'CPU[0-9]' /proc/interrupts | head -1)
+  if [[ -n "$header_line" ]]; then
+    cpu_count=$(echo "$header_line" | grep -oE 'CPU[0-9]+' | wc -l)
+  fi
+  yaml_write_number "$dest" "  " "cpu_count" "$cpu_count"
+  printf "  interrupt_counts:\n" >>"$dest"
+  local line
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if [[ "$line" =~ CPU[0-9]+ ]]; then
+      continue
+    fi
+    local irq_number=""
+    if [[ "$line" =~ ^[[:space:]]*([0-9]+): ]]; then
+      irq_number="${BASH_REMATCH[1]}"
+    fi
+    local irq_name=""
+    local rest="${line#*:}"
+    local total=0
+    local count=0
+    for word in $rest; do
+      if [[ "$count" -lt "$cpu_count" && "$word" =~ ^[0-9]+$ ]]; then
+        total=$((total + word))
+      fi
+      count=$((count + 1))
+    done
+    if [[ "$count" -ge "$cpu_count" ]]; then
+      local irq_name_fields=($rest)
+      irq_name="${irq_name_fields[@]:$cpu_count}"
+      irq_name=$(echo "$irq_name" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+    fi
+    if [[ -n "$irq_name" && -n "$irq_number" ]]; then
+      printf "    - irq: \"%s\"\n" "$irq_name" >>"$dest"
+      printf "      number: %s\n" "$irq_number" >>"$dest"
+      printf "      total: %s\n" "$total" >>"$dest"
+    fi
+  done < /proc/interrupts
+}
+
+write_ulimit_info_section() {
+  local dest="$1"
+  printf "ulimit_info:\n" >>"$dest"
+  local ulimit_output
+  if ! ulimit_output=$(ulimit -a 2>/dev/null); then
+    yaml_write_scalar "$dest" "  " "status" "ulimit command failed"
+    return
+  fi
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if [[ "$line" =~ ^([a-z][a-z ]+)[[:space:]]+(.+)$ ]]; then
+      local key="${BASH_REMATCH[1]}"
+      local value="${BASH_REMATCH[2]}"
+      key=$(trim_whitespace "$key")
+      yaml_write_scalar "$dest" "  " "$key" "$value"
+    fi
+  done <<<"$ulimit_output"
+}
+
+write_lsmod_info_section() {
+  local dest="$1"
+  printf "module_info:\n" >>"$dest"
+  local lsmod_cmd=""
+  if command -v lsmod >/dev/null 2>&1; then
+    lsmod_cmd="lsmod"
+  elif command -v sudo >/dev/null 2>&1; then
+    if sudo -n lsmod >/dev/null 2>&1; then
+      lsmod_cmd="sudo lsmod"
+    fi
+  fi
+  if [[ -z "$lsmod_cmd" ]]; then
+    yaml_write_scalar "$dest" "  " "status" "lsmod command not found or requires sudo access"
+    return
+  fi
+  local lsmod_output
+  if ! lsmod_output=$($lsmod_cmd 2>/dev/null); then
+    yaml_write_scalar "$dest" "  " "status" "lsmod command failed"
+    return
+  fi
+  printf "  loaded_modules:\n" >>"$dest"
+  local skip_header=1
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    if (( skip_header == 1 )); then
+      skip_header=0
+      continue
+    fi
+    read -r module size used_by deps <<<"$line"
+    [[ -z "$module" ]] && continue
+    printf "    - name: \"%s\"\n" "$module" >>"$dest"
+    if [[ "$size" =~ ^[0-9]+$ ]]; then
+      yaml_write_number "$dest" "      " "size" "$size"
+    else
+      yaml_write_scalar "$dest" "      " "size" "$size"
+    fi
+    yaml_write_scalar "$dest" "      " "used_by" "$used_by"
+    yaml_write_scalar "$dest" "      " "deps" "$deps"
+  done <<<"$lsmod_output"
+}
+
+write_lspci_info_section() {
+  local dest="$1"
+  printf "pci_info:\n" >>"$dest"
+  local lspci_cmd=""
+  if command -v lspci >/dev/null 2>&1; then
+    lspci_cmd="lspci"
+  elif command -v sudo >/dev/null 2>&1; then
+    if sudo -n lspci -v >/dev/null 2>&1; then
+      lspci_cmd="sudo lspci"
+    fi
+  fi
+  if [[ -z "$lspci_cmd" ]]; then
+    yaml_write_scalar "$dest" "  " "status" "lspci command not found or requires sudo access"
+    return
+  fi
+  local lspci_output
+  if ! lspci_output=$($lspci_cmd -v 2>/dev/null); then
+    yaml_write_scalar "$dest" "  " "status" "lspci command failed"
+    return
+  fi
+  local -a devices=()
+  local current_device=""
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[0-9a-fA-F]+:[0-9a-fA-F]+\.[0-9a-fA-F]+ ]]; then
+      if [[ -n "$current_device" ]]; then
+        devices+=("$current_device")
+      fi
+      current_device="$line"
+    else
+      if [[ -n "$current_device" ]]; then
+        current_device="${current_device}"$'\n'"${line}"
+      fi
+    fi
+  done <<<"$lspci_output"
+  if [[ -n "$current_device" ]]; then
+    devices+=("$current_device")
+  fi
+  printf "  pci_devices:\n" >>"$dest"
+  local device_id=0
+  local device
+  for device in "${devices[@]}"; do
+    printf "    - device_id: %d\n" "$device_id" >>"$dest"
+    local device_line
+    device_line=$(echo "$device" | head -1)
+    yaml_write_scalar "$dest" "      " "device" "$device_line"
+    local details
+    details=$(echo "$device" | tail -n +2 | head -20)
+    if [[ -n "$details" ]]; then
+      yaml_write_scalar "$dest" "      " "details" "$details"
+    fi
+    device_id=$((device_id + 1))
+  done
+}
+
+write_dmidecode_info_section() {
+  local dest="$1"
+  printf "bios_hardware_info:\n" >>"$dest"
+  local dmidecode_cmd=""
+  if command -v dmidecode >/dev/null 2>&1; then
+    dmidecode_cmd="dmidecode"
+  elif command -v sudo >/dev/null 2>&1; then
+    if sudo -n dmidecode --version >/dev/null 2>&1; then
+      dmidecode_cmd="sudo dmidecode"
+    fi
+  fi
+  if [[ -z "$dmidecode_cmd" ]]; then
+    yaml_write_scalar "$dest" "  " "status" "dmidecode command not found or requires sudo access"
+    return
+  fi
+  local dmidecode_types=(
+    "bios"
+    "system"
+    "baseboard"
+    "chassis"
+    "processor"
+    "memory"
+  )
+  local dmitype
+  for dmitype in "${dmidecode_types[@]}"; do
+    printf "  %s:\n" "$dmitype" >>"$dest"
+    local output
+    if output=$($dmidecode_cmd --type "$dmitype" 2>/dev/null); then
+      while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        if [[ "$line" =~ ^[A-Z].*: ]]; then
+          local key="${line%%:*}"
+          local value="${line#*:}"
+          key=$(trim_whitespace "$key")
+          value=$(trim_whitespace "$value")
+          [[ -n "$value" ]] && yaml_write_scalar "$dest" "    " "$key" "$value"
+        fi
+      done <<<"$output"
+    else
+      yaml_write_scalar "$dest" "    " "status" "Failed to retrieve $dmitype info"
+    fi
+  done
+}
+
 # Main spec info collector
 collect_spec_info_locally() {
   local dest_file="$1"
@@ -518,44 +724,45 @@ collect_spec_info_locally() {
   write_network_info_section "$dest_file"
   printf "\n" >>"$dest_file"
   write_kernel_parameters_section "$dest_file"
+  printf "\n" >>"$dest_file"
+  write_interrupt_info_section "$dest_file"
+  printf "\n" >>"$dest_file"
+  write_ulimit_info_section "$dest_file"
+  printf "\n" >>"$dest_file"
+  write_lsmod_info_section "$dest_file"
+  printf "\n" >>"$dest_file"
+  write_lspci_info_section "$dest_file"
+  printf "\n" >>"$dest_file"
+  write_dmidecode_info_section "$dest_file"
 }
 
 prepare_spec_info() {
   local dest_file="$1"
   local skip_spec="$2"
-  local spec_info_path="$3"
+  local force_refresh="$3"
 
   if [[ "$skip_spec" == "1" ]]; then
     log_info "Spec info collection skipped per --no-spec-info."
     return
   fi
 
-  if [[ -n "$spec_info_path" ]]; then
-    cp "$spec_info_path" "$dest_file"
-    log_info "Copied spec info from $spec_info_path"
-    return
-  fi
+  local data_dir="${PIPA_TREE_DATA_DIR:-$PWD/data}"
+  mkdir -p "$data_dir"
+  local cached_spec="$data_dir/spec_info.yaml"
 
-  local default_spec_info="$PWD/pipa_spec_info.yaml"
-  if [[ -f "$default_spec_info" ]]; then
-    cp "$default_spec_info" "$dest_file"
-    log_info "Copied spec info from $default_spec_info"
+  if [[ "$force_refresh" != "1" && -f "$cached_spec" ]]; then
+    log_info "Using cached spec info from $cached_spec"
+    cp "$cached_spec" "$dest_file"
     return
   fi
 
   collect_spec_info "$dest_file"
+  cp "$dest_file" "$cached_spec"
+  log_info "Cached spec info to $cached_spec"
 }
 
 collect_spec_info() {
   local dest_file="$1"
-
-  if [[ -n "${PIPA_TREE_SPEC_COLLECTOR:-}" ]]; then
-    log_info "Running custom spec info collector: $PIPA_TREE_SPEC_COLLECTOR"
-    if "$PIPA_TREE_SPEC_COLLECTOR" "$dest_file"; then
-      return
-    fi
-    log_fatal "Custom spec info collector failed."
-  fi
 
   collect_spec_info_locally "$dest_file"
 }

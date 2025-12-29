@@ -164,18 +164,6 @@ run_expect_success "system-wide sampling without spec info" \
 
 run_expect_success "system no-info archive is valid tar" tar -tzf "$NOINFO_ARCHIVE" >/dev/null
 
-SPEC_INFO="$TMP_DIR/spec_info.yaml"
-printf "cpu:\n  vendor: test\n" > "$SPEC_INFO"
-ATTACH_ARCHIVE="$TMP_DIR/attach_collection.tar.gz"
-run_expect_success "spec info file sampling" \
-  "$CLI" collect \
-    --output "$ATTACH_ARCHIVE" \
-    --duration-stat 1 \
-    --duration-record 1 \
-    --spec-info-file "$SPEC_INFO"
-
-run_expect_success "attach archive is valid tar" tar -tzf "$ATTACH_ARCHIVE" >/dev/null
-
 run_expect_failure "require at least one phase" \
   bash -c "cd \"$TMP_DIR\" && \"$CLI\" collect --no-spec-info --no-stat --no-record"
 

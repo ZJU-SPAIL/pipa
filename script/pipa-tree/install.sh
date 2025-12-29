@@ -88,10 +88,11 @@ if (( ALL_USERS == 1 )); then
   log_info "Configuring sudoers for all users..."
   cat > "$SUDOERS_FILE" << 'EOF'
 # pipa-tree sudoers configuration
-# Allows all users to execute perf commands without password
-# This enables full perf functionality for non-root users
+# Allows all users to execute hardware spec collection commands without password
+# This enables full spec info functionality for non-root users
+Cmnd_Alias PIPA_SPEC = /usr/sbin/dmidecode *, /usr/bin/lspci *, /usr/bin/lsmod, /usr/bin/ulimit
 Cmnd_Alias PIPA_PERF = /usr/bin/perf stat *, /usr/bin/perf record *
-ALL ALL=(ALL) NOPASSWD: PIPA_PERF
+ALL ALL=(ALL) NOPASSWD: PIPA_SPEC, PIPA_PERF
 EOF
   chmod 440 "$SUDOERS_FILE"
   log_success "Sudoers configuration written to $SUDOERS_FILE"
@@ -107,7 +108,7 @@ fi
 echo ""
 echo "You can now run:"
 echo "  $SCRIPT_NAME help"
-echo "  $SCRIPT_NAME collect --output mydata.pipa"
+echo "  $SCRIPT_NAME collect"
 echo ""
 echo "To uninstall, run:"
 echo "  sudo ./uninstall.sh"

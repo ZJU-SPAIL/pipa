@@ -26,6 +26,10 @@ source "${LIB_DIR}/perf.sh"
 source "${LIB_DIR}/sar.sh"
 source "${LIB_DIR}/archive.sh"
 
+PIPA_TREE_DATA_DIR="${PIPA_TREE_DATA_DIR:-$PWD/data}"
+mkdir -p "$PIPA_TREE_DATA_DIR"
+export PIPA_TREE_DATA_DIR
+
 show_main_usage() {
   cat <<'EOF'
 Usage: pipa-tree <command> [options]
@@ -54,7 +58,7 @@ Options:
   --perf-record-freq HZ       perf record frequency (default: 99Hz).
   --perf-events LIST          Override default perf event groups.
   --no-spec-info              Skip spec info validation/copy.
-  --spec-info-file PATH       Provide an explicit spec info YAML file.
+  --force-spec-refresh        Force re-collecting hardware spec even if cached.
   --help, -h                  Show this help.
 EOF
 }
@@ -102,7 +106,7 @@ run_collect_command() {
   local perf_record_freq=97
   local perf_events_override=""
   local no_spec_info=0
-  local spec_info_file=""
+  local force_spec_refresh=0
 
   local session_log_tmp=""
   session_log_tmp=$(mktemp -t pipa_tree_log_XXXX) || log_fatal "Failed to create temporary log file"
@@ -145,9 +149,8 @@ run_collect_command() {
         perf_events_override="$2"; shift 2 ;;
       --no-spec-info)
         no_spec_info=1; shift ;;
-      --spec-info-file)
-        [[ $# -ge 2 ]] || log_fatal "--spec-info-file requires a path"
-        spec_info_file="$2"; shift 2 ;;
+      --force-spec-refresh)
+        force_spec_refresh=1; shift ;;
       -h|--help)
         show_collect_usage
         exit 0 ;;
@@ -204,7 +207,7 @@ run_collect_command() {
   log_info "Archive target path: $output_path"
   log_info "Counting duration: ${duration_stat}s, profiling duration: ${duration_record}s"
 
-  prepare_spec_info "$WORK_DIR/spec_info.yaml" "$no_spec_info" "$spec_info_file"
+  prepare_spec_info "$WORK_DIR/spec_info.yaml" "$no_spec_info" "$force_spec_refresh"
 
   if (( run_stat == 1 )); then
     log_info "Starting counting phase (perf stat + sar) for ${duration_stat}s"
@@ -233,7 +236,7 @@ run_collect_command() {
   fi
 
   archive_results "$WORK_DIR" "$output_path"
-  log_info "Sampling complete."
+  log_info "Collection complete."
 }
 
 main() {
