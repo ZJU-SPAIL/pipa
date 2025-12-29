@@ -58,7 +58,13 @@ class TestPerfStatParser:
         result = parse_perf_stat(complex_perf_content)
         metrics = result["metrics"]
         assert isinstance(metrics, pd.DataFrame)
-        assert set(metrics.columns) == {"timestamp", "cpu", "value", "metric_name", "type"}
+        assert set(metrics.columns) == {
+            "timestamp",
+            "cpu",
+            "value",
+            "metric_name",
+            "type",
+        }
 
     @pytest.mark.parametrize("bad_content", ["", "# Just a comment"])
     def test_parse_perf_empty_and_malformed(self, bad_content):
