@@ -262,7 +262,7 @@ def _write_sar_csv(file_path: Path, header: list[str], rows: list[list[str]]) ->
 def _write_perf_stat_sample(file_path: Path) -> None:
     lines = [
         "1.000;CPU0;1000000;;cycles",
-        "1.000;CPU0;250000;;instructions;0.85;frontend_bound",
+        "1.000;CPU0;250000;;instructions",
     ]
     file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

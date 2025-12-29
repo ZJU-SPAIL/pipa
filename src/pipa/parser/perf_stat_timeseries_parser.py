@@ -75,16 +75,11 @@ def parse(content: str) -> Dict[str, pd.DataFrame]:
                 if possible_metric_name and possible_metric_val:
                     is_known_metric = any(
                         token in possible_metric_name
-                        for token in ["bound", "retiring", "speculation", "IPC", "CPI"]
+                        for token in ["IPC", "CPI"]
                     )
                     if is_known_metric:
                         try:
                             metric_value = float(possible_metric_val.replace(",", ""))
-                            if any(
-                                token in possible_metric_name
-                                for token in ["bound", "retiring", "speculation"]
-                            ):
-                                metric_value *= 100.0
                             metrics_data.append(
                                 {
                                     "timestamp": timestamp,

@@ -12,7 +12,6 @@ config:
   CPU_CLUSTER_BUSY_THRESHOLD: 40.0
   CPU_MAX_UTIL_HIGH_THRESHOLD: 80.0
   NUMA_IMBALANCE_THRESHOLD: 20.0
-  TMA_DOMINANT_THRESHOLD_PERCENT: 20.0
 
   # === I/O 阈值 (P95 驱动) ===
   IO_QUEUE_LOW_THRESHOLD: 10.0
@@ -68,13 +67,13 @@ rules:
       # [面板 2] CPU 架构健康度 (Architecture)
       # ------------------------------------------------------------
       - name: "CPU 架构风险"
-        precondition: "is_cpu_imbalanced or (numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD) or tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT or tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
+        precondition: "is_cpu_imbalanced or (numa_nodes_count > 1 and numa_max_diff > NUMA_IMBALANCE_THRESHOLD)"
         sub_rules:
           - name: "CPU 负载严重不均"
             precondition: "is_cpu_imbalanced"
             finding: >-
               架构风险：<strong>CPU 负载严重不均</strong>。
-              系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为“部落”。
+              系统中的 CPU 核心已自动划分为 <strong>{cpu_clusters_count}</strong> 个不同的行为"部落"。
               其中，存在一个或多个数量较少、但高度繁忙的核心集群，而大多数核心处于空闲状态。
               这通常由**单线程瓶颈**、**线程绑定不当**或**跨 NUMA 调度问题**导致。
 
@@ -85,16 +84,6 @@ rules:
               不同 NUMA 节点之间的 CPU 利用率差异高达 <strong>{numa_max_diff:.1f}%</strong> (vs. {NUMA_IMBALANCE_THRESHOLD}%)。
               <br>节点状态: {numa_status_msg}
               <br>这可能导致严重的<strong>远程内存访问 (Remote Memory Access)</strong> 延迟。
-
-          - name: "微架构瓶颈 (TMA)"
-            precondition: "True"
-            sub_rules:
-              - name: "前端瓶颈 (Frontend)"
-                precondition: "tma_frontend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: "TMA L1：<strong>前端瓶颈 ({tma_frontend_bound:.2f}%)</strong>。指令供给延迟 (i-Cache Miss / 分支预测失败)。"
-              - name: "后端瓶颈 (Backend)"
-                precondition: "tma_backend_bound > TMA_DOMINANT_THRESHOLD_PERCENT"
-                finding: "TMA L1：<strong>后端瓶颈 ({tma_backend_bound:.2f}%)</strong>。执行单元或内存子系统停顿。"
 
       # ------------------------------------------------------------
       # [面板 3] 磁盘 I/O 诊断 (Storage - P95 Aware)

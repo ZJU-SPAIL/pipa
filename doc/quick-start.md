@@ -123,4 +123,4 @@ pytest test/test_pipa_parsers.py
 ```
 
 - 端到端用例会构造一个最小化的 `pipa-tree` 压缩包，真实调用 `pipa analyze` 并生成 HTML，以确保报告链路可用。
-- 决策树与 `perf stat` 解析用例保证规则逻辑、TMA 指标与 CSV 解析在升级后依旧工作，便于回归验证。
+- 决策树与 `perf stat` 解析用例保证规则逻辑与 CSV 解析在升级后依旧工作，便于回归验证。

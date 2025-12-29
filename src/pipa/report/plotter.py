@@ -219,10 +219,6 @@ def plot_timeseries_generic(
         # 标题修正
         base_title = f"{name.replace('_', ' ').title()} Metrics"
 
-        # 需求: Perf Metrics(Percentages)标题改成TMA信息
-        if name == "perf" and group_name == "percentage":
-            base_title = "TMA L1 Metrics"
-
         # 拼接单位后缀
         plot_name = (
             f"{name}_{group_name}"

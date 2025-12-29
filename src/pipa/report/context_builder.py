@@ -383,24 +383,6 @@ def build_full_context(
     if df_network is not None and not df_network.empty:
         context["avg_ifutil"] = df_network.get("%ifutil", pd.Series(0)).mean()
 
-    if (perf_parsed := df_dict.get("perf_raw")) is not None and isinstance(
-        perf_parsed, dict
-    ):
-        df_metrics = perf_parsed.get("metrics")
-        if df_metrics is not None and not df_metrics.empty:
-            metrics_avg = df_metrics.groupby("metric_name")["value"].mean().to_dict()
-            context["tma_backend_bound"] = metrics_avg.get("backend_bound", 0.0)
-            context["tma_frontend_bound"] = metrics_avg.get("frontend_bound", 0.0)
-            context["tma_retiring"] = metrics_avg.get("retiring", 0.0)
-            context["tma_bad_speculation"] = metrics_avg.get("bad_speculation", 0.0)
-            context["tma_source_label"] = "perf -M (Official PMU Metrics)"
-        else:
-            context["tma_backend_bound"] = 0.0
-            context["tma_frontend_bound"] = 0.0
-            context["tma_retiring"] = 0.0
-            context["tma_bad_speculation"] = 0.0
-            context["tma_source_label"] = "Not Available"
-
     context.update(
         {
             "affinity_check_enabled": False,
