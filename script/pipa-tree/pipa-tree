@@ -227,6 +227,8 @@ run_collect_command() {
     fi
     wait "$sar_job" || true
     convert_sar_outputs "$sar_bin" "$level_dir"
+
+    log_info "Perf stat data saved to: $perf_stat_file"
   fi
 
   if (( run_record == 1 )); then

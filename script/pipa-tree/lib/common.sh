@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 # Common utility functions for pipa-tree
 
+# Terminal color codes
+if [[ -t 2 ]] && [[ "${TERM:-}" != "dumb" ]]; then
+  COLOR_RESET='\033[0m'
+  COLOR_RED='\033[31m'
+  COLOR_GREEN='\033[32m'
+  COLOR_YELLOW='\033[33m'
+  COLOR_CYAN='\033[36m'
+  COLOR_BOLD='\033[1m'
+  COLOR_RED_BOLD="${COLOR_BOLD}${COLOR_RED}"
+else
+  COLOR_RESET=''
+  COLOR_RED=''
+  COLOR_GREEN=''
+  COLOR_YELLOW=''
+  COLOR_CYAN=''
+  COLOR_BOLD=''
+  COLOR_RED_BOLD=''
+fi
+
 # Logging functions
 log_write() {
   local level="$1"
@@ -9,7 +28,22 @@ log_write() {
   local timestamp
   timestamp=$(date +"%Y-%m-%dT%H:%M:%S%z")
   local formatted="[$timestamp][$level] $message"
-  printf "%s\n" "$formatted" >&2
+
+  # Terminal output with colors
+  if [[ -t 2 ]]; then
+    local color_prefix=""
+    case "$level" in
+      INFO)  color_prefix="${COLOR_CYAN}" ;;
+      WARN)  color_prefix="${COLOR_YELLOW}" ;;
+      ERROR) color_prefix="${COLOR_RED}" ;;
+      FATAL) color_prefix="${COLOR_RED_BOLD}" ;;
+    esac
+    printf "%b%s%b%b\n" "$color_prefix" "$formatted" "${COLOR_RESET}" >&2
+  else
+    printf "%s\n" "$formatted" >&2
+  fi
+
+  # Log file without colors
   if [[ -n "${PIPA_TREE_LOG_FILE:-}" ]]; then
     printf "%s\n" "$formatted" >>"$PIPA_TREE_LOG_FILE"
   fi
