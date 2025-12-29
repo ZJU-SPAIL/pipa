@@ -18,7 +18,12 @@ def test_config_constants():
     assert config.CONFIG_DIR == "./data/config"
     assert config.DUMP_DIR == "./data/dump"
     assert config.OUTPUT_DIR == "./data/out"
-    assert config.ALL_PATH == [config.LOG_PATH, config.CONFIG_DIR, config.DUMP_DIR, config.OUTPUT_DIR]
+    assert config.ALL_PATH == [
+        config.LOG_PATH,
+        config.CONFIG_DIR,
+        config.DUMP_DIR,
+        config.OUTPUT_DIR,
+    ]
 
 
 def test_logger_set_level_idempotent(monkeypatch):
@@ -26,7 +31,10 @@ def test_logger_set_level_idempotent(monkeypatch):
     handler_count = len(logger_mod.logger.handlers)
     logger_mod.set_level(logging.DEBUG, logging.WARNING)
     assert logger_mod.logger.level == logging.DEBUG
-    stream_handler = next((h for h in logger_mod.logger.handlers if isinstance(h, logging.StreamHandler)), None)
+    stream_handler = next(
+        (h for h in logger_mod.logger.handlers if isinstance(h, logging.StreamHandler)),
+        None,
+    )
     assert stream_handler is not None
     assert stream_handler.level == logging.WARNING
     # Calling again should not add handlers
@@ -63,7 +71,9 @@ def test_sqlite_connector_execute_and_export(tmp_path, monkeypatch):
     conn = DummyConn()
     monkeypatch.setattr(SQLiteConnector, "_connect", lambda self: conn)
     mock_df = pd.DataFrame({"x": [1]})
-    with patch("pipa.common.export.pd.read_sql_query", return_value=mock_df) as mock_read:
+    with patch(
+        "pipa.common.export.pd.read_sql_query", return_value=mock_df
+    ) as mock_read:
         connector = SQLiteConnector(str(tmp_path / "db.sqlite"))
         df = connector.execute_query("select 1")
         assert df.equals(mock_df)
@@ -75,7 +85,9 @@ def test_sqlite_connector_execute_and_export(tmp_path, monkeypatch):
             mock_to_csv.assert_called_once()
 
         with patch.object(pd.DataFrame, "to_excel") as mock_to_excel:
-            connector.export_table_to_excel("table", output_filepath=str(tmp_path / "table.xlsx"))
+            connector.export_table_to_excel(
+                "table", output_filepath=str(tmp_path / "table.xlsx")
+            )
             mock_to_excel.assert_called_once()
 
 
