@@ -38,6 +38,7 @@ dependencies = [
     "psutil",
     "protobuf",
     "grpcio",
+    "networkx",
     "matplotlib",
     "pyelftools",
     "capstone",
