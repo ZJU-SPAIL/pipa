@@ -1,7 +1,4 @@
-from pathlib import Path
 from types import SimpleNamespace
-
-import pytest
 
 from pipa.report.html_generator import generate_html_report
 

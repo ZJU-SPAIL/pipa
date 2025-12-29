@@ -1,5 +1,3 @@
-import pandas as pd
-
 from pipa.parser.perf_buildid import PerfBuildidData
 
 

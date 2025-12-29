@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from pipa.report.hotspots import extract_hotspots
@@ -14,7 +13,7 @@ def test_extract_hotspots_parses_output(tmp_path):
 
     stdout = """
     # Overhead  Samples  Command  Shared Object  Symbol
-    12.34%  100  cmd  libfoo.so  foo [.] 
+    12.34%  100  cmd  libfoo.so  foo [.]
     5.00%  50  cmd  [kernel.kallsyms]  __sched_text_start [k]
     """
 
