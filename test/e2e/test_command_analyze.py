@@ -193,7 +193,8 @@ def test_generate_report_missing_static_info(
     call_kwargs = mock_dependencies["template"].render.call_args.kwargs
     warnings = call_kwargs["warnings"]
 
-    assert any("static_info.yaml not found" in warning for warning in warnings)
+    expected_fragment = "static_info.yaml/spec_info.yaml not found"
+    assert any(expected_fragment in warning for warning in warnings)
     assert call_kwargs["static_info_str"] == ""
 
 
