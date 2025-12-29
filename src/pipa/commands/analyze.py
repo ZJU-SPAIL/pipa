@@ -83,15 +83,21 @@ def _generate_report(
 
     static_info_str = ""
     static_info_data: Dict[str, Dict] = {}
-    try:
-        static_info_path = level_dir.parent / "static_info.yaml"
+    info_candidates = ["static_info.yaml", "spec_info.yaml"]
+    static_info_path: Optional[Path] = None
+    for candidate in info_candidates:
+        candidate_path = level_dir.parent / candidate
+        if candidate_path.exists():
+            static_info_path = candidate_path
+            break
+    if static_info_path is not None:
         with open(static_info_path, "r", encoding="utf-8") as file_handle:
             static_info_data = yaml.safe_load(file_handle)
             static_info_str = yaml.dump(static_info_data, indent=2, allow_unicode=True)
-        log.info("Loaded static system info from %s", static_info_path.name)
-    except FileNotFoundError:
+        log.info("Loaded system info from %s", static_info_path.name)
+    else:
         analysis_warnings.append(
-            "static_info.yaml not found. The report will lack system context."
+            "static_info.yaml/spec_info.yaml not found. The report will lack system context."
         )
 
     log.info("Loading data files using parser registry...")
