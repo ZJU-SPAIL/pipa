@@ -92,7 +92,7 @@ pip install PyPIPA
 pip install PyPIPA
 ```
 
-#### Option 2: pipa-tree Collector (Recommended for Performance Sampling)
+#### Option 2: pipa-tree Collector
 
 ```bash
 git clone https://github.com/ZJU-SPAIL/pipa.git
@@ -109,16 +109,16 @@ The pipa-tree collector provides a simple interface to gather performance metric
 
 ```bash
 # Basic usage (default: 60s counting + 60s profiling)
-sudo pipa-tree collect
+pipa-tree collect
 
 # Custom durations
-sudo pipa-tree collect --duration-stat 90 --duration-record 30
+pipa-tree collect --duration-stat 90 --duration-record 30
 
 # Specify output file
-sudo pipa-tree collect --output ./mydata.tar.gz
+pipa-tree collect --output ./mydata.tar.gz
 
 # Advanced options
-sudo pipa-tree collect \
+pipa-tree collect \
   --perf-record-freq 199 \
   --perf-events "cycles,instructions" \
   --output ./pipa-collection-demo.tar.gz
