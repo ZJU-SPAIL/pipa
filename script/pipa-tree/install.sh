@@ -96,6 +96,16 @@ ALL ALL=(ALL) NOPASSWD: PIPA_SPEC, PIPA_PERF
 EOF
   chmod 440 "$SUDOERS_FILE"
   log_success "Sudoers configuration written to $SUDOERS_FILE"
+
+  # Configure perf_event_paranoid to allow non-root perf usage
+  PERF_PARANOID_FILE="/proc/sys/kernel/perf_event_paranoid"
+  if [[ -f "$PERF_PARANOID_FILE" ]]; then
+    log_info "Configuring perf_event_paranoid for all users..."
+    echo "-1" > "$PERF_PARANOID_FILE"
+    log_success "Set perf_event_paranoid to -1 in $PERF_PARANOID_FILE"
+  else
+    log_warn "$PERF_PARANOID_FILE not found, skipping perf configuration"
+  fi
 fi
 
 log_success "Installation complete!"
