@@ -750,6 +750,18 @@ prepare_spec_info() {
   mkdir -p "$data_dir"
   local cached_spec="$data_dir/spec_info.yaml"
 
+  # Copy original spec file to work directory before collection
+  if [[ -f "$cached_spec" ]]; then
+    local work_dir_parent
+    work_dir_parent=$(dirname "$dest_file")
+    local original_spec_dir="$work_dir_parent/spec_original"
+    mkdir -p "$original_spec_dir"
+    local original_spec_dest="$original_spec_dir/spec_info.yaml"
+    log_info "Copying original spec file from $cached_spec to $original_spec_dest"
+    cp "$cached_spec" "$original_spec_dest"
+    chmod 0644 "$original_spec_dest"
+  fi
+
   if [[ "$force_refresh" != "1" && -f "$cached_spec" ]]; then
     log_info "Using cached spec info from $cached_spec"
     cp "$cached_spec" "$dest_file"
@@ -758,6 +770,7 @@ prepare_spec_info() {
 
   collect_spec_info "$dest_file"
   cp "$dest_file" "$cached_spec"
+  chmod 0644 "$cached_spec"
   log_info "Cached spec info to $cached_spec"
 }
 
