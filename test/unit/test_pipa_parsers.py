@@ -1,8 +1,9 @@
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from pipa.parser.perf_stat_timeseries_parser import parse as parse_perf_stat
+from pipa.parser.perf_stat import parse_perf_stat_timeseries as parse_perf_stat
 
 
 @pytest.fixture
@@ -52,6 +53,12 @@ class TestPerfStatParser:
         branch_miss_row = df[df["event_name"] == "branch-misses"].iloc[0]
         assert branch_miss_row["value"] == 2.00
         assert branch_miss_row["unit"] == ""
+
+    def test_parse_perf_returns_metrics_frame(self, complex_perf_content):
+        result = parse_perf_stat(complex_perf_content)
+        metrics = result["metrics"]
+        assert isinstance(metrics, pd.DataFrame)
+        assert set(metrics.columns) == {"timestamp", "cpu", "value", "metric_name", "type"}
 
     @pytest.mark.parametrize("bad_content", ["", "# Just a comment"])
     def test_parse_perf_empty_and_malformed(self, bad_content):

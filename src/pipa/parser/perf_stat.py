@@ -1,10 +1,113 @@
+import io
+from typing import Dict, List, TextIO, Union
+
 import pandas as pd
 from pipa.common.logger import logger
-from pipa.common.utils import generate_unique_rgb_color
-from pipa.parser import make_single_plot
-from typing import List, Optional, TextIO, Union
-import seaborn as sns
-import plotly.graph_objects as go
+
+
+def parse_perf_stat_timeseries(content: str) -> Dict[str, pd.DataFrame]:
+    """Parse ``perf stat -I`` CSV output into structured DataFrames."""
+
+    events_data = []
+    metrics_data = []
+    file_like_content = io.StringIO(content)
+
+    for line in file_like_content:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        parts = line.split(";")
+        if len(parts) < 2:
+            continue
+
+        try:
+            timestamp = float(parts[0])
+            cpu_col_val = parts[1].strip()
+            has_cpu_col = cpu_col_val.startswith("CPU") or cpu_col_val.startswith("S")
+
+            if has_cpu_col:
+                cpu = cpu_col_val
+                base_idx = 2
+            else:
+                cpu = "all"
+                base_idx = 1
+
+            idx_val = base_idx
+            idx_unit = base_idx + 1
+            idx_name = base_idx + 2
+
+            if len(parts) > idx_name:
+                val_str = parts[idx_val].strip()
+                name_str = parts[idx_name].strip()
+                unit_str = parts[idx_unit].strip()
+
+                if val_str and name_str and val_str != "<not counted>":
+                    try:
+                        val = float(val_str.replace(",", ""))
+                        known_units = ["Joules", "Watts", "MHz", "GHz", "bytes"]
+                        for unit in known_units:
+                            if unit_str == unit or name_str.endswith(unit):
+                                unit_str = unit
+                                break
+                        events_data.append(
+                            {
+                                "timestamp": timestamp,
+                                "cpu": cpu,
+                                "value": val,
+                                "unit": unit_str,
+                                "event_name": name_str,
+                                "type": "event",
+                            }
+                        )
+                    except ValueError:
+                        logger.debug("Skip malformed event value", exc_info=True)
+
+            if len(parts) >= 2:
+                possible_metric_name = parts[-1].strip()
+                possible_metric_val = parts[-2].strip()
+                if possible_metric_name and possible_metric_val:
+                    is_known_metric = any(
+                        token in possible_metric_name for token in ["IPC", "CPI"]
+                    )
+                    if is_known_metric:
+                        try:
+                            metric_value = float(possible_metric_val.replace(",", ""))
+                            metrics_data.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "cpu": cpu,
+                                    "value": metric_value,
+                                    "metric_name": possible_metric_name,
+                                    "type": "metric",
+                                }
+                            )
+                        except ValueError:
+                            logger.debug("Skip malformed metric value", exc_info=True)
+        except Exception:
+            logger.debug("Skip malformed line in perf stat timeseries", exc_info=True)
+            continue
+
+    events_df = (
+        pd.DataFrame(events_data)
+        if events_data
+        else pd.DataFrame(
+            columns=["timestamp", "cpu", "value", "unit", "event_name", "type"]
+        )
+    )
+    metrics_df = (
+        pd.DataFrame(metrics_data)
+        if metrics_data
+        else pd.DataFrame(columns=["timestamp", "cpu", "value", "metric_name", "type"])
+    )
+
+    for dataframe in (events_df, metrics_df):
+        if not dataframe.empty:
+            dataframe["timestamp"] = pd.to_numeric(dataframe["timestamp"])
+            dataframe["value"] = pd.to_numeric(dataframe["value"])
+            dataframe["cpu"] = dataframe["cpu"].astype(str)
+
+    return {"events": events_df, "metrics": metrics_df}
 
 
 class PerfStatParser:
@@ -64,10 +167,6 @@ class PerfStatParser:
 
         if is_per_cpu_mode:
             event_col_index = -1
-            # 如果数据行数为0，则无法通过iloc访问，因此需要先检查，
-            # 但是在for循环内部每次检查一次df是否为空则是无意义的，
-            # 因为如果 df 是空的，for 循环根本就不会执行，
-            # 因此>0的检查可以规避这个错误
             if df.shape[0] > 0:
                 for i in range(3, df.shape[1]):
                     if ":" in str(df.iloc[0, i]):
@@ -154,7 +253,6 @@ class PerfStatDataProcessor:
 
         Returns:
             pandas.DataFrame: A DataFrame containing the timestamp and CPI values over time.
-
         """
         if threads is None:
             return self.get_CPI()[["timestamp", "CPI"]].groupby("timestamp").mean()
@@ -442,120 +540,14 @@ class PerfStatDataProcessor:
         return col.to_list()
 
 
-class PerfStatPlotter:
-    def __init__(self, data_processor: PerfStatDataProcessor):
-        self.data_processor = data_processor
-
-    def plot_CPI_time_by_thread(self, threads: list):
-        """
-        Plots CPI over time for the specified threads.
-
-        Args:
-            threads (list): A list of thread IDs.
-
-        Returns:
-            None
-        """
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-        if len(threads) > 1:
-            p = sns.lineplot(
-                data=self.data_processor.get_CPI_time(threads),
-                x="timestamp",
-                hue="cpu_id",
-                y="CPI",
-            )
-        else:
-            p = sns.lineplot(
-                data=self.data_processor.get_CPI_time(threads), x="timestamp", y="CPI"
-            )
-        p.set_title("CPI over Time, Thread " + ",".join([str(t) for t in threads]))
-        p.set_xlabel("Time(s)")
-        p.set_ylabel("CPI")
-        return p
-
-    def plot_CPI_time_system(self):
-        """
-        Plots CPI (Cycles Per Instruction) over time for the system.
-
-        This method generates a line plot showing the CPI values over time for the system.
-        It uses the data returned by the `get_CPI_time` method and saves the plot as an image.
-
-        Returns:
-            None
-        """
-        sns.set_theme(style="darkgrid", rc={"figure.figsize": (15, 8)})
-        p = sns.lineplot(
-            data=self.data_processor.get_CPI_time(), x="timestamp", y="CPI"
-        )
-        p.set_title("CPI over Time, System")
-        p.set_xlabel("Time(s)")
-        p.set_ylabel("CPI")
-        return p
-
-    def plot_interactive_event(
-        self,
-        events: Optional[List[str]] = None,
-        threads: Optional[List[int]] = None,
-        aggregation: bool = False,
-        raw_data: bool = False,
-        show: bool = True,
-        write_to_html: Optional[str] = None,
-    ) -> List[go.Scatter]:
-        df = self.data_processor.get_wider_data()
-        scatters = []
-        if threads:
-            df = df[df["cpu_id"].isin(threads)]
-        if aggregation:
-            df = df.groupby(["timestamp"]).mean(numeric_only=True).reset_index()
-            df["cpu_id"] = "all"
-        # prevent duplicated events
-        if events:
-            events = list(set(events))
-        else:
-            events = df.columns.copy()
-            events = events.drop(["timestamp", "cpu_id"])
-        avail_threads = df["cpu_id"].unique().tolist()
-        for t in avail_threads:
-            data = df[df["cpu_id"] == t]
-            for i, y in enumerate(events):
-                r, g, b = generate_unique_rgb_color([t, i], generate_seed=True)
-                try:
-                    scatters.append(
-                        go.Scatter(
-                            x=data["timestamp"],
-                            y=data[y],
-                            mode="lines+markers",
-                            name=f"CPU {t} {y}",
-                            # different colors
-                            line=dict(color=f"rgb({r}, {g}, {b})"),
-                        )
-                    )
-                except KeyError as e:
-                    logger.warning(f"Not found event: {y} in the stat data: {e}")
-        if raw_data:
-            return scatters
-        else:
-            return make_single_plot(
-                scatters=scatters,
-                title="Stat events trend",
-                xaxis_title="Timestamp",
-                yaxis_title="Value",
-                show=show,
-                write_to_html=write_to_html,
-            )
-
-
 class PerfStatData:
     def __init__(self, perf_stat_csv_path: Union[str, TextIO]):
         self.data = PerfStatParser.parse_perf_stat_file(perf_stat_csv_path)
         self.data_processor = PerfStatDataProcessor(self.data)
-        self.plotter = PerfStatPlotter(self.data_processor)
 
     def __getattr__(self, name):
         if hasattr(self.data_processor, name):
             return getattr(self.data_processor, name)
-        if hasattr(self.plotter, name):
-            return getattr(self.plotter, name)
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'"
         )
