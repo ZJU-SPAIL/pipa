@@ -3,7 +3,7 @@
 # 引用依据: 《鲲鹏 BoostKit Web 使能套件 Nginx 移植&调优指南》 V12
 # -----------------------------------------------------------------------------
 
-user  $(whoami);
+user  ${USER};
 
 # [指南 P60 表3-4] worker_processes: 设置运行 Nginx 应用的 CPU 核数
 worker_processes  ${NGINX_WORKER_COUNT};

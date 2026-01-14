@@ -66,6 +66,7 @@ cmake . -DCMAKE_INSTALL_PREFIX="$MYSQL_INSTALL_DIR" \
     -DWITH_INNOBASE_STORAGE_ENGINE=1 \
     -DMYSQL_DATADIR="$MYSQL_DATA_DIR" \
     -DSYSCONFDIR="$MYSQL_INSTALL_DIR/etc" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DWITH_BOOST="$SRC_DIR/$MYSQL_SRC_DIR_NAME/boost" \
     -DFORCE_INSOURCE_BUILD=1
 make -j"$BUILD_CORES"
@@ -103,9 +104,9 @@ else
     "$MYSQL_INSTALL_DIR/bin/mysqld_safe" --defaults-file="$MY_CNF_PATH" &
     MYSQL_PID=$!
 
-    # --- 核心修复：用主动探测，替代盲目等待 ---
+    # --- 核心修复：用主动探测，替代盲目等待 (容错时间 10 分钟) ---
     log "Waiting for temporary MySQL server to become ready..."
-    retries=30
+    retries=300
     while ! "$MYSQL_INSTALL_DIR/bin/mysqladmin" ping --silent --socket="$MYSQL_SOCKET_PATH" && [ $retries -gt 0 ]; do
         log "  ... waiting ($retries retries left)"
         sleep 2
@@ -113,7 +114,7 @@ else
     done
 
     if [ $retries -eq 0 ]; then
-        log "❌ 错误: 临时 MySQL 服务器在 60 秒内未能启动。"
+        log "❌ 错误: 临时 MySQL 服务器在 10 分钟内未能启动。"
         cat "$MYSQL_LOGS_DIR/error.log"
         exit 1
     fi
@@ -135,6 +136,7 @@ EOF
         "$SYSBENCH_LUA_SCRIPT_PATH" \
         --mysql-host=127.0.0.1 --mysql-port=${MYSQL_PORT} --mysql-user=root \
         --mysql-db=sbtest --tables="$SYSBENCH_TABLES" --table-size="$SYSBENCH_TABLE_SIZE" \
+        --threads="$SYSBENCH_THREADS" \
         prepare
 
     # 关闭临时服务器
@@ -150,18 +152,18 @@ log "--- 🚀 快速开始：一个典型的分析流程 ---"
 log "你可以直接复制并粘贴以下命令来体验 Pipa:"
 log ''
 log '1. 启动服务并施加负载 (后台运行):'
-log '   ./showcases/mysql/start_mysql.sh && ./showcases/mysql/run_sysbench.sh 32 &'
+log '   ./showcases/mysql_sysbench_huawei/start_mysql.sh && ./showcases/mysql_sysbench_huawei/run_sysbench.sh 32 &'
 log ''
 log '2. 对 MySQL 进行 60 秒的性能快照:'
 log '   MYSQL_PID=$(pgrep -x mysqld) && pipa sample \'
 log '       --attach-to-pid "${MYSQL_PID}" \'
 log '       --duration 60 \'
-log '       --collectors-config showcases/mysql/mysql_collectors.yaml \'
+log '       --collectors-config showcases/mysql_sysbench_huawei/mysql_collectors.yaml \'
 log '       --output mysql_snapshot.pipa'
 log ''
 log '3. 分析快照并生成报告:'
 log '   pipa analyze --input mysql_snapshot.pipa --output report.html'
 log ''
 log '4. (完成后) 清理环境:'
-log '   pkill sysbench; ./showcases/mysql/stop_mysql.sh'
+log '   pkill sysbench; ./showcases/mysql_sysbench_huawei/stop_mysql.sh'
 log "-------------------------------------------"

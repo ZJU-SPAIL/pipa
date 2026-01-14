@@ -1,0 +1,29 @@
+[client]
+socket    = ${MYSQL_SOCKET_PATH}
+port    = ${MYSQL_PORT}
+
+[mysqld]
+user    = $(whoami)
+port    = ${MYSQL_PORT}
+basedir    = ${MYSQL_INSTALL_DIR}
+datadir    = ${MYSQL_DATA_DIR}
+socket    = ${MYSQL_SOCKET_PATH}
+pid-file = ${MYSQL_PID_PATH}
+log-error = ${MYSQL_LOGS_DIR}/error.log
+bind-address = 127.0.0.1
+
+# --- 动态性能参数 ---
+innodb_buffer_pool_size=${MYSQL_BUFF_POOL}
+innodb_buffer_pool_instances=${INNODB_BP_INSTANCES}
+innodb_log_file_size=${MYSQL_LOG_SIZE}
+innodb_io_capacity=${MYSQL_IO_CAPACITY}
+innodb_flush_log_at_trx_commit=${INNODB_FLUSH_TRX}
+sync_binlog=${INNODB_SYNC_BINLOG}
+innodb_flush_method=${INNODB_FLUSH_METHOD}
+max_connections=${MYSQL_MAX_CONNECTIONS}
+max_prepared_stmt_count=1048576
+
+# --- 高级调优参数 ---
+innodb_adaptive_hash_index=${INNODB_AHI}
+innodb_spin_wait_delay=${INNODB_SPIN_WAIT_DELAY}
+innodb_lru_scan_depth=${INNODB_LRU_SCAN_DEPTH}
