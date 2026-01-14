@@ -49,7 +49,7 @@ touch "$NGINX_LOGS_DIR/error.log" "$NGINX_LOGS_DIR/access.log"
 
 # --- 2. 渲染 Nginx 配置 (根据场景动态调整 Keepalive) ---
 log "Rendering Nginx config (Keepalive: ${KEEPALIVE_TIMEOUT}s)..."
-envsubst '${NGINX_WORKER_COUNT} ${NGINX_CPU_AFFINITY_MASK} ${NGINX_LOGS_DIR} ${KEEPALIVE_TIMEOUT} ${KEEPALIVE_REQUESTS}' < "$SHOWCASE_DIR/config/nginx_base.conf.template" > "$NGINX_INSTALL_DIR/conf/nginx.conf"
+envsubst '${USER} ${NGINX_WORKER_COUNT} ${NGINX_CPU_AFFINITY_MASK} ${NGINX_LOGS_DIR} ${KEEPALIVE_TIMEOUT} ${KEEPALIVE_REQUESTS}' < "$SHOWCASE_DIR/config/nginx_base.conf.template" > "$NGINX_INSTALL_DIR/conf/nginx.conf"
 
 # --- 3. 启动 Nginx ---
 log "Starting Nginx..."
@@ -64,6 +64,9 @@ LOAD_PID=$!
 log "   -> PID: $LOAD_PID, Logs: load.log"
 
 # --- 5. PIPA 采样 ---
+log "PIPA Healthcheck (Ensuring static info file)..."
+$PIPA_CMD healthcheck >/dev/null 2>&1 || true
+
 log "PIPA Sampling..."
 $PIPA_CMD sample \
     --attach-to-pid "$NGINX_PIDS" \
