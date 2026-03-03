@@ -11,7 +11,6 @@ from pipa.analysis.flamegraph.analyzer import (
     StackShare,
 )
 
-
 # The CSV writers accept either raw stats or enriched shares.
 # If enriched shares are provided, percentage columns are written directly.
 # Otherwise, if a total is provided, percentages are computed on the fly for backward compatibility.

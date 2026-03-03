@@ -6,6 +6,7 @@ These consolidate common workflows used by MCP tools and examples:
 - subset-by-symbol summaries
 - path statistics via Trie
 """
+
 from __future__ import annotations
 
 import re

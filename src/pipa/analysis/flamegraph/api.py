@@ -4,6 +4,7 @@ Thin facade API to unify parser and analyzer while keeping them decoupled.
 
 This module depends on both sides and exposes simple high-level entry points.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Mapping, Iterable, Sequence
@@ -15,7 +16,6 @@ from pipa.parser.flamegraph.stackcollapse_perf import (
     collapse,
     collapse_file,
 )
-
 
 # --------------- Collapse to mapping ---------------
 

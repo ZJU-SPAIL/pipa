@@ -399,73 +399,56 @@ def main(argv=None):
     do_query("BEGIN TRANSACTION")
 
     schema_statements = []
-    schema_statements.append(
-        """CREATE TABLE selected_events (
+    schema_statements.append("""CREATE TABLE selected_events (
     id          integer     NOT NULL    PRIMARY KEY,
     name        varchar(80)
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE machines (
+)""")
+    schema_statements.append("""CREATE TABLE machines (
     id          integer     NOT NULL    PRIMARY KEY,
     pid         integer,
     root_dir    varchar(4096)
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE threads (
+)""")
+    schema_statements.append("""CREATE TABLE threads (
     id          integer     NOT NULL    PRIMARY KEY,
     machine_id  bigint,
     process_id  bigint,
     pid         integer,
     tid         integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE comms (
+)""")
+    schema_statements.append("""CREATE TABLE comms (
     id          integer     NOT NULL    PRIMARY KEY,
     comm        varchar(16),
     c_thread_id bigint,
     c_time      bigint,
     exec_flag   boolean
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE comm_threads (
+)""")
+    schema_statements.append("""CREATE TABLE comm_threads (
     id          integer     NOT NULL    PRIMARY KEY,
     comm_id     bigint,
     thread_id   bigint
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE dsos (
+)""")
+    schema_statements.append("""CREATE TABLE dsos (
     id          integer     NOT NULL    PRIMARY KEY,
     machine_id  bigint,
     short_name  varchar(256),
     long_name   varchar(4096),
     build_id    varchar(64)
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE symbols (
+)""")
+    schema_statements.append("""CREATE TABLE symbols (
     id          integer     NOT NULL    PRIMARY KEY,
     dso_id      bigint,
     sym_start   bigint,
     sym_end     bigint,
     binding     integer,
     name        varchar(2048)
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE branch_types (
+)""")
+    schema_statements.append("""CREATE TABLE branch_types (
     id          integer     NOT NULL    PRIMARY KEY,
     name        varchar(80)
-)"""
-    )
+)""")
 
     if branches:
-        schema_statements.append(
-            """CREATE TABLE samples (
+        schema_statements.append("""CREATE TABLE samples (
         id          integer     NOT NULL    PRIMARY KEY,
         evsel_id    bigint,
         machine_id  bigint,
@@ -487,11 +470,9 @@ def main(argv=None):
         insn_count  bigint,
         cyc_count   bigint,
         flags       integer
-    )"""
-        )
+    )""")
     else:
-        schema_statements.append(
-            """CREATE TABLE samples (
+        schema_statements.append("""CREATE TABLE samples (
         id          integer     NOT NULL    PRIMARY KEY,
         evsel_id    bigint,
         machine_id  bigint,
@@ -517,21 +498,17 @@ def main(argv=None):
         insn_count  bigint,
         cyc_count   bigint,
         flags       integer
-    )"""
-        )
+    )""")
 
     if perf_db_export_calls or perf_db_export_callchains:
-        schema_statements.append(
-            """CREATE TABLE call_paths (
+        schema_statements.append("""CREATE TABLE call_paths (
         id          integer     NOT NULL    PRIMARY KEY,
         parent_id   bigint,
         symbol_id   bigint,
         ip          bigint
-    )"""
-        )
+    )""")
     if perf_db_export_calls:
-        schema_statements.append(
-            """CREATE TABLE calls (
+        schema_statements.append("""CREATE TABLE calls (
         id          integer     NOT NULL    PRIMARY KEY,
         thread_id   bigint,
         comm_id     bigint,
@@ -546,55 +523,41 @@ def main(argv=None):
         parent_id   bigint,
         insn_count  bigint,
         cyc_count   bigint
-    )"""
-        )
+    )""")
 
-    schema_statements.append(
-        """CREATE TABLE ptwrite (
+    schema_statements.append("""CREATE TABLE ptwrite (
     id          integer     NOT NULL    PRIMARY KEY,
     payload     bigint,
     exact_ip    integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE cbr (
+)""")
+    schema_statements.append("""CREATE TABLE cbr (
     id          integer     NOT NULL    PRIMARY KEY,
     cbr         integer,
     mhz         integer,
     percent     integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE mwait (
+)""")
+    schema_statements.append("""CREATE TABLE mwait (
     id          integer     NOT NULL    PRIMARY KEY,
     hints       integer,
     extensions  integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE pwre (
+)""")
+    schema_statements.append("""CREATE TABLE pwre (
     id          integer     NOT NULL    PRIMARY KEY,
     cstate      integer,
     subcstate   integer,
     hw          integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE exstop (
+)""")
+    schema_statements.append("""CREATE TABLE exstop (
     id          integer     NOT NULL    PRIMARY KEY,
     exact_ip    integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE pwrx (
+)""")
+    schema_statements.append("""CREATE TABLE pwrx (
     id              integer     NOT NULL    PRIMARY KEY,
     deepest_cstate  integer,
     last_cstate     integer,
     wake_reason     integer
-)"""
-    )
-    schema_statements.append(
-        """CREATE TABLE context_switches (
+)""")
+    schema_statements.append("""CREATE TABLE context_switches (
     id              integer     NOT NULL    PRIMARY KEY,
     machine_id      bigint,
     time            bigint,
@@ -604,8 +567,7 @@ def main(argv=None):
     thread_in_id    bigint,
     comm_in_id      bigint,
     flags           integer
-)"""
-    )
+)""")
 
     for stmt in schema_statements:
         do_query(stmt)
@@ -617,43 +579,33 @@ def main(argv=None):
         sqlite_has_printf = False
 
     views = []
-    views.append(
-        """CREATE VIEW machines_view AS
+    views.append("""CREATE VIEW machines_view AS
 SELECT id, pid, root_dir,
     CASE WHEN id=0 THEN 'unknown' WHEN pid=-1 THEN 'host' ELSE 'guest' END AS host_or_guest
-FROM machines"""
-    )
-    views.append(
-        """CREATE VIEW dsos_view AS
+FROM machines""")
+    views.append("""CREATE VIEW dsos_view AS
 SELECT id, machine_id,
     (SELECT host_or_guest FROM machines_view WHERE id = machine_id) AS host_or_guest,
     short_name, long_name, build_id
-FROM dsos"""
-    )
-    views.append(
-        """CREATE VIEW symbols_view AS
+FROM dsos""")
+    views.append("""CREATE VIEW symbols_view AS
 SELECT id, name,
     (SELECT short_name FROM dsos WHERE id=dso_id) AS dso,
     dso_id, sym_start, sym_end,
     CASE WHEN binding=0 THEN 'local' WHEN binding=1 THEN 'global' ELSE 'weak' END AS binding
-FROM symbols"""
-    )
-    views.append(
-        """CREATE VIEW threads_view AS
+FROM symbols""")
+    views.append("""CREATE VIEW threads_view AS
 SELECT id, machine_id,
     (SELECT host_or_guest FROM machines_view WHERE id = machine_id) AS host_or_guest,
     process_id, pid, tid
-FROM threads"""
-    )
-    views.append(
-        """CREATE VIEW comm_threads_view AS
+FROM threads""")
+    views.append("""CREATE VIEW comm_threads_view AS
 SELECT comm_id,
     (SELECT comm FROM comms WHERE id = comm_id) AS command,
     thread_id,
     (SELECT pid FROM threads WHERE id = thread_id) AS pid,
     (SELECT tid FROM threads WHERE id = thread_id) AS tid
-FROM comm_threads"""
-    )
+FROM comm_threads""")
 
     if perf_db_export_calls or perf_db_export_callchains:
         views.append(
@@ -748,11 +700,9 @@ SELECT ptwrite.id, time, cpu,
 FROM ptwrite INNER JOIN samples ON samples.id = ptwrite.id"""
     )
 
-    views.append(
-        """CREATE VIEW cbr_view AS
+    views.append("""CREATE VIEW cbr_view AS
 SELECT cbr.id, time, cpu, cbr, mhz, percent
-FROM cbr INNER JOIN samples ON samples.id = cbr.id"""
-    )
+FROM cbr INNER JOIN samples ON samples.id = cbr.id""")
 
     views.append(
         """CREATE VIEW mwait_view AS
@@ -766,30 +716,24 @@ SELECT mwait.id, time, cpu,
 FROM mwait INNER JOIN samples ON samples.id = mwait.id"""
     )
 
-    views.append(
-        """CREATE VIEW pwre_view AS
+    views.append("""CREATE VIEW pwre_view AS
 SELECT pwre.id, time, cpu, cstate, subcstate,
     CASE WHEN hw=0 THEN 'False' ELSE 'True' END AS hw
-FROM pwre INNER JOIN samples ON samples.id = pwre.id"""
-    )
+FROM pwre INNER JOIN samples ON samples.id = pwre.id""")
 
-    views.append(
-        """CREATE VIEW exstop_view AS
+    views.append("""CREATE VIEW exstop_view AS
 SELECT exstop.id, time, cpu,
     CASE WHEN exact_ip=0 THEN 'False' ELSE 'True' END AS exact_ip
-FROM exstop INNER JOIN samples ON samples.id = exstop.id"""
-    )
+FROM exstop INNER JOIN samples ON samples.id = exstop.id""")
 
-    views.append(
-        """CREATE VIEW pwrx_view AS
+    views.append("""CREATE VIEW pwrx_view AS
 SELECT pwrx.id, time, cpu, deepest_cstate, last_cstate,
     CASE WHEN wake_reason=1 THEN 'Interrupt'
          WHEN wake_reason=2 THEN 'Timer Deadline'
          WHEN wake_reason=4 THEN 'Monitored Address'
          WHEN wake_reason=8 THEN 'HW'
          ELSE wake_reason END AS wake_reason
-FROM pwrx INNER JOIN samples ON samples.id = pwrx.id"""
-    )
+FROM pwrx INNER JOIN samples ON samples.id = pwrx.id""")
 
     views.append(
         """CREATE VIEW power_events_view AS
@@ -825,8 +769,7 @@ INNER JOIN selected_events ON selected_events.id = evsel_id
 WHERE selected_events.name IN ('cbr','mwait','exstop','pwre','pwrx')"""
     )
 
-    views.append(
-        """CREATE VIEW context_switches_view AS
+    views.append("""CREATE VIEW context_switches_view AS
 SELECT
     context_switches.id,
     context_switches.machine_id,
@@ -846,8 +789,7 @@ FROM context_switches
 INNER JOIN threads AS th_out ON th_out.id   = context_switches.thread_out_id
 INNER JOIN threads AS th_in  ON th_in.id    = context_switches.thread_in_id
 INNER JOIN comms AS comm_out ON comm_out.id = context_switches.comm_out_id
-INNER JOIN comms AS comm_in  ON comm_in.id  = context_switches.comm_in_id"""
-    )
+INNER JOIN comms AS comm_in  ON comm_in.id  = context_switches.comm_in_id""")
 
     for v in views:
         do_query(v)

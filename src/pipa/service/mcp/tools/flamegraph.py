@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Flamegraph-related MCP tools registration."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, List
@@ -17,7 +18,6 @@ from pipa.analysis.flamegraph.summary import (
     path_stats_from_file,
 )
 from pipa.parser.flamegraph.stackcollapse_perf import CollapseOptions, format_collapsed
-
 
 # -----------------
 # Core implementations (callable directly or via MCP tools)

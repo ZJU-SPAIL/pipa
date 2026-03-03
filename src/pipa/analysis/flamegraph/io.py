@@ -10,6 +10,7 @@ This module focuses on parsing and serializing the folded stacks text format:
 We do not depend on collapse implementation details. We only accept and return
 plain mappings for maximum reuse.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Iterable

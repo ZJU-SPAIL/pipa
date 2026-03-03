@@ -144,13 +144,13 @@ class PerfScriptParser:
             except Exception:
                 try:
                     pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
-                    (pid, cpu, time, value, event) = re.match(
+                    pid, cpu, time, value, event = re.match(
                         pattern, line[15:].strip()
                     ).groups()
                     command = line[:15].strip()
                 except Exception:
                     pattern = r"(\d+|-\d+)\s+\[(\d+)]\s+(\d+\.\d+):\s+(\d+)\s+(\S+):"
-                    (pid, cpu, time, value, event) = re.match(
+                    pid, cpu, time, value, event = re.match(
                         pattern, line[10:].strip()
                     ).groups()
                     command = line[:10].strip()

@@ -15,6 +15,7 @@
 - format_collapsed(collapsed) -> List[str]  # 生成按字典序排序的输出行
 - save_collapsed(collapsed, output_path) -> None
 """
+
 from __future__ import annotations
 import os
 import re

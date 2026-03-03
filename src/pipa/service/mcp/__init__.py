@@ -3,6 +3,7 @@
 
 This module builds a shared FastMCP instance and registers all tool groups.
 """
+
 from __future__ import annotations
 
 from fastmcp import FastMCP
