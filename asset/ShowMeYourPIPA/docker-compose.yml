@@ -1,0 +1,49 @@
+services:
+  grafana:
+    container_name: services-grafana
+    image: grafana/grafana:10.2.2
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+    volumes:
+      - services_grafana_storage:/var/lib/grafana
+      - ${GRAFANA_CONNS}:/srv/sqlites
+      - ./configs/grafana:/etc/grafana
+    networks:
+      - services
+  prometheus:
+    container_name: services-prometheus
+    image: prom/prometheus:v2.48.1
+    user: root
+    ports:
+      - '9090:9090'
+    restart: unless-stopped
+    volumes:
+      - services_prometheus_storage:/prometheus
+      - ./configs/prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - services
+  alertmanager:
+    container_name: services-alertmanager
+    image: prom/alertmanager:main
+    ports:
+      - '9093:9093'
+    restart: unless-stopped
+    volumes:
+      - services_alertmanager_storage:/alertmanager
+      - ./configs/alertmanager:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - services
+networks:
+  services:
+    driver: bridge
+volumes:
+  services_grafana_storage: {}
+  services_prometheus_storage: {}
+  services_alertmanager_storage: {}

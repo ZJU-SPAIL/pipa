@@ -1,0 +1,36 @@
+name: 🐛 Bug report
+description: Report an issue or inconsistency found in Pipa.
+title: "[BUG] "
+labels: "bug"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report for PIPA
+
+        Please fill in the following details to help us investigate and address the issue efficiently.
+
+  - type: input
+    attributes:
+      label: Pipa Version
+      description: Please specify the version of Pipa you are using.
+      placeholder: "e.g., 1.2.3"
+
+  - type: textarea
+    attributes:
+      label: What is the expected behavior? What is the actual behavior?
+      description: Describe the expected behavior or outcome and the behavior you are currently seeing.
+      placeholder: "e.g., The CPI should be calculated using the formula `totalCycles / totalInstructions`.The current implementation averages the CPIs of the participating cores, leading to different results."
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Provide detailed steps to reproduce the issue.
+
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: Add any other relevant information, such as logs, screenshots, or your own insights.
+      placeholder: "e.g., Attach logs, screenshots, or any other relevant files..."

@@ -1,0 +1,25 @@
+name: 🚀 Feature request
+description: Suggest a new feature or improvement for Pipa.
+title: "[Feature] "
+labels: "enhancement"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request for Pipa
+
+        Please provide the details below to help us understand and implement the feature.
+
+  - type: input
+    attributes:
+      label: Feature Summary
+      description: Briefly describe the new feature or enhancement.
+      placeholder: "e.g., Use fixed-width fonts for numbers to improve readability"
+
+  - type: textarea
+    attributes:
+      label: Detailed Description
+      description: Provide a detailed explanation of the feature or enhancement.
+      placeholder: "e.g., The feature should implement fixed-width fonts for all numeric displays in reports and analytics dashboards to ensure consistent alignment across all numerical data."

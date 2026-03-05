@@ -1,0 +1,392 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROGRAM_NAME="pipa-tree"
+PROGRAM_VERSION="0.1.0"
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Library directory resolution
+if [[ -n "${PIPA_TREE_LIB_DIR:-}" ]]; then
+  LIB_DIR="$PIPA_TREE_LIB_DIR"
+elif [[ -d "/usr/local/lib/pipa-tree" ]]; then
+  LIB_DIR="/usr/local/lib/pipa-tree"
+else
+  LIB_DIR="${SCRIPT_DIR}/lib"
+fi
+
+# Source library modules
+source "${LIB_DIR}/common.sh"
+source "${LIB_DIR}/spec_info.sh"
+source "${LIB_DIR}/perf.sh"
+source "${LIB_DIR}/sar.sh"
+source "${LIB_DIR}/archive.sh"
+
+PIPA_TREE_DATA_DIR="${PIPA_TREE_DATA_DIR:-$PWD/data}"
+RUN_DIR="${PIPA_TREE_RUN_DIR:-$PIPA_TREE_DATA_DIR/run}"
+LOCK_FILE="$RUN_DIR/pipa-tree.lock"
+PID_FILE="$RUN_DIR/pipa-tree.pid"
+mkdir -p "$PIPA_TREE_DATA_DIR" "$RUN_DIR"
+export PIPA_TREE_DATA_DIR
+
+LOCK_FD=""
+STOP_REQUESTED=0
+EXIT_CODE=0
+PERF_STAT_PID=""
+SAR_PID=""
+PERF_RECORD_PID=""
+
+show_main_usage() {
+  cat <<'EOF'
+Usage: pipa-tree <command> [options]
+
+Commands:
+  collect      Run the collection process (Ctrl+C to stop)
+  stop         Gracefully stop a running collection
+  help         Show this message
+
+Invoking pipa-tree without a subcommand is equivalent to running "pipa-tree collect".
+EOF
+}
+
+show_collect_usage() {
+  cat <<'EOF'
+Usage:
+  pipa-tree collect [--output PATH] [options]
+
+Options:
+  --output PATH               Destination .tar.gz archive path (defaults to ./pipa-collection-<timestamp>.tar.gz).
+  --duration-stat SEC         Duration for counting phase (perf stat + sar, default: 60).
+  --duration-record SEC       Duration for profiling phase (perf record, default: 60).
+  --no-stat                   Disable counting phase collectors.
+  --no-record                 Disable profiling phase collector.
+  --perf-stat-interval MS     perf stat sampling interval (default: 1000ms).
+  --sar-interval SEC          sar sampling interval (default: 1s).
+  --perf-record-freq HZ       perf record frequency (default: 99Hz).
+  --perf-events LIST          Override default perf event groups.
+  --background                Run collection in background and return immediately.
+  --no-spec-info              Skip spec info validation/copy.
+  --force-spec-refresh        Force re-collecting hardware spec even if cached.
+  --help, -h                  Show this help.
+EOF
+}
+
+read_machine_identifier() {
+  if [[ -f /etc/machine-id ]]; then
+    head -n 1 /etc/machine-id | tr -d '[:space:]'
+    return
+  fi
+  if command -v hostid >/dev/null 2>&1; then
+    hostid | tr -d '[:space:]'
+    return
+  fi
+  hostname 2>/dev/null | tr -d '[:space:]' || printf "%s" "unknown-host"
+}
+
+generate_collection_id() {
+  local machine_id="$1"
+  local epoch_seconds="$2"
+  local salt="pipa-tree"
+  local seed="${machine_id:-unknown}:${epoch_seconds}:${salt}"
+  local hash=""
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash=$(printf "%s" "$seed" | sha256sum | head -c 8)
+  elif command -v shasum >/dev/null 2>&1; then
+    hash=$(printf "%s" "$seed" | shasum -a 256 | head -c 8)
+  elif command -v md5sum >/dev/null 2>&1; then
+    hash=$(printf "%s" "$seed" | md5sum | head -c 8)
+  else
+    local checksum
+    checksum=$(printf "%s" "$seed" | cksum | awk '{print $1}')
+    hash="${checksum:0:8}"
+  fi
+  printf "%s" "$hash"
+}
+
+acquire_lock() {
+  exec {LOCK_FD}>"$LOCK_FILE" || log_fatal "Cannot open lock file: $LOCK_FILE"
+  if ! flock -n "$LOCK_FD"; then
+    local existing_pid="unknown"
+    if [[ -f "$PID_FILE" ]]; then
+      existing_pid=$(cat "$PID_FILE" 2>/dev/null || true)
+    fi
+    log_fatal "Another pipa-tree instance is running (pid: $existing_pid)."
+  fi
+  echo "$$" >"$PID_FILE"
+}
+
+release_lock() {
+  if [[ -n "${LOCK_FD:-}" ]]; then
+    flock -u "$LOCK_FD" || true
+    exec {LOCK_FD}>&- || true
+  fi
+  rm -f "$PID_FILE"
+}
+
+handle_interrupt() {
+  STOP_REQUESTED=1
+  log_warn "Interrupt received, stopping collectors..."
+  [[ -n "${PERF_STAT_PID:-}" ]] && kill -INT "$PERF_STAT_PID" 2>/dev/null || true
+  [[ -n "${SAR_PID:-}" ]] && kill -INT "$SAR_PID" 2>/dev/null || true
+  [[ -n "${PERF_RECORD_PID:-}" ]] && kill -INT "$PERF_RECORD_PID" 2>/dev/null || true
+}
+
+cleanup_all() {
+  cleanup_work_dir
+  release_lock
+}
+
+start_profiling_job_bg() {
+  local duration="$1"
+  local freq="$2"
+  local output_file="$3"
+  prepare_perf_output_file "$output_file"
+  local -a cmd=(
+    perf
+    record
+    -e cpu-clock
+    -g -a
+    --call-graph dwarf
+    -N
+    -F "$freq"
+    -o "$output_file"
+    --
+    sleep "$duration"
+  )
+  (
+    ${PERF_SUDO} "${cmd[@]}" >/dev/null 2>&1
+  ) &
+  PERF_RECORD_PID=$!
+}
+
+run_stop_command() {
+  if [[ ! -f "$PID_FILE" ]]; then
+    log_fatal "No running pipa-tree instance found (pid file missing)."
+  fi
+  local pid
+  pid=$(cat "$PID_FILE" 2>/dev/null || true)
+  if [[ -z "$pid" ]]; then
+    log_fatal "PID file is empty or unreadable."
+  fi
+  if ! kill -0 "$pid" 2>/dev/null; then
+    log_fatal "Process $pid is not running."
+  fi
+  log_info "Sending SIGINT to pipa-tree (pid=$pid)"
+  kill -INT "$pid" 2>/dev/null || true
+  local waited=0
+  while kill -0 "$pid" 2>/dev/null && (( waited < 30 )); do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    log_warn "Process did not exit after 30s; sending SIGTERM"
+    kill -TERM "$pid" 2>/dev/null || true
+  else
+    log_info "pipa-tree stopped."
+  fi
+}
+
+run_collect_command() {
+  local output_path=""
+  local duration_stat=60
+  local duration_record=60
+  local run_stat=1
+  local run_record=1
+  local perf_stat_interval=1000
+  local sar_interval=1
+  local perf_record_freq=97
+  local perf_events_override=""
+  local no_spec_info=0
+  local force_spec_refresh=0
+  local background=0
+
+  local session_log_tmp=""
+  session_log_tmp=$(mktemp -t pipa_tree_log_XXXX) || log_fatal "Failed to create temporary log file"
+  PIPA_TREE_LOG_FILE="$session_log_tmp"
+
+  local collection_epoch=""
+  collection_epoch=$(date +%s)
+  local machine_identifier=""
+  machine_identifier=$(read_machine_identifier)
+  local collection_id=""
+  collection_id=$(generate_collection_id "$machine_identifier" "$collection_epoch")
+  export PIPA_TREE_COLLECTION_ID="$collection_id"
+
+  local -a child_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --output)
+        [[ $# -ge 2 ]] || log_fatal "--output requires a path"
+        output_path="$2"; child_args+=("--output" "$2"); shift 2 ;;
+      --duration-stat)
+        [[ $# -ge 2 ]] || log_fatal "--duration-stat requires seconds"
+        duration_stat="$2"; child_args+=("--duration-stat" "$2"); shift 2 ;;
+      --duration-record)
+        [[ $# -ge 2 ]] || log_fatal "--duration-record requires seconds"
+        duration_record="$2"; child_args+=("--duration-record" "$2"); shift 2 ;;
+      --no-stat)
+        run_stat=0; child_args+=("--no-stat"); shift ;;
+      --no-record)
+        run_record=0; child_args+=("--no-record"); shift ;;
+      --perf-stat-interval)
+        [[ $# -ge 2 ]] || log_fatal "--perf-stat-interval requires milliseconds"
+        perf_stat_interval="$2"; child_args+=("--perf-stat-interval" "$2"); shift 2 ;;
+      --sar-interval)
+        [[ $# -ge 2 ]] || log_fatal "--sar-interval requires seconds"
+        sar_interval="$2"; child_args+=("--sar-interval" "$2"); shift 2 ;;
+      --perf-record-freq)
+        [[ $# -ge 2 ]] || log_fatal "--perf-record-freq requires Hz"
+        perf_record_freq="$2"; child_args+=("--perf-record-freq" "$2"); shift 2 ;;
+      --perf-events)
+        [[ $# -ge 2 ]] || log_fatal "--perf-events requires a list"
+        perf_events_override="$2"; child_args+=("--perf-events" "$2"); shift 2 ;;
+      --no-spec-info)
+        no_spec_info=1; child_args+=("--no-spec-info"); shift ;;
+      --force-spec-refresh)
+        force_spec_refresh=1; child_args+=("--force-spec-refresh"); shift ;;
+      --background)
+        background=1; shift ;;
+      -h|--help)
+        show_collect_usage
+        exit 0 ;;
+      *)
+        log_fatal "Unknown option for collect: $1" ;;
+    esac
+  done
+
+  if (( background == 1 )) && [[ "${PIPA_TREE_BACKGROUND_CHILD:-0}" != "1" ]]; then
+    log_info "Starting pipa-tree collect in background..."
+    PIPA_TREE_BACKGROUND_CHILD=1 nohup "$0" collect "${child_args[@]}" >/dev/null 2>&1 &
+    local bg_pid=$!
+    echo "Started background pipa-tree with PID $bg_pid"
+    exit 0
+  fi
+
+  if [[ -z "$output_path" ]]; then
+    output_path=$(generate_default_output_path)
+    log_info "No --output specified. Using default path: $output_path"
+  fi
+
+  if (( run_stat == 0 && run_record == 0 )); then
+    log_fatal "At least one phase must run"
+  fi
+
+  trap cleanup_all EXIT
+  trap handle_interrupt INT TERM
+
+  acquire_lock
+
+  ensure_command tar
+  ensure_command perf
+  ensure_command sar
+  ensure_command sadf
+
+  select_perf_event_groups "$perf_events_override"
+
+  WORK_DIR=$(mktemp -d -t pipa_sample_XXXX)
+  log_info "Working directory: $WORK_DIR"
+
+  local level_dir="$WORK_DIR/attach_session"
+  mkdir -p "$level_dir"
+
+  local final_log_path="$level_dir/pipa-tree.log"
+  if [[ -n "$session_log_tmp" && -f "$session_log_tmp" ]]; then
+    mv "$session_log_tmp" "$final_log_path"
+  else
+    : >"$final_log_path"
+  fi
+  PIPA_TREE_LOG_FILE="$final_log_path"
+
+  local metadata_file="$level_dir/pipa-collection-info.txt"
+  {
+    printf "collection_id: %s\n" "$collection_id"
+    printf "generated_at_epoch: %s\n" "$collection_epoch"
+    printf "generated_at_utc: %s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf "machine_identifier: %s\n" "$machine_identifier"
+    printf "program_name: %s\n" "$PROGRAM_NAME"
+    printf "program_version: %s\n" "$PROGRAM_VERSION"
+    printf "target_archive: %s\n" "$output_path"
+  } >"$metadata_file"
+  printf "%s\n" "$collection_id" >"$level_dir/collection_id.txt"
+
+  log_info "pipa-tree ${PROGRAM_VERSION} initialized. Collection ID: $collection_id"
+  log_info "Machine identifier: $machine_identifier"
+  log_info "Archive target path: $output_path"
+  log_info "Counting duration: ${duration_stat}s, profiling duration: ${duration_record}s"
+
+  prepare_spec_info "$WORK_DIR/spec_info.yaml" "$no_spec_info" "$force_spec_refresh"
+
+  if (( run_stat == 1 )); then
+    log_info "Starting counting phase (perf stat + sar) for ${duration_stat}s"
+    local perf_stat_file="$level_dir/perf_stat.txt"
+    local sar_bin="$level_dir/sar_all.bin"
+    local sar_log="$level_dir/sar.log"
+
+    local pid_status=0
+    start_perf_stat_job "$duration_stat" "$perf_stat_interval" "$perf_stat_file"
+    PERF_STAT_PID="$LAST_BG_PID"
+    start_sar_job "$duration_stat" "$sar_interval" "$sar_bin" "$sar_log"
+    SAR_PID="$LAST_BG_PID"
+
+    wait "$PERF_STAT_PID" || pid_status=$?
+    PERF_STAT_PID=""
+    if grep -q "perf_event_paranoid" "$perf_stat_file" 2>/dev/null; then
+      log_fatal "perf stat aborted due to perf_event_paranoid restrictions"
+    fi
+    wait "$SAR_PID" || true
+    SAR_PID=""
+    convert_sar_outputs "$sar_bin" "$level_dir"
+
+    log_info "Perf stat data saved to: $perf_stat_file"
+  fi
+
+  if (( run_record == 1 )) && (( STOP_REQUESTED == 0 )); then
+    log_info "Starting profiling phase (perf record) for ${duration_record}s"
+    local perf_data="$level_dir/perf.data"
+    start_profiling_job_bg "$duration_record" "$perf_record_freq" "$perf_data"
+    wait "$PERF_RECORD_PID" || true
+    PERF_RECORD_PID=""
+  elif (( STOP_REQUESTED == 1 )); then
+    log_warn "Interrupt received before profiling phase; skipping perf record."
+    EXIT_CODE=130
+  fi
+
+  if (( STOP_REQUESTED == 1 )); then
+    log_warn "Interrupted; archiving collected data so far."
+    EXIT_CODE=130
+  fi
+
+  archive_results "$WORK_DIR" "$output_path"
+  log_info "Collection complete."
+  exit "$EXIT_CODE"
+}
+
+main() {
+  local command="${1:-}" || true
+  if [[ "$command" == "help" || "$command" == "--help" || "$command" == "-h" ]]; then
+    show_main_usage
+    exit 0
+  fi
+
+  if [[ -z "$command" || "$command" == -* ]]; then
+    command="collect"
+  else
+    shift
+  fi
+
+  case "$command" in
+    sample|collect)
+      run_collect_command "$@"
+      ;;
+    stop)
+      run_stop_command "$@"
+      ;;
+    *)
+      log_fatal "Unknown command: $command"
+      ;;
+  esac
+}
+
+main "$@"
